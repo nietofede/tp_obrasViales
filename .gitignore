@@ -1,0 +1,11 @@
+# Variables de entorno con contraseñas
+.env
+
+# Archivos generados por IDEs
+.idea/
+.vscode/
+*.iml
+
+# Carpetas de compilación de Maven/Gradle (cuando agreguen Spring Boot)
+target/
+build/
