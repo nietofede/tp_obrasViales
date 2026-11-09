@@ -1,0 +1,26 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: ms-obras-route
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/obras/**
+        - id: ms-recursos-route
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/recursos/**
+        - id: ms-operaciones-route
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/operaciones/**
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/obras-viales

@@ -1,0 +1,30 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: ms-recursos
+  datasource:
+    url: jdbc:postgresql://localhost:5432/obras_viales_db?currentSchema=esquema_recursos
+    username: usr_recursos
+    password: recursos_pass
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: esquema_recursos
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/obras-viales
+
+app:
+  osrm:
+    url: http://router.project-osrm.org
+    factor-correccion: 1.3
+    max-tiempo-viaje-min: 45

@@ -1,0 +1,29 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: ms-operaciones
+  datasource:
+    url: jdbc:postgresql://localhost:5432/obras_viales_db?currentSchema=esquema_operaciones
+    username: usr_operaciones
+    password: operaciones_pass
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: esquema_operaciones
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/obras-viales
+
+app:
+  open-meteo:
+    url: https://api.open-meteo.com/v1/forecast
+    ventana-ejecucion-horas: 6
