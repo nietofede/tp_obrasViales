@@ -527,7 +527,24 @@
       ],
       "notBefore": 0,
       "groups": []
-    }
+    },
+  {
+      "username": "capataz",
+      "enabled": true,
+      "email": "capataz@obrasviales.local",
+      "firstName": "Carlos",
+      "lastName": "Capataz",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "capataz123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "CAPATAZ"
+      ]
+    }  
   ],
   "scopeMappings": [
     {
