@@ -16,3 +16,10 @@ CREATE DATABASE ms_operaciones OWNER usr_operaciones;
 GRANT ALL PRIVILEGES ON DATABASE ms_obras TO usr_obras;
 GRANT ALL PRIVILEGES ON DATABASE ms_recursos TO usr_recursos;
 GRANT ALL PRIVILEGES ON DATABASE ms_operaciones TO usr_operaciones;
+
+-- 4. Por defecto Postgres da CONNECT a PUBLIC (cualquier usuario) en toda base nueva.
+-- Lo quitamos para que cada usuario solo pueda conectarse a su propia base.
+REVOKE CONNECT ON DATABASE keycloak_db FROM PUBLIC;
+REVOKE CONNECT ON DATABASE ms_obras FROM PUBLIC;
+REVOKE CONNECT ON DATABASE ms_recursos FROM PUBLIC;
+REVOKE CONNECT ON DATABASE ms_operaciones FROM PUBLIC;

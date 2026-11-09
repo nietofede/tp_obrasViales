@@ -5,7 +5,7 @@ spring:
   application:
     name: ms-operaciones
   datasource:
-    url: jdbc:postgresql://localhost:5432/obras_viales_db?currentSchema=esquema_operaciones
+    url: jdbc:postgresql://localhost:5432/ms_operaciones
     username: usr_operaciones
     password: operaciones_pass
     driver-class-name: org.postgresql.Driver
@@ -16,7 +16,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        default_schema: esquema_operaciones
   security:
     oauth2:
       resourceserver:
