@@ -31,4 +31,4 @@ obrasviales:
   sistema-client:
     token-url: http://localhost:8080/realms/obras-viales/protocol/openid-connect/token
     client-id: servicio-sistema
-    client-secret: tu-client-secret-de-keycloak
+    client-secret: ${CLIENT_SECRET}

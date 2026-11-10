@@ -1,0 +1,7 @@
+com.obrasviales.commons.security.BaseResourceServerConfig
+com.obrasviales.commons.filter.CorrelationIdFilter
+com.obrasviales.commons.exception.GlobalExceptionHandler
+com.obrasviales.commons.client.SistemaRestClientConfig
+com.obrasviales.commons.client.SistemaRequestInterceptor
+com.obrasviales.commons.client.SistemaTokenService
+com.obrasviales.commons.client.SistemaClientProperties

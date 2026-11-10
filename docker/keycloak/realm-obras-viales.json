@@ -925,7 +925,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "sistema123",
       "redirectUris": ["/*"],
       "webOrigins": ["/*"],
       "notBefore": 0,
