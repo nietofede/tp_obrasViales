@@ -1,4 +1,4 @@
-package main.java.com.obrasviales.commons.dto;
+package com.obrasviales.commons.dto;
 
 import java.io.Serializable;
 

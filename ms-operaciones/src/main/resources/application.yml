@@ -26,3 +26,9 @@ app:
   open-meteo:
     url: https://api.open-meteo.com/v1/forecast
     ventana-ejecucion-horas: 6
+
+obrasviales:
+  sistema-client:
+    token-url: http://localhost:8080/realms/obras-viales/protocol/openid-connect/token
+    client-id: servicio-sistema
+    client-secret: tu-client-secret-de-keycloak

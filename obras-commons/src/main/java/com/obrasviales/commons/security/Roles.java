@@ -1,4 +1,4 @@
-package main.java.com.obrasviales.commons.security;
+package com.obrasviales.commons.security;
 
 public final class Roles {
     private Roles() {
