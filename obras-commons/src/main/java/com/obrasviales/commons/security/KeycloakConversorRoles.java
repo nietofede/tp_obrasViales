@@ -1,4 +1,4 @@
-package main.java.com.obrasviales.commons.security;
+package com.obrasviales.commons.security;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
