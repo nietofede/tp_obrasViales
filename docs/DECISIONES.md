@@ -43,3 +43,12 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 
 
+## Gestión de migraciones con Flyway
+
+**Problema inicial:** Hibernate creaba las tablas automáticamente (`ddl-auto: update`), lo cual no permite versionar los cambios en el esquema ni asegura un entorno reproducible. Al incorporar Flyway, inicialmente faltaba el *starter* oficial de Spring Boot para activarlo de forma automática y el script `V1__init.sql` contenía errores de sintaxis de PostgreSQL (comas sobrantes al final de las tablas).
+
+**Decisión:** Se integró `spring-boot-starter-flyway` junto con `flyway-database-postgresql`, cambiando el comportamiento de Hibernate a `ddl-auto: validate`. Se centralizó la creación de tablas y datos iniciales en scripts versionados dentro de `src/main/resources/db/migration/`.
+
+**Alternativa descartada:** Permitir que Hibernate continúe creando y actualizando las tablas de forma automática.
+
+**Consecuencias:** Se logra un control estricto y auditable del esquema de la base de datos a través de la tabla de control `flyway_schema_history`. Permite que las tablas y datos de demo se sincronicen de manera automatizada tanto en desarrollo local como en contenedores.
