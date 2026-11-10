@@ -10,6 +10,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,6 +37,16 @@ class FaseServiceTest {
         fase.setFaseAnterior(anterior);
         return fase;
     }
+
+    private Fase crearFaseConFechas(Long id, EstadoFase estado, Fase anterior,
+                                    LocalDate inicio, LocalDate fin) {
+        Fase fase = crearFase(id, estado, anterior);
+        fase.setFechaInicioPlanificada(inicio);
+        fase.setFechaFinPlanificada(fin);
+        return fase;
+    }
+
+    // ---------- RN-01 ----------
 
     // RN-01 caso normal: la fase anterior está completada, entonces inicia
     @Test
@@ -74,5 +86,78 @@ class FaseServiceTest {
 
         verify(faseRepository, never()).save(any(Fase.class));
         assertThat(fase.getEstado()).isEqualTo(EstadoFase.PENDIENTE);
+    }
+
+    // ---------- RN-02 ----------
+
+    // RN-02 caso normal: al mover la base 3 días, se corren subbase y carpeta en cascada
+    @Test
+    void reprogramarFaseCorreEnCascadaLasDependientes() {
+        Fase base = crearFaseConFechas(1L, EstadoFase.PENDIENTE, null,
+                LocalDate.of(2026, 12, 10), LocalDate.of(2026, 12, 15));
+        Fase subbase = crearFaseConFechas(2L, EstadoFase.PENDIENTE, base,
+                LocalDate.of(2026, 12, 16), LocalDate.of(2026, 12, 20));
+        Fase carpeta = crearFaseConFechas(3L, EstadoFase.PENDIENTE, subbase,
+                LocalDate.of(2026, 12, 21), LocalDate.of(2026, 12, 23));
+        when(faseRepository.findById(1L)).thenReturn(Optional.of(base));
+        when(faseRepository.findByFaseAnteriorId(1L)).thenReturn(List.of(subbase));
+        when(faseRepository.findByFaseAnteriorId(2L)).thenReturn(List.of(carpeta));
+        when(faseRepository.findByFaseAnteriorId(3L)).thenReturn(List.of());
+
+        faseService.reprogramarFase(1L, LocalDate.of(2026, 12, 13));
+
+        assertThat(base.getFechaInicioPlanificada()).isEqualTo(LocalDate.of(2026, 12, 13));
+        assertThat(base.getFechaFinPlanificada()).isEqualTo(LocalDate.of(2026, 12, 18));
+        assertThat(subbase.getFechaInicioPlanificada()).isEqualTo(LocalDate.of(2026, 12, 19));
+        assertThat(subbase.getFechaFinPlanificada()).isEqualTo(LocalDate.of(2026, 12, 23));
+        assertThat(carpeta.getFechaInicioPlanificada()).isEqualTo(LocalDate.of(2026, 12, 24));
+        assertThat(carpeta.getFechaFinPlanificada()).isEqualTo(LocalDate.of(2026, 12, 26));
+    }
+
+    // RN-02 caso límite: la subbase puede empezar el mismo día en que termina la base
+    @Test
+    void reprogramarFasePermiteIniciarElMismoDiaQueTerminaLaAnterior() {
+        Fase base = crearFaseConFechas(1L, EstadoFase.COMPLETADA, null,
+                LocalDate.of(2026, 12, 10), LocalDate.of(2026, 12, 15));
+        Fase subbase = crearFaseConFechas(2L, EstadoFase.PENDIENTE, base,
+                LocalDate.of(2026, 12, 16), LocalDate.of(2026, 12, 20));
+        when(faseRepository.findById(2L)).thenReturn(Optional.of(subbase));
+        when(faseRepository.findByFaseAnteriorId(2L)).thenReturn(List.of());
+
+        faseService.reprogramarFase(2L, LocalDate.of(2026, 12, 15));
+
+        assertThat(subbase.getFechaInicioPlanificada()).isEqualTo(LocalDate.of(2026, 12, 15));
+        assertThat(subbase.getFechaFinPlanificada()).isEqualTo(LocalDate.of(2026, 12, 19));
+    }
+
+    // RN-02 rechazo: una fase COMPLETADA no se puede reprogramar
+    @Test
+    void rechazaReprogramarUnaFaseCompletada() {
+        Fase fase = crearFaseConFechas(1L, EstadoFase.COMPLETADA, null,
+                LocalDate.of(2026, 12, 10), LocalDate.of(2026, 12, 15));
+        when(faseRepository.findById(1L)).thenReturn(Optional.of(fase));
+
+        assertThatThrownBy(() -> faseService.reprogramarFase(1L, LocalDate.of(2026, 12, 20)))
+                .isInstanceOf(ReglaNegocioException.class)
+                .hasMessageContaining("COMPLETADA");
+
+        verify(faseRepository, never()).save(any(Fase.class));
+        assertThat(fase.getFechaInicioPlanificada()).isEqualTo(LocalDate.of(2026, 12, 10));
+    }
+
+    // RN-02 rechazo: no se puede iniciar antes de que termine la fase anterior
+    @Test
+    void rechazaReprogramarAntesDeQueTermineLaFaseAnterior() {
+        Fase base = crearFaseConFechas(1L, EstadoFase.EN_CURSO, null,
+                LocalDate.of(2026, 12, 10), LocalDate.of(2026, 12, 15));
+        Fase subbase = crearFaseConFechas(2L, EstadoFase.PENDIENTE, base,
+                LocalDate.of(2026, 12, 16), LocalDate.of(2026, 12, 20));
+        when(faseRepository.findById(2L)).thenReturn(Optional.of(subbase));
+
+        assertThatThrownBy(() -> faseService.reprogramarFase(2L, LocalDate.of(2026, 12, 14)))
+                .isInstanceOf(ReglaNegocioException.class)
+                .hasMessageContaining("antes de que termine la fase anterior");
+
+        verify(faseRepository, never()).save(any(Fase.class));
     }
 }
