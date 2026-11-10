@@ -28,7 +28,7 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - Dejamos las cotnraseñas y secretos seteadas en el env.example, que es la plantilla con los valores de demo. 
 - 01-init-schemas.sql lee las pw desde el .env con \set de psql.
 - Compose usa ${VAR:?message} para las contraseñas que lee el init, si falta alguna, al hacer docker compose up, falla y devuelve un mensajke. 
-- Los `application.yml` usan `{$VAR}` sin valor por defecto
+- Los `application.yml` usan `${VAR}` sin valor por defecto. Si falta la variable, Spring deja el texto `${VAR}` sin resolver y Postgres responde `password authentication failed`.
 - El realm usa `${SERVICIO_SISTEMA_SECRET}`
 
 **Alternativa descartada:** Se descarto usar placesholders para agilizar el arranque desde cero
@@ -41,14 +41,20 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 **Decision:** Pasamos a Java 25 y Spring Boot mantenemos en 4.1.2 ya que, hasta lo que sabemos, 3.2 no es compatible con Java 25
 
-
-
 ## Gestión de migraciones con Flyway
 
-**Problema inicial:** Hibernate creaba las tablas automáticamente (`ddl-auto: update`), lo cual no permite versionar los cambios en el esquema ni asegura un entorno reproducible. Al incorporar Flyway, inicialmente faltaba el *starter* oficial de Spring Boot para activarlo de forma automática y el script `V1__init.sql` contenía errores de sintaxis de PostgreSQL (comas sobrantes al final de las tablas).
+**Problema:** con `ddl-auto: update` Hibernate modificaba el esquema solo, sin historial de cambios ni entorno reproducible.
 
-**Decisión:** Se integró `spring-boot-starter-flyway` junto con `flyway-database-postgresql`, cambiando el comportamiento de Hibernate a `ddl-auto: validate`. Se centralizó la creación de tablas y datos iniciales en scripts versionados dentro de `src/main/resources/db/migration/`.
+**Decisión:** Flyway (`spring-boot-starter-flyway` + `flyway-database-postgresql`) y `ddl-auto: validate`. Cada servicio versiona su esquema en `src/main/resources/db/migration`: `V1` esquema y `V2` datos de demo, separados para poder cambiar la demo sin tocar el esquema. Los tipos coinciden con las entidades: ids `BIGINT` (Long) y coordenadas `DOUBLE PRECISION` (como `Coordenada`, con `CHECK` de rango). Los V1 de ms-recursos y ms-operaciones se crean cuando cada servicio tenga su esquema real.
 
-**Alternativa descartada:** Permitir que Hibernate continúe creando y actualizando las tablas de forma automática.
+**Alternativas descartadas:** dejar `ddl-auto: update`; usar una migración repetible `R__` para la demo (volvería a insertar las filas cada vez que cambie).
 
-**Consecuencias:** Se logra un control estricto y auditable del esquema de la base de datos a través de la tabla de control `flyway_schema_history`. Permite que las tablas y datos de demo se sincronicen de manera automatizada tanto en desarrollo local como en contenedores.
+**Consecuencias:** una migración ya aplicada no se edita (Flyway guarda su checksum); los cambios de esquema van en un V nuevo. El V1 de ms-obras se corrigió una única vez antes del merge, y hubo que recrear el volumen con `docker compose down -v`. Las entidades JPA deben usar `GenerationType.IDENTITY` para que `validate` cuadre con `BIGSERIAL`.
+
+## springdoc (Swagger)
+
+**Decisión:** springdoc 3.1.1, fijado en la propiedad `springdoc.version` del pom padre. Con Boot 4.1.2 probamos también 2.5.0: arrancaba y documentaba un controller con DTO validado, pero está fuera de la tabla de soporte (la documentación indica springdoc 3.x para Boot 4). 3.1.1 
+
+**Alternativa descartada:** quedarnos con 2.5.0.
+
+**Consecuencias:** `/v3/api-docs` y `/swagger-ui.html` quedan habilitados por defecto y necesitan `permitAll` cuando exista la seguridad. Está pendiente decidir si se apagan en producción.
