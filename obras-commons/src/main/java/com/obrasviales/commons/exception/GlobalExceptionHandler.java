@@ -18,6 +18,8 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // Habria de ver de implementar ResponseEntityExceptionHandler
+
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // Los campos status, titulo, detalle y tipo son por el estandar RFC 7807

@@ -20,9 +20,7 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 **Consecuencias:** Permite arrancar desde cero sin pasos manuales. 
 
-<<<<<<< HEAD
-## Contenido de la librería común (`obras-commons`)
-=======
+
 ## Secretos env
 
 **Problema:** las contraseñas de las bases estaban escritas en application.yml y en el SQL de init-db, y el secreto de `servicio-sistema` en el realm era `**********`. Con ese secreto, un client_credentials devolvía un token con rol SISTEMA.
@@ -44,8 +42,7 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 **Decision:** Pasamos a Java 25 y Spring Boot mantenemos en 4.1.2 ya que, hasta lo que sabemos, 3.2 no es compatible con Java 25
 
-
->>>>>>> origin/main
+## Contenido de la librería común (`obras-commons`)
 
 **Problema:** Tres microservicios (`ms-obras`, `ms-recursos`, `ms-operaciones`) requieren lógica idéntica para validar tokens JWT, extraer roles de Keycloak, estructurar respuestas de error homogéneas, propagar identificadores de trazabilidad (Correlation ID) y comunicarse entre sí como clientes autenticados (`SISTEMA`). Duplicar este código en cada servicio viola DRY y dificulta el mantenimiento; compartir de más introduce acoplamiento indebido.
 
@@ -63,3 +60,5 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 2. *Poner entidades y DTOs compartidos en `commons`:* Acoplamiento fuerte entre microservicios. Cualquier cambio en un contrato obligaría a recompilar y desplegar toda la plataforma al unísono.
 
 **Consecuencias:** Se garantiza consistencia en la seguridad, observabilidad y manejo de errores respetando la independencia de ciclo de vida y despliegue de cada microservicio.
+
+**Limitación conocida:** el handler genérico (`Exception.class`) todavía convierte los errores estándar de Spring MVC (ruta inexistente, método no permitido) en 500 en vez de 404 o 405. Alternativas evaluadas: extender `ResponseEntityExceptionHandler`. Queda pendiente de resolver antes de escribir los tests de las RN.

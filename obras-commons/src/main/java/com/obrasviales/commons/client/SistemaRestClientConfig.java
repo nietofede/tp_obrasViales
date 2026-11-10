@@ -8,8 +8,9 @@ import org.springframework.web.client.RestClient;
 public class SistemaRestClientConfig {
 
     @Bean
-    public RestClient.Builder sistemaRestClientBuilder(SistemaRequestInterceptor interceptor) {
+    public RestClient sistemaRestClient(SistemaRequestInterceptor interceptor) {
         return RestClient.builder()
-                .requestInterceptor(interceptor);
+                .requestInterceptor(interceptor)
+                .build();
     }
 }
