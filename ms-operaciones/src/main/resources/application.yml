@@ -7,7 +7,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/ms_operaciones
     username: usr_operaciones
-    password: operaciones_pass
+    password: ${OPERACIONES_DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
