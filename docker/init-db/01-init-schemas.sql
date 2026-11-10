@@ -1,12 +1,18 @@
+-- 0. Leemos las contraseñas desde el .env
+\set keycloak_pw `echo "$KEYCLOAK_DB_PASSWORD"`
+\set obras_pw `echo "$OBRAS_DB_PASSWORD"`
+\set recursos_pw `echo "$RECURSOS_DB_PASSWORD"`
+\set operaciones_pw `echo "$OPERACIONES_DB_PASSWORD"`
+
 -- 1. Acá creamos el usuario y base de datos para Keycloak
-CREATE USER keycloak_user WITH ENCRYPTED PASSWORD 'keycloak_pass';
+CREATE USER keycloak_user WITH ENCRYPTED PASSWORD :'keycloak_pw';
 CREATE DATABASE keycloak_db OWNER keycloak_user;
 GRANT ALL PRIVILEGES ON DATABASE keycloak_db TO keycloak_user;
 
 -- 2. Acá creamos usuarios dedicados por cada microservicio
-CREATE USER usr_obras WITH ENCRYPTED PASSWORD 'obras_pass';
-CREATE USER usr_recursos WITH ENCRYPTED PASSWORD 'recursos_pass';
-CREATE USER usr_operaciones WITH ENCRYPTED PASSWORD 'operaciones_pass';
+CREATE USER usr_obras WITH ENCRYPTED PASSWORD :'obras_pw';
+CREATE USER usr_recursos WITH ENCRYPTED PASSWORD :'recursos_pw';
+CREATE USER usr_operaciones WITH ENCRYPTED PASSWORD :'operaciones_pw';
 
 -- 3. Acá creamos las bases de datos de cada microservicios
 CREATE DATABASE ms_obras OWNER usr_obras;

@@ -15,9 +15,13 @@ services:
     container_name: obras-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB} # estas estan en el .env
+      # Estas estan en el .env
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:? Falta KEYCLOAK_DB_PASSWORD en el .env}
+      OBRAS_DB_PASSWORD: ${OBRAS_DB_PASSWORD:? Falta OBRAS_DB_PASSWORD en el .env}
+      RECURSOS_DB_PASSWORD: ${RECURSOS_DB_PASSWORD:? Falta RECURSOS_DB_PASSWORD en el .env}
+      OPERACIONES_DB_PASSWORD: ${OPERACIONES_DB_PASSWORD:? Falta OPERACIONES_DB_PASSWORD en el .env}
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
@@ -44,6 +48,7 @@ services:
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
       KC_DB_USERNAME: ${KEYCLOAK_DB_USER}
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      SERVICIO_SISTEMA_SECRET: ${SERVICIO_SISTEMA_SECRET:? Falta SERVICIO_SISTEMA_SECRET en el .env}
       KC_HEALTH_ENABLED: "true"
       KC_HTTP_ENABLED: "true"
     ports:

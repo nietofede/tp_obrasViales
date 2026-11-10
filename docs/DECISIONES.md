@@ -20,4 +20,20 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 **Consecuencias:** Permite arrancar desde cero sin pasos manuales. 
 
+## Secretos env
+
+**Problema:** las contraseñas de las bases estaban escritas en application.yml y en el SQL de init-db, y el secreto de `servicio-sistema` en el realm era `**********`. Con ese secreto, un client_credentials devolvía un token con rol SISTEMA.
+
+**Decision:** 
+- Dejamos las cotnraseñas y secretos seteadas en el env.example, que es la plantilla con los valores de demo. 
+- 01-init-schemas.sql lee las pw desde el .env con \set de psql.
+- Compose usa ${VAR:?message} para las contraseñas que lee el init, si falta alguna, al hacer docker compose up, falla y devuelve un mensajke. 
+- Los `application.yml` usan `{$VAR}` sin valor por defecto
+- El realm usa `${SERVICIO_SISTEMA_SECRET}`
+
+**Alternativa descartada:** Se descarto usar placesholders para agilizar el arranque desde cero
+
+**Consecuencias:** Permite hacer cp .env.example .env y compose up -d y que ande a la primera sin tener que configurar nada. Sin la variable, un servicio falla ("password authentication failed"). Los valoreas demo son publicos, hay que cambiarlos fuera de local!.
+
+
 
