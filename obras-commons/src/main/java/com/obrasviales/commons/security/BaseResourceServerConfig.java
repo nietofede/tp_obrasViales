@@ -39,7 +39,8 @@ public class BaseResourceServerConfig {
             
             // Reglas de autorización de endpoints:
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/**").permitAll() // Permite acceso libre a endpoints de monitoreo/health Check
+                .requestMatchers("/actuator/**").permitAll()  // Permite acceso libre a endpoints de monitoreo/health Check
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll() // Swagger UI y contrato OpenAPI sin token
                 .anyRequest().authenticated()               // Exige token  para cualquier otra ruta 
             )
             
