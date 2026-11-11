@@ -17,7 +17,7 @@ public enum EstadoOrden {
 
     // este metodo te dice a que estados se puede transicionar 
     // es un switch con todos los estados, cada uno tiene un set de estados a los que puede ir 
-    // para los estados finales devuelve false
+    // si el nuevo estado esta en el set devuelve true, sino false. Para los finales puse que devuelva false de una 
     public boolean puedeTransicionarHacia(EstadoOrden nuevoEstado) {
         return switch (this) {
             case PROGRAMADA -> Set.of(RECURSOS_ASIGNADOS, CANCELADA, SUSPENDIDA).contains(nuevoEstado);
