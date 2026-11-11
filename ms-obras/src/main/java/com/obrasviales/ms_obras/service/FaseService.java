@@ -5,7 +5,10 @@ import com.obrasviales.commons.exception.RecursoNoEncontradoException;
 import com.obrasviales.commons.exception.ReglaNegocioException;
 import com.obrasviales.ms_obras.domain.EstadoFase;
 import com.obrasviales.ms_obras.domain.Fase;
+import com.obrasviales.ms_obras.domain.TipoFase;
+import com.obrasviales.ms_obras.domain.Tramo;
 import com.obrasviales.ms_obras.repository.FaseRepository;
+import com.obrasviales.ms_obras.repository.TramoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +23,46 @@ import java.util.Set;
 public class FaseService {
 
     private final FaseRepository faseRepository;
+    private final TramoRepository tramoRepository;
+
+    @Transactional
+    public Fase crearFase(Long tramoId, TipoFase tipo, LocalDate inicio, LocalDate fin,
+                          Long faseAnteriorId) {
+        Tramo tramo = tramoRepository.findById(tramoId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("No existe el tramo con id " + tramoId));
+
+        if (fin.isBefore(inicio)) {
+            throw new ReglaNegocioException(
+                    "La fecha de fin no puede ser anterior a la de inicio", "FASE-FECHAS");
+        }
+
+        Fase anterior = null;
+        if (faseAnteriorId != null) {
+            anterior = faseRepository.findById(faseAnteriorId)
+                    .orElseThrow(() -> new RecursoNoEncontradoException(
+                            "No existe la fase anterior con id " + faseAnteriorId));
+
+            if (!anterior.getTramo().getId().equals(tramoId)) {
+                throw new ReglaNegocioException(
+                        "La fase anterior debe pertenecer al mismo tramo", "FASE-TRAMO");
+            }
+            if (!faseRepository.findByFaseAnteriorId(faseAnteriorId).isEmpty()) {
+                throw new ConflictoEstadoException("La fase anterior ya tiene una fase siguiente");
+            }
+            if (inicio.isBefore(anterior.getFechaFinPlanificada())) {
+                throw new ReglaNegocioException(
+                        "La fase no puede iniciar antes de que termine la fase anterior", "RN-02");
+            }
+        }
+
+        Fase fase = new Fase();
+        fase.setTramo(tramo);
+        fase.setTipo(tipo);
+        fase.setFechaInicioPlanificada(inicio);
+        fase.setFechaFinPlanificada(fin);
+        fase.setFaseAnterior(anterior);
+        return faseRepository.save(fase);
+    }
 
     @Transactional
     public Fase iniciarFase(Long faseId) {
