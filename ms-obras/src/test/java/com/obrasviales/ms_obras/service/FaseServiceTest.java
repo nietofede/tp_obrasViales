@@ -1,10 +1,14 @@
 package com.obrasviales.ms_obras.service;
 
 import com.obrasviales.commons.exception.ConflictoEstadoException;
+import com.obrasviales.commons.exception.RecursoNoEncontradoException;
 import com.obrasviales.commons.exception.ReglaNegocioException;
 import com.obrasviales.ms_obras.domain.EstadoFase;
 import com.obrasviales.ms_obras.domain.Fase;
+import com.obrasviales.ms_obras.domain.TipoFase;
+import com.obrasviales.ms_obras.domain.Tramo;
 import com.obrasviales.ms_obras.repository.FaseRepository;
+import com.obrasviales.ms_obras.repository.TramoRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,6 +32,9 @@ class FaseServiceTest {
     @Mock
     private FaseRepository faseRepository;
 
+    @Mock
+    private TramoRepository tramoRepository;
+
     @InjectMocks
     private FaseService faseService;
 
@@ -44,6 +51,18 @@ class FaseServiceTest {
         Fase fase = crearFase(id, estado, anterior);
         fase.setFechaInicioPlanificada(inicio);
         fase.setFechaFinPlanificada(fin);
+        return fase;
+    }
+
+    private Tramo tramo(Long id) {
+        Tramo tramo = new Tramo();
+        tramo.setId(id);
+        return tramo;
+    }
+
+    private Fase faseEnTramo(Long id, Long tramoId, LocalDate inicio, LocalDate fin) {
+        Fase fase = crearFaseConFechas(id, EstadoFase.PENDIENTE, null, inicio, fin);
+        fase.setTramo(tramo(tramoId));
         return fase;
     }
 
@@ -160,6 +179,130 @@ class FaseServiceTest {
                 .isInstanceOfSatisfying(ReglaNegocioException.class,
                         ex -> assertThat(ex.getCodigoRegla()).isEqualTo("RN-02"))
                 .hasMessageContaining("antes de que termine la fase anterior");
+
+        verify(faseRepository, never()).save(any(Fase.class));
+    }
+
+    // ---------- Crear fase ----------
+
+    // Caso normal: la primera fase del tramo se crea PENDIENTE y sin anterior
+    @Test
+    void creaLaPrimeraFaseDelTramoPendienteYSinAnterior() {
+        Tramo tramo = tramo(10L);
+        when(tramoRepository.findById(10L)).thenReturn(Optional.of(tramo));
+        when(faseRepository.save(any(Fase.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Fase resultado = faseService.crearFase(10L, TipoFase.RELEVAMIENTO,
+                LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 5), null);
+
+        assertThat(resultado.getTramo()).isSameAs(tramo);
+        assertThat(resultado.getTipo()).isEqualTo(TipoFase.RELEVAMIENTO);
+        assertThat(resultado.getEstado()).isEqualTo(EstadoFase.PENDIENTE);
+        assertThat(resultado.getFaseAnterior()).isNull();
+    }
+
+    // Caso límite: la nueva fase empieza el mismo día en que termina su anterior
+    @Test
+    void creaFaseQueEmpiezaElMismoDiaQueTerminaLaAnterior() {
+        Tramo tramo = tramo(10L);
+        Fase anterior = faseEnTramo(1L, 10L, LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 5));
+        when(tramoRepository.findById(10L)).thenReturn(Optional.of(tramo));
+        when(faseRepository.findById(1L)).thenReturn(Optional.of(anterior));
+        when(faseRepository.findByFaseAnteriorId(1L)).thenReturn(List.of());
+        when(faseRepository.save(any(Fase.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Fase resultado = faseService.crearFase(10L, TipoFase.BASE,
+                LocalDate.of(2026, 12, 5), LocalDate.of(2026, 12, 9), 1L);
+
+        assertThat(resultado.getFaseAnterior()).isSameAs(anterior);
+        assertThat(resultado.getTramo()).isSameAs(tramo);
+    }
+
+    // Rechazo: el tramo no existe
+    @Test
+    void rechazaCrearFaseEnTramoInexistente() {
+        when(tramoRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> faseService.crearFase(99L, TipoFase.BASE,
+                LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 5), null))
+                .isInstanceOf(RecursoNoEncontradoException.class)
+                .hasMessageContaining("99");
+
+        verify(faseRepository, never()).save(any(Fase.class));
+    }
+
+    // Rechazo: la fecha de fin es anterior a la de inicio
+    @Test
+    void rechazaCrearFaseConFinAnteriorAlInicio() {
+        when(tramoRepository.findById(10L)).thenReturn(Optional.of(tramo(10L)));
+
+        assertThatThrownBy(() -> faseService.crearFase(10L, TipoFase.BASE,
+                LocalDate.of(2026, 12, 5), LocalDate.of(2026, 12, 1), null))
+                .isInstanceOfSatisfying(ReglaNegocioException.class,
+                        ex -> assertThat(ex.getCodigoRegla()).isEqualTo("FASE-FECHAS"));
+
+        verify(faseRepository, never()).save(any(Fase.class));
+    }
+
+    // Rechazo: la fase anterior no existe
+    @Test
+    void rechazaCrearFaseConAnteriorInexistente() {
+        when(tramoRepository.findById(10L)).thenReturn(Optional.of(tramo(10L)));
+        when(faseRepository.findById(77L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> faseService.crearFase(10L, TipoFase.BASE,
+                LocalDate.of(2026, 12, 6), LocalDate.of(2026, 12, 9), 77L))
+                .isInstanceOf(RecursoNoEncontradoException.class)
+                .hasMessageContaining("77");
+
+        verify(faseRepository, never()).save(any(Fase.class));
+    }
+
+    // Rechazo: la fase anterior pertenece a otro tramo
+    @Test
+    void rechazaCrearFaseConAnteriorDeOtroTramo() {
+        Fase anteriorDeOtroTramo = faseEnTramo(1L, 99L,
+                LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 5));
+        when(tramoRepository.findById(10L)).thenReturn(Optional.of(tramo(10L)));
+        when(faseRepository.findById(1L)).thenReturn(Optional.of(anteriorDeOtroTramo));
+
+        assertThatThrownBy(() -> faseService.crearFase(10L, TipoFase.BASE,
+                LocalDate.of(2026, 12, 6), LocalDate.of(2026, 12, 9), 1L))
+                .isInstanceOfSatisfying(ReglaNegocioException.class,
+                        ex -> assertThat(ex.getCodigoRegla()).isEqualTo("FASE-TRAMO"));
+
+        verify(faseRepository, never()).save(any(Fase.class));
+    }
+
+    // Rechazo: la fase anterior ya tiene una fase siguiente (la cadena es lineal)
+    @Test
+    void rechazaCrearFaseSiLaAnteriorYaTieneSiguiente() {
+        Fase anterior = faseEnTramo(1L, 10L, LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 5));
+        Fase yaSiguiente = faseEnTramo(2L, 10L, LocalDate.of(2026, 12, 6), LocalDate.of(2026, 12, 9));
+        when(tramoRepository.findById(10L)).thenReturn(Optional.of(tramo(10L)));
+        when(faseRepository.findById(1L)).thenReturn(Optional.of(anterior));
+        when(faseRepository.findByFaseAnteriorId(1L)).thenReturn(List.of(yaSiguiente));
+
+        assertThatThrownBy(() -> faseService.crearFase(10L, TipoFase.SUBBASE,
+                LocalDate.of(2026, 12, 6), LocalDate.of(2026, 12, 9), 1L))
+                .isInstanceOf(ConflictoEstadoException.class)
+                .hasMessageContaining("ya tiene una fase siguiente");
+
+        verify(faseRepository, never()).save(any(Fase.class));
+    }
+
+    // Rechazo: la nueva fase empieza antes de que termine su anterior
+    @Test
+    void rechazaCrearFaseQueEmpiezaAntesDeQueTermineLaAnterior() {
+        Fase anterior = faseEnTramo(1L, 10L, LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 5));
+        when(tramoRepository.findById(10L)).thenReturn(Optional.of(tramo(10L)));
+        when(faseRepository.findById(1L)).thenReturn(Optional.of(anterior));
+        when(faseRepository.findByFaseAnteriorId(1L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> faseService.crearFase(10L, TipoFase.BASE,
+                LocalDate.of(2026, 12, 4), LocalDate.of(2026, 12, 9), 1L))
+                .isInstanceOfSatisfying(ReglaNegocioException.class,
+                        ex -> assertThat(ex.getCodigoRegla()).isEqualTo("RN-02"));
 
         verify(faseRepository, never()).save(any(Fase.class));
     }
