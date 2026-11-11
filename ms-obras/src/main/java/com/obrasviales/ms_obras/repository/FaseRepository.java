@@ -10,4 +10,6 @@ public interface FaseRepository extends JpaRepository<Fase, Long> {
     List<Fase> findByFaseAnteriorId(Long faseAnteriorId);
 
     List<Fase> findByTramoId(Long tramoId);
+
+    List<Fase> findByTramoIdOrderByFechaInicioPlanificadaAsc(Long tramoId);
 }
