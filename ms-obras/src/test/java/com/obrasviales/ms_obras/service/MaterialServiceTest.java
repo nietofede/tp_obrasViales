@@ -1,9 +1,9 @@
 package com.obrasviales.ms_obras.service;
 
+import com.obrasviales.commons.exception.ReglaNegocioException;
 import com.obrasviales.ms_obras.domain.ConsumoMaterial;
 import com.obrasviales.ms_obras.domain.TipoFase;
 import com.obrasviales.ms_obras.dto.MaterialCalculado;
-import com.obrasviales.ms_obras.exception.ReglaNegocioException;
 import com.obrasviales.ms_obras.repository.ConsumoMaterialRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -81,7 +81,8 @@ class MaterialServiceTest {
     @Test
     void rechazaSuperficieCero() {
         assertThatThrownBy(() -> materialService.calcularMateriales(TipoFase.BASE, BigDecimal.ZERO))
-                .isInstanceOf(ReglaNegocioException.class)
+                .isInstanceOfSatisfying(ReglaNegocioException.class,
+                        ex -> assertThat(ex.getCodigoRegla()).isEqualTo("RN-03"))
                 .hasMessageContaining("mayor que 0");
 
         verify(consumoMaterialRepository, never()).findByTipoFase(any(TipoFase.class));
@@ -91,7 +92,8 @@ class MaterialServiceTest {
     @Test
     void rechazaSuperficieNegativa() {
         assertThatThrownBy(() -> materialService.calcularMateriales(TipoFase.BASE, new BigDecimal("-10")))
-                .isInstanceOf(ReglaNegocioException.class)
+                .isInstanceOfSatisfying(ReglaNegocioException.class,
+                        ex -> assertThat(ex.getCodigoRegla()).isEqualTo("RN-03"))
                 .hasMessageContaining("mayor que 0");
 
         verify(consumoMaterialRepository, never()).findByTipoFase(any(TipoFase.class));

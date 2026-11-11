@@ -1,8 +1,8 @@
 package com.obrasviales.ms_obras.service;
 
+import com.obrasviales.commons.exception.ReglaNegocioException;
 import com.obrasviales.ms_obras.domain.TipoFase;
 import com.obrasviales.ms_obras.dto.MaterialCalculado;
-import com.obrasviales.ms_obras.exception.ReglaNegocioException;
 import com.obrasviales.ms_obras.repository.ConsumoMaterialRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,10 +22,10 @@ public class MaterialService {
     @Transactional(readOnly = true)
     public List<MaterialCalculado> calcularMateriales(TipoFase tipoFase, BigDecimal superficieM2) {
         if (tipoFase == null) {
-            throw new ReglaNegocioException("El tipo de fase es obligatorio");
+            throw new ReglaNegocioException("El tipo de fase es obligatorio", "RN-03");
         }
         if (superficieM2 == null || superficieM2.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new ReglaNegocioException("La superficie del tramo debe ser mayor que 0");
+            throw new ReglaNegocioException("La superficie del tramo debe ser mayor que 0", "RN-03");
         }
 
         return consumoMaterialRepository.findByTipoFase(tipoFase).stream()

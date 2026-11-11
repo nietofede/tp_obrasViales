@@ -1,8 +1,9 @@
 package com.obrasviales.ms_obras.service;
 
+import com.obrasviales.commons.exception.ConflictoEstadoException;
+import com.obrasviales.commons.exception.ReglaNegocioException;
 import com.obrasviales.ms_obras.domain.EstadoFase;
 import com.obrasviales.ms_obras.domain.Fase;
-import com.obrasviales.ms_obras.exception.ReglaNegocioException;
 import com.obrasviales.ms_obras.repository.FaseRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -81,7 +82,8 @@ class FaseServiceTest {
         when(faseRepository.findById(2L)).thenReturn(Optional.of(fase));
 
         assertThatThrownBy(() -> faseService.iniciarFase(2L))
-                .isInstanceOf(ReglaNegocioException.class)
+                .isInstanceOfSatisfying(ReglaNegocioException.class,
+                        ex -> assertThat(ex.getCodigoRegla()).isEqualTo("RN-01"))
                 .hasMessageContaining("anterior no está completada");
 
         verify(faseRepository, never()).save(any(Fase.class));
@@ -130,7 +132,7 @@ class FaseServiceTest {
         assertThat(subbase.getFechaFinPlanificada()).isEqualTo(LocalDate.of(2026, 12, 19));
     }
 
-    // RN-02 rechazo: una fase COMPLETADA no se puede reprogramar
+    // RN-02 rechazo: una fase COMPLETADA no se puede reprogramar (conflicto de estado)
     @Test
     void rechazaReprogramarUnaFaseCompletada() {
         Fase fase = crearFaseConFechas(1L, EstadoFase.COMPLETADA, null,
@@ -138,7 +140,7 @@ class FaseServiceTest {
         when(faseRepository.findById(1L)).thenReturn(Optional.of(fase));
 
         assertThatThrownBy(() -> faseService.reprogramarFase(1L, LocalDate.of(2026, 12, 20)))
-                .isInstanceOf(ReglaNegocioException.class)
+                .isInstanceOf(ConflictoEstadoException.class)
                 .hasMessageContaining("COMPLETADA");
 
         verify(faseRepository, never()).save(any(Fase.class));
@@ -155,7 +157,8 @@ class FaseServiceTest {
         when(faseRepository.findById(2L)).thenReturn(Optional.of(subbase));
 
         assertThatThrownBy(() -> faseService.reprogramarFase(2L, LocalDate.of(2026, 12, 14)))
-                .isInstanceOf(ReglaNegocioException.class)
+                .isInstanceOfSatisfying(ReglaNegocioException.class,
+                        ex -> assertThat(ex.getCodigoRegla()).isEqualTo("RN-02"))
                 .hasMessageContaining("antes de que termine la fase anterior");
 
         verify(faseRepository, never()).save(any(Fase.class));
