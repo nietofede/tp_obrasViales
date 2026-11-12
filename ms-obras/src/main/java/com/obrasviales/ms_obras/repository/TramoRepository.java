@@ -8,4 +8,6 @@ import java.util.List;
 public interface TramoRepository extends JpaRepository<Tramo, Long> {
 
     List<Tramo> findByObraId(Long obraId);
+
+    List<Tramo> findByObraIdOrderByIdAsc(Long obraId);
 }
