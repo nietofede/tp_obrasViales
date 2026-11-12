@@ -266,7 +266,7 @@ el 10 me parece que todavía falta hacer la revisión de quienes pueden usar los
 
 - **Ejecución y Autenticación:** Se implementó `JobHabilitacionDiaria` con `@Scheduled` programado a las 06:00 AM. Para operar de forma autónoma sin intervención de usuarios humanos, interactúa con Keycloak mediante el flujo **OAuth2 Client Credentials** (`servicio-sistema`), obteniendo un token JWT con rol `SISTEMA`.
 - **Estrategia de Idempotencia:** El procesamiento filtra únicamente órdenes en estado `EVALUACION_CLIMATICA` con `fecha_programada = CURRENT_DATE`. Al ejecutarse, las órdenes transicionan a estados terminales/intermedios (`HABILITADA`, `SUSPENDIDA`, `CANCELADA`), evitando reprocesamientos si el job se dispara múltiples veces en el mismo día.
-- **Datos de Demostración (Seed):** Se creó la migración `V3__seed_demo_orders.sql` con 3 órdenes en fecha actual para evidenciar los 3 casos de negocio:
+- **Datos de Demostración (Seed):** Se creó la migración `V4__seed_demo_orders.sql` con 3 órdenes en fecha actual para evidenciar los 3 casos de negocio:
   1. Tramo 1: Habilitada (condiciones climáticas y de distancia válidas).
   2. Tramo 2: Suspendida (exceso de umbrales climáticos).
   3. Tramo 3: Cancelada / Rechazada (distancia mayor a la permitida).

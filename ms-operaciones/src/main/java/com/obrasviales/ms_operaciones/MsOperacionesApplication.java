@@ -1,4 +1,4 @@
-﻿package com.obrasviales.ms_operaciones;
+package com.obrasviales.ms_operaciones;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
