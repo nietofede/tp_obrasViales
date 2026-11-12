@@ -85,15 +85,4 @@ public class OTController {
                 .toList();
         return ResponseEntity.ok(historial);
     }
-
-    @PatchMapping("/{id}/resolver-riesgo")
-    @PreAuthorize("hasRole('" + Roles.PLANIFICADOR + "')") 
-    @Operation(summary = "Permite al Planificador decidir el curso de acción para una orden en estado EN_RIESGO (RN-12)")
-    public ResponseEntity<OrdenTrabajoDTO> resolverOrdenEnRiesgo(
-            @PathVariable Long id,
-            @RequestParam String decision) {
-        
-        OrdenTrabajoDTO resultado = otService.resolverOrdenEnRiesgo(id, decision);
-        return ResponseEntity.ok(resultado);
-    }
 }

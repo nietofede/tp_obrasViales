@@ -220,25 +220,4 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
         
         return evaluacionClimaticaRepository.obtenerHistorialPorOrden(orden.getId());
     }
-
-    @Override
-    @Transactional
-    public OrdenTrabajoDTO resolverOrdenEnRiesgo(Long id, String decision) {
-        OrdenTrabajo orden = ordenTrabajoRepository.findById(id)
-                .orElseThrow(() -> new OrdenNoEncontrada(id));
-
-        if (orden.getEstado() != EstadoOrden.EN_RIESGO) {
-            throw new ConflictoEstadoException("La orden no se encuentra en estado EN_RIESGO.");
-        }
-
-        if ("REPROGRAMAR".equalsIgnoreCase(decision)) {
-            orden.setEstado(EstadoOrden.PROGRAMADA);
-            orden.setContadorSuspensiones(0); // reinicio contador de suspensiones
-        } else {
-            orden.setEstado(EstadoOrden.FINALIZADA);
-        }
-
-        OrdenTrabajo actualizada = ordenTrabajoRepository.save(orden);
-        return mapearADto(actualizada);
-    }
 }

@@ -8,12 +8,10 @@ public enum EstadoOrden {
     RECURSOS_ASIGNADOS,
     EVALUACION_CLIMATICA,
     HABILITADA,
-    EN_RIESGO,
     EN_EJECUCION,
     COMPLETADA,
     PENDIENTE_CONFIRMACION_CLIMATICA,
     SUSPENDIDA,
-    FINALIZADA,
     REPROGRAMADA,
     CANCELADA;
 
@@ -29,8 +27,7 @@ public enum EstadoOrden {
             case HABILITADA -> Set.of(EN_EJECUCION, SUSPENDIDA).contains(nuevoEstado);
             case EN_EJECUCION -> Set.of(COMPLETADA, SUSPENDIDA).contains(nuevoEstado);
             case SUSPENDIDA -> Set.of(REPROGRAMADA, CANCELADA).contains(nuevoEstado);
-            case EN_RIESGO -> Set.of(REPROGRAMADA, CANCELADA).contains(nuevoEstado);
-            case REPROGRAMADA, COMPLETADA, CANCELADA, FINALIZADA -> false;
+            case REPROGRAMADA, COMPLETADA, CANCELADA -> false;
         };
     }
 }

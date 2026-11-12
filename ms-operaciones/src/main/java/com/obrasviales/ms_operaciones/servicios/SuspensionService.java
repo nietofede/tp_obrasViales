@@ -3,6 +3,7 @@ package com.obrasviales.ms_operaciones.servicios;
 import com.obrasviales.ms_operaciones.clientes.ObrasClient;
 import com.obrasviales.ms_operaciones.clientes.RecursosClient;
 import com.obrasviales.ms_operaciones.dtos.FaseDTO;
+import com.obrasviales.ms_operaciones.dtos.SuspensionDTO;
 import com.obrasviales.ms_operaciones.modelo.ConfiguracionSuspensiones;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
 import com.obrasviales.ms_operaciones.modelo.FaseEnRiesgo;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 // Saga de suspension, orquestada desde Operaciones: liberar la reserva en Recursos, registrar la suspension y,
 // segun cuantas lleve la fase (RN-12), o bien reprogramar la fase en Obras (RN-02) y crear la orden nueva, o bien
@@ -57,6 +59,20 @@ public class SuspensionService {
         } else {
             reprogramar(orden);
         }
+    }
+
+    // Historial: por orden, por fase, o todo si no se filtra (el filtro por orden tiene prioridad).
+    @Transactional(readOnly = true)
+    public List<SuspensionDTO> historial(Long faseId, Long ordenId) {
+        List<Suspension> suspensiones;
+        if (ordenId != null) {
+            suspensiones = suspensionRepository.findByOrdenTrabajoIdOrderByFechaDesc(ordenId);
+        } else if (faseId != null) {
+            suspensiones = suspensionRepository.findByFaseIdOrderByFechaDesc(faseId);
+        } else {
+            suspensiones = suspensionRepository.findAllByOrderByFechaDesc();
+        }
+        return suspensiones.stream().map(SuspensionDTO::desde).toList();
     }
 
     @Transactional(readOnly = true)
