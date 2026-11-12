@@ -1,9 +1,13 @@
 package com.obrasviales.ms_operaciones.controller;
 
 import com.obrasviales.ms_operaciones.dtos.CrearOrdenRequest;
+import com.obrasviales.ms_operaciones.dtos.EvaluacionSolicitudRequest;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
-import com.obrasviales.ms_operaciones.servicios.OTService;
+import com.obrasviales.ms_operaciones.modelo.TipoTrabajo;
+import com.obrasviales.ms_operaciones.servicios.OTServiceInterfaz;
+import com.obrasviales.ms_operaciones.modelo.EvaluacionClimatica;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,9 +30,9 @@ import java.util.List;
 @Tag(name = "Órdenes de Trabajo", description = "Endpoints para la gestión del ciclo de vida de órdenes diarias")
 public class OTController {
 
-    private final OTService otService;
+    private final OTServiceInterfaz otService;
 
-    // endpoint de crear ot
+
     @PostMapping
     // operacion describe en swagger que hace el endpoint
     @Operation(summary = "Crear una nueva orden de trabajo en estado PROGRAMADA (PLANIFICADOR)")
@@ -75,5 +79,27 @@ public class OTController {
         // con el service vemos si podemos cambiar de estado 
         OrdenTrabajoDTO actualizada = otService.cambiarEstado(id, nuevoEstado);
         return ResponseEntity.ok(actualizada); // devuelvo 200 con la ot
+    }
+
+    // endpoint de evaluar clima y cambiar el estado 
+    @PostMapping("/{id}/evaluar-clima")
+    @Operation(summary = "Ejecuta la evaluación climática para una orden y actualiza su estado (HABILITADA, SUSPENDIDA o PENDIENTE)")
+    public ResponseEntity<OrdenTrabajoDTO> evaluarClima(
+            @PathVariable Long id,
+            @RequestParam TipoTrabajo tipoTrabajo,
+            @Valid @RequestBody EvaluacionSolicitudRequest request) {
+        
+        // Cambiá ordenTrabajoService por otService
+        OrdenTrabajoDTO resultado = otService.evaluarYActualizarEstadoClimatico(
+                id, request.getLatitud(), request.getLongitud(), tipoTrabajo);
+        
+        return ResponseEntity.ok(resultado);
+    }
+
+    // no consegui hacerlo andar, me tira error 500 y no da info, creo igual que es secundario, no obligatorio 
+    @GetMapping("/{id}/evaluaciones-climaticas")
+    public ResponseEntity<List<EvaluacionClimatica>> obtenerHistorialClimatico(@PathVariable Long id) {
+        List<EvaluacionClimatica> historial = otService.obtenerHistorialClimatico(id);
+        return ResponseEntity.ok(historial);
     }
 }

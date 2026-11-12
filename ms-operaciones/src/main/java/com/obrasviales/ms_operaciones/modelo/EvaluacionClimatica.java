@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
 
 @Entity
@@ -20,6 +20,7 @@ public class EvaluacionClimatica {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "orden_trabajo_id", nullable = false)
+    @JsonIgnore
     private OrdenTrabajo ordenTrabajo;
 
     @Column(name = "humedad_suelo_registrada")

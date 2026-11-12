@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.util.List;
+
 @Slf4j
 @Service
 public class OpenMeteoService implements InterfazClimaService {
@@ -15,7 +17,6 @@ public class OpenMeteoService implements InterfazClimaService {
     private final RestClient restClient;
 
     public OpenMeteoService() {
-        // inicio restcliente con la url de Open-Meteo
         this.restClient = RestClient.builder()
                 .baseUrl("https://api.open-meteo.com/v1")
                 .build();
@@ -27,13 +28,14 @@ public class OpenMeteoService implements InterfazClimaService {
     public DatosClimaDTO obtenerCondicionesClimaticas(Double latitud, Double longitud) {
         log.info("Consultando Open-Meteo para lat: {}, long: {}", latitud, longitud);
 
-        // pedimos a la api temperatura, humedad y probabilidad de precipitación
         OpenMeteoResponseDTO response = restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/forecast")
                         .queryParam("latitude", latitud)
                         .queryParam("longitude", longitud)
-                        .queryParam("current", "temperature_2m,relative_humidity_2m,precipitation_probability")
+                        .queryParam("current", "temperature_2m,precipitation_probability")
+                        .queryParam("hourly", "soil_moisture_0_to_1cm")
+                        .queryParam("forecast_days", 1)
                         .build())
                 .retrieve()
                 .body(OpenMeteoResponseDTO.class);
@@ -43,17 +45,38 @@ public class OpenMeteoService implements InterfazClimaService {
         }
 
         OpenMeteoResponseDTO.CurrentData current = response.getCurrent();
+        Double humedadSueloActual = extraerHumedadSueloActual(response);
 
         return DatosClimaDTO.builder()
                 .temperatura(current.getTemperature2m())
-                .humedadSuelo(current.getRelativeHumidity2m()) // Usamos la humedad relativa para la del suelo como aproximacion
+                .humedadSuelo(humedadSueloActual)
                 .probabilidadLluvia(current.getPrecipitationProbability() != null ? current.getPrecipitationProbability() : 0.0)
                 .build();
     }
 
-    // fallback por si llega a fallar la api
+    private Double extraerHumedadSueloActual(OpenMeteoResponseDTO response) {
+        OpenMeteoResponseDTO.HourlyData hourly = response.getHourly();
+        if (hourly == null || hourly.getSoilMoisture0To1cm() == null || hourly.getSoilMoisture0To1cm().isEmpty()) {
+            return 0.0;
+        }
+
+        List<String> horas = hourly.getTime();
+        List<Double> humedades = hourly.getSoilMoisture0To1cm();
+        String tiempoActual = response.getCurrent().getTime();
+
+        if (tiempoActual != null && tiempoActual.length() >= 13 && horas != null) {
+            String horaPrefix = tiempoActual.substring(0, 13) + ":00";
+            int indice = horas.indexOf(horaPrefix);
+            if (indice >= 0 && indice < humedades.size() && humedades.get(indice) != null) {
+                return humedades.get(indice);
+            }
+        }
+
+        return humedades.get(0) != null ? humedades.get(0) : 0.0;
+    }
+
     public DatosClimaDTO obtenerCondicionesFallback(Double latitud, Double longitud, Throwable t) {
-    log.error("API de Open-Meteo no disponible para ({}, {}). Causa: {}", latitud, longitud, t.getMessage());
-    throw new RuntimeException("No se pudo obtener el pronóstico climático en tiempo real. La orden debe pasar a evaluación manual.");
-}
+        log.error("API de Open-Meteo no disponible para ({}, {}). Causa: {}", latitud, longitud, t.getMessage());
+        throw new RuntimeException("No se pudo obtener el pronóstico climático en tiempo real. La orden debe pasar a evaluación manual.");
+    }
 }
