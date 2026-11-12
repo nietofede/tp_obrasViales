@@ -176,7 +176,7 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 **Problema:** Operaciones necesita datos de la fase y poder iniciarla, pero ningún servicio puede leer las tablas de otro.
 
-**Decisión:** `GET /api/obras/fases/{id}/datos-operacion` (SISTEMA, PLANIFICADOR y CAPATAZ) devuelve tipo de trabajo, tramo, coordenadas (latitud y longitud por separado), materiales y si la fase previa está completa. Operaciones cambia estados llamando a `POST .../iniciar` y `POST .../reprogramar`. El armado de datos vive en `OperacionService`, separado de `FaseService`.
+**Decisión:** `GET /api/obras/internos/fases/{id}/contexto-ejecucion` (solo SISTEMA) devuelve tipo de trabajo, tramo, coordenadas (latitud y longitud por separado), materiales y si la fase previa está completa. Operaciones cambia el estado de las fases llamando a `POST /api/obras/internos/fases/{id}/avances` (registra el avance; al llegar al 100 % la fase queda COMPLETADA), `PATCH /api/obras/internos/fases/{id}/riesgo` y `PATCH /api/obras/fases/{id}/programacion` (reprogramar). `POST /api/obras/fases/{id}/iniciar` sigue disponible para CAPATAZ y SISTEMA. Los nombres y los roles son los del cuestionario de compromiso. El armado de datos vive en `OperacionService`, separado de `FaseService`.
 
 **Alternativa descartada:** que Operaciones lea la base de Obras, o compartir los DTOs en `obras-commons`.
 
@@ -186,7 +186,7 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 **Problema:** teníamos una `ReglaNegocioException` local que el manejador global de commons no conoce (saldría como 500).
 
-**Decisión:** se eliminó y se usan las de commons: 404 (`RecursoNoEncontradoException`), 409 (`ConflictoEstadoException`, estado incompatible) y 422 (`ReglaNegocioException` con código: RN-01, RN-02, RN-03 y los propios FASE-FECHAS y FASE-TRAMO).
+**Decisión:** se eliminó y se usan las de commons: 404 (`RecursoNoEncontradoException`), 409 (`ConflictoEstadoException`: estado incompatible y RN-01, como indica el cuestionario) y 422 (`ReglaNegocioException` con código: RN-02, RN-03, AVANCE y los propios FASE-FECHAS y FASE-TRAMO).
 
 **Alternativa descartada:** manejador de errores propio en ms-obras.
 
@@ -204,11 +204,11 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 ## Alcance de la API de ms-obras
 
-**Decisión:** crear obra, tramo y fase; consultar el cronograma de un tramo; iniciar y reprogramar fases; datos para Operaciones.
+**Decisión:** los 15 endpoints que el equipo comprometió en el cuestionario (sección 07), con sus nombres y roles: alta y edición de obras y tramos, alta de fases, consulta de obras (con estado, avance, tramos y fases), de un tramo, de una fase, de sus materiales y del cronograma de una obra, reprogramación en cascada, contexto de ejecución para Operaciones, registro de avance y marca de fase en riesgo. Se mantienen tres extras: iniciar una fase, listar los tramos de una obra y el cronograma de un tramo.
 
-**Alternativa descartada:** CRUD completo. Quedó fuera editar y borrar, editar consumos por API (se cambian por migración), paginación y filtros.
+**Alternativa descartada:** el alcance reducido que se adoptó primero (crear, consultar y reprogramar, sin edición). Se decidió sin tener el cuestionario a la vista y contradecía F01 («alta y edición»), que es la base con la que la cátedra corrige.
 
-**Consecuencias:** cumplir lo comprometido pesa más que agregar extras. Lo incluido tiene tests y seguridad por rol.
+**Consecuencias:** sigue fuera borrar, editar los consumos por API (se cambian por migración), paginación y filtros. Editar un tramo no obliga a recalcular nada guardado: los materiales se calculan al consultar (ver «Materiales por superficie (RN-03)»).
 
 ## Migración V3 de ms-obras
 
@@ -229,4 +229,24 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 **Alternativa descartada:** paginación y filtros, porque el volumen del TP no lo justifica.
 
-**Consecuencias:** siguen sin implementarse editar y borrar. El estado EN_RIESGO de las fases queda pendiente de acordar el contrato con ms-operaciones.
+**Consecuencias:** quedó sin implementar borrar. Editar y el estado EN_RIESGO se incorporaron después, al compararlo con el cuestionario (ver «Alineación de ms-obras con el cuestionario»).
+
+## Alineación de ms-obras con el cuestionario
+
+**Problema:** al comparar ms-obras con la sección 07 del cuestionario faltaban 7 de los 15 endpoints comprometidos, dos rutas tenían otro nombre y ninguna llamada podía completar una fase, de lo que depende RN-01.
+
+**Decisión:**
+- Se implementaron los 7 faltantes (editar obra y tramo, consultar tramo y fase, materiales de una fase, avances y riesgo) y se renombraron `reprogramar` a `PATCH /fases/{id}/programacion` y `datos-operacion` a `GET /internos/fases/{id}/contexto-ejecucion`, solo para SISTEMA. Regla de rutas: prefijo `/api/obras` más la ruta del cuestionario, porque el gateway no recorta el prefijo.
+- `POST /internos/fases/{id}/avances` guarda el avance real en la columna `avance_porcentaje` (migración V4) y responde 201. El primer avance de una fase PENDIENTE la inicia y aplica RN-01. Al llegar al 100 % queda COMPLETADA. El avance no puede retroceder (422 con código `AVANCE`).
+- `PATCH /internos/fases/{id}/riesgo` pasa la fase al nuevo estado EN_RIESGO. En ese estado no admite avances ni inicio. El PLANIFICADOR lo resuelve reprogramándola, y vuelve a PENDIENTE. Quién decide cuándo marcarla (al llegar a N suspensiones) es Operaciones.
+- El estado y el avance de una obra se calculan al consultar: el avance es el promedio del avance de sus fases y el estado es PLANIFICADA, EN_EJECUCION o COMPLETADA.
+- RN-01 responde 409, como indica el cuestionario, en lugar de 422. Se pierde el campo `codigoRegla` en ese caso, porque la excepción 409 de commons no lo trae; el mensaje empieza con «RN-01:».
+
+**Alternativa descartada:** dejar las rutas anteriores y documentar la diferencia (una diferencia sin justificar con el compromiso baja el puntaje de ALC-01), y guardar estado y avance de la obra en la base (habría que mantenerlos sincronizados con las fases).
+
+**Consecuencias:** siguen abiertas estas diferencias con el cuestionario. El cuestionario dice que los cambios de alcance se acuerdan con la cátedra, así que conviene decidirlas en equipo:
+- Los ids son `BIGSERIAL` y el DER comprometido usa `uuid`.
+- El proyecto usa Spring Boot 4.1.2 y el cuestionario dice 3.2 (el roadmap, tarea 4, pedía avisar a la cátedra).
+- El DER pone `material_requerido` en la fase; acá se calcula al consultar.
+- La obra no guarda `estado` ni `fecha_inicio`; se derivan o no existen.
+- RN-03: el cuestionario pide rechazar un tipo de trabajo sin rendimiento definido; acá devuelve una lista vacía (RELEVAMIENTO no consume material).
