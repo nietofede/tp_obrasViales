@@ -1,4 +1,4 @@
-# Variables de entorno con contraseñas
+﻿# Variables de entorno con contraseÃ±as
 .env
 
 # Archivos generados por IDEs
@@ -6,11 +6,12 @@
 .vscode/
 *.iml
 
-# Carpetas de compilación de Maven/Gradle (cuando agreguen Spring Boot)
+# Carpetas de compilaciÃ³n de Maven/Gradle (cuando agreguen Spring Boot)
 target/
 build/
 
 # pdfs
-TPI 2026 — Documentación de la Propuesta y Compromisos del Equipo_ Revisión del intento _ UV.pdf
-Gestión Integral de Obras Viales con Control Climático de Ejecución-1.pdf
-Roadmap GOVP — TPI 2026 (Backend de Aplicaciones).md
+TPI 2026 â€” DocumentaciÃ³n de la Propuesta y Compromisos del Equipo_ RevisiÃ³n del intento _ UV.pdf
+GestiÃ³n Integral de Obras Viales con Control ClimÃ¡tico de EjecuciÃ³n-1.pdf
+roadmap.md
+Roadmap GOVP â€” TPI 2026 (Backend de Aplicaciones).md
