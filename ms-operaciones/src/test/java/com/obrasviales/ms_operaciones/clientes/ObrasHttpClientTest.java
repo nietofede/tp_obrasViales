@@ -125,4 +125,16 @@ class ObrasHttpClientTest {
 
         assertThrows(ConflictoEstadoException.class, () -> cliente.marcarFaseEnRiesgo(2L));
     }
+
+    @Test
+    void registraElAvanceDeLaFase() {
+        obras.expect(requestTo("http://obras.test/api/obras/internos/fases/2/avances"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.porcentaje").value(40))
+                .andRespond(withStatus(HttpStatus.CREATED).contentType(MediaType.APPLICATION_JSON)
+                        .body(FASE_JSON.formatted("EN_CURSO")));
+
+        assertEquals("EN_CURSO", cliente.registrarAvance(2L, 40).estado());
+        obras.verify();
+    }
 }

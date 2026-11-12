@@ -200,16 +200,7 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
     }
 
     private OrdenTrabajoDTO mapearADto(OrdenTrabajo orden) {
-        OrdenTrabajoDTO dto = new OrdenTrabajoDTO();
-        dto.setId(orden.getId());
-        dto.setFaseId(orden.getFaseId());
-        dto.setTramoId(orden.getTramoId());
-        dto.setFechaProgramada(orden.getFechaProgramada());
-        dto.setEstado(orden.getEstado());
-        dto.setReservaId(orden.getReservaId());
-        dto.setHoraSalidaCamion(orden.getHoraSalidaCamion());
-        dto.setContadorSuspensiones(orden.getContadorSuspensiones());
-        return dto;
+        return OrdenTrabajoDTO.desde(orden);
     }
 
     @Override

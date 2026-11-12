@@ -29,6 +29,7 @@ public class ObrasHttpClient implements ObrasClient {
     private static final String RUTA_CONTEXTO = "/api/obras/internos/fases/{id}/contexto-ejecucion";
     private static final String RUTA_PROGRAMACION = "/api/obras/fases/{id}/programacion";
     private static final String RUTA_RIESGO = "/api/obras/internos/fases/{id}/riesgo";
+    private static final String RUTA_AVANCES = "/api/obras/internos/fases/{id}/avances";
 
     private final RestClient restClient;
     private final String obrasUrl;
@@ -72,6 +73,16 @@ public class ObrasHttpClient implements ObrasClient {
     public FaseDTO marcarFaseEnRiesgo(Long faseId) {
         return ejecutar("marcar en riesgo la fase " + faseId, () -> restClient.patch()
                 .uri(obrasUrl + RUTA_RIESGO, faseId)
+                .retrieve()
+                .body(FaseDTO.class));
+    }
+
+    @Override
+    public FaseDTO registrarAvance(Long faseId, int porcentaje) {
+        return ejecutar("registrar el avance de la fase " + faseId, () -> restClient.post()
+                .uri(obrasUrl + RUTA_AVANCES, faseId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("porcentaje", porcentaje))
                 .retrieve()
                 .body(FaseDTO.class));
     }

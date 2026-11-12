@@ -14,4 +14,7 @@ public interface ObrasClient {
     FaseDTO reprogramarFase(Long faseId, LocalDate nuevaFechaInicio);
 
     FaseDTO marcarFaseEnRiesgo(Long faseId);
+
+    // Registra el avance real de la fase como porcentaje, al llegar a 100 la completa.
+    FaseDTO registrarAvance(Long faseId, int porcentaje);
 }

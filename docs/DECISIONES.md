@@ -300,3 +300,10 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - **Decisión del PLANIFICADOR** (`POST /api/operaciones/fases-en-riesgo/{faseId}/decisiones`): REPROGRAMAR (exige `nuevaFechaInicio`) reprograma la fase en Obras, crea una orden nueva y deja la suspendida REPROGRAMADA; CANCELAR deja la orden CANCELADA. En los dos casos las suspensiones de la fase pasan a no vigentes (el historial se conserva) y el conteo empieza de nuevo. Obras no tiene un endpoint para cancelar fases, así que al cancelar la fase sigue EN_RIESGO en Obras.
 - **Consultas:** `GET /api/operaciones/suspensiones?faseId=&ordenId=` (PLANIFICADOR, AUDITOR) y `GET /api/operaciones/fases-en-riesgo` (PLANIFICADOR, AUDITOR, solo pendientes).
 - **Estados retirados:** `EN_RIESGO` y `FINALIZADA` ya no son estados de la orden (el riesgo es de la fase, como dice el PDF) y se eliminó `PATCH /ordenes/{id}/resolver-riesgo`. Reemplaza lo dicho en «Ajustes previos de ms-operaciones».
+
+## Ejecución de órdenes en ms-operaciones
+
+- **Inicio** (`PATCH /api/operaciones/ordenes/{id}/inicio`, CAPATAZ): HABILITADA pasa a EN_EJECUCION. No llama a Obras: ahí el primer avance es el que inicia la fase y vuelve a aplicar RN-01.
+- **Rechazo** (`PATCH /ordenes/{id}/rechazo`, CAPATAZ, con `motivo`): solo una orden HABILITADA. Se suspende con motivo RECHAZO y corre la misma saga que una suspensión por clima, con RN-12 incluida; el rechazo del capataz cuenta para el límite de la fase.
+- **Avances** (`POST /ordenes/{id}/avances`, CAPATAZ, con `porcentaje`): solo una orden EN_EJECUCION. Se reenvía a Obras. El porcentaje es el acumulado de la fase (1 a 100) y no puede retroceder; los rechazos de Obras (409 si la fase está en riesgo o completada, 422 `AVANCE`) se informan tal cual.
+- **Cierre:** pendiente (consumo real de materiales y horas de máquina).
