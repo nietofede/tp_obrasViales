@@ -3,12 +3,13 @@ package com.obrasviales.ms_recursos;
 import com.obrasviales.ms_recursos.client.OsrmProveedorRutas;
 import com.obrasviales.ms_recursos.client.ProveedorRutas;
 import com.obrasviales.ms_recursos.client.ProveedorRutas.ResultadoRuta;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
-import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
+import io.github.resilience4j.springboot3.circuitbreaker.autoconfigure.CircuitBreakerAutoConfiguration;
+import io.github.resilience4j.springboot3.ratelimiter.autoconfigure.RateLimiterAutoConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -44,22 +45,13 @@ class OsrmProveedorRutasIntegrationTest {
 
     @Configuration
     @EnableCaching
-    @EnableAspectJAutoProxy
+    @EnableAspectJAutoProxy(proxyTargetClass = true)
     @Import(OsrmProveedorRutas.class)
+    @ImportAutoConfiguration({CircuitBreakerAutoConfiguration.class, RateLimiterAutoConfiguration.class})
     static class TestConfig {
         @Bean
         public CacheManager cacheManager() {
             return new ConcurrentMapCacheManager("rutas");
-        }
-
-        @Bean
-        public CircuitBreakerRegistry circuitBreakerRegistry() {
-            return CircuitBreakerRegistry.ofDefaults();
-        }
-
-        @Bean
-        public RateLimiterRegistry rateLimiterRegistry() {
-            return RateLimiterRegistry.ofDefaults();
         }
     }
 
