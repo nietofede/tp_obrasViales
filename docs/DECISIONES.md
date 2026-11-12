@@ -286,3 +286,15 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - **Hora de salida del camión.** Recursos devuelve solo la hora; la orden guarda `fechaProgramada` + esa hora.
 - **Proceso diario.** `POST /api/operaciones/habilitaciones-diarias` con `{"fecha":"yyyy-MM-dd"}` (PLANIFICADOR o SISTEMA) habilita las órdenes PROGRAMADAS y RECURSOS_ASIGNADOS de la fecha. Cada orden va en su propia transacción: una que falla no frena a las demás. Devuelve por orden el estado resultante y el motivo si falló. Se puede reejecutar.
 - **Pendiente.** La transacción de `habilitarOrden` sigue abierta durante las llamadas HTTP; se revisa junto con la saga de suspensión.
+
+## Saga de suspensión y RN-12 en ms-operaciones
+
+- **Orquestación desde Operaciones** (no coreografía de eventos): `SuspensionService` ejecuta los pasos en orden y es quien decide qué hacer ante cada falla. Es más fácil de seguir, de probar con simulaciones y de reintentar; el costo es que Operaciones conoce los pasos de Obras y Recursos.
+- **Pasos:** 1) liberar la reserva en Recursos; 2) registrar la suspensión; 3) contar las suspensiones vigentes **de la fase** (RN-12 las cuenta por fase, no por orden); 4) si no llegó al límite, reprogramar la fase en Obras (que corre en cascada las dependientes, RN-02) y crear una orden nueva PROGRAMADA, y la orden suspendida queda REPROGRAMADA; 5) si llegó al límite, marcar la fase EN_RIESGO en Obras y dejar la orden SUSPENDIDA, sin orden nueva, hasta que decida el PLANIFICADOR.
+- **Fecha nueva:** la fase se reprograma al día siguiente de la fecha de la orden suspendida. Si Obras la rechaza (RN-02, por ejemplo), el error se informa y no se crea nada. Es una simplificación: si hace falta otra regla de fechas, es un cambio en un solo lugar.
+- **Falla de Obras en medio de la saga:** se deshace todo lo local y se informa el error; la orden queda como estaba y se puede reintentar. Lo ya liberado en Recursos no molesta: liberar es idempotente.
+- **Falla de Recursos al liberar:** no frena la suspensión; la reserva provisoria vence sola por TTL (30 min).
+- **Límite configurable:** tabla `configuracion_suspensiones` (una fila, valor inicial 3), `PUT /api/operaciones/configuracion/limite-suspensiones` solo ADMIN.
+- **Historial:** tabla `suspensiones` (orden, fase, motivo, detalle, fecha, vigente). `vigente` deja de ser verdadero cuando el PLANIFICADOR decide sobre la fase, para que el conteo empiece de nuevo.
+- **Fases en riesgo:** tabla `fases_en_riesgo` con las pendientes de decisión (migración V3).
+- **Pendiente:** endpoints `GET /suspensiones`, `GET /fases-en-riesgo` y `POST /fases-en-riesgo/{faseId}/decisiones`; al implementarlos se retiran los estados de orden EN_RIESGO y FINALIZADA y el endpoint `resolver-riesgo`, que quedan sin uso.

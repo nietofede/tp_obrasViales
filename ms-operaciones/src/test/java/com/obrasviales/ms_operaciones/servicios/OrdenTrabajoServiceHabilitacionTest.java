@@ -12,6 +12,7 @@ import com.obrasviales.ms_operaciones.excepciones.ServicioNoDisponibleException;
 import com.obrasviales.ms_operaciones.excepciones.TransicionInvalida;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
 import com.obrasviales.ms_operaciones.modelo.EvaluacionClimatica;
+import com.obrasviales.ms_operaciones.modelo.MotivoSuspension;
 import com.obrasviales.ms_operaciones.modelo.OrdenTrabajo;
 import com.obrasviales.ms_operaciones.modelo.TipoTrabajo;
 import com.obrasviales.ms_operaciones.modelo.UmbralClimatico;
@@ -35,6 +36,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -52,6 +55,7 @@ class OrdenTrabajoServiceHabilitacionTest {
     @Mock private InterfazClimaService climaService;
     @Mock private ObrasClient obrasClient;
     @Mock private RecursosClient recursosClient;
+    @Mock private SuspensionService suspensionService;
 
     @InjectMocks private OrdenTrabajoServiceImpl service;
 
@@ -130,7 +134,7 @@ class OrdenTrabajoServiceHabilitacionTest {
     }
 
     @Test
-    void conClimaMaloSuspendeYLiberaLaReserva() {
+    void conClimaMaloDisparaLaSagaDeSuspensionYNoConfirmaLaReserva() {
         OrdenTrabajo orden = ordenEn(EstadoOrden.PROGRAMADA);
         when(obrasClient.obtenerContextoFase(FASE_ID)).thenReturn(contexto(true, "BASE"));
         when(umbralRepository.findByTipoTrabajo(TipoTrabajo.BASE)).thenReturn(Optional.of(umbralBase()));
@@ -138,26 +142,10 @@ class OrdenTrabajoServiceHabilitacionTest {
         climaMalo();
         when(ordenRepository.save(any(OrdenTrabajo.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        OrdenTrabajoDTO dto = service.habilitarOrden(ORDEN_ID);
+        service.habilitarOrden(ORDEN_ID);
 
-        assertEquals(EstadoOrden.SUSPENDIDA, dto.getEstado());
-        assertEquals(1, dto.getContadorSuspensiones());
-        assertEquals(null, orden.getReservaId());
-        verify(recursosClient).liberar(7L);
+        verify(suspensionService).suspender(eq(orden), eq(MotivoSuspension.CLIMA), anyString());
         verify(recursosClient, never()).confirmar(anyLong());
-    }
-
-    @Test
-    void siNoSePuedeLiberarLaReservaIgualQuedaSuspendida() {
-        ordenEn(EstadoOrden.PROGRAMADA);
-        when(obrasClient.obtenerContextoFase(FASE_ID)).thenReturn(contexto(true, "BASE"));
-        when(umbralRepository.findByTipoTrabajo(TipoTrabajo.BASE)).thenReturn(Optional.of(umbralBase()));
-        when(recursosClient.proponerYReservar(any(), any(), any(), any(), any())).thenReturn(reserva("PROVISORIA"));
-        when(recursosClient.liberar(7L)).thenThrow(new ServicioNoDisponibleException("No se pudo consultar a ms-recursos."));
-        climaMalo();
-        when(ordenRepository.save(any(OrdenTrabajo.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        assertEquals(EstadoOrden.SUSPENDIDA, service.habilitarOrden(ORDEN_ID).getEstado());
     }
 
     @Test
