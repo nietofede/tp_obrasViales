@@ -3,7 +3,6 @@ package com.obrasviales.ms_operaciones.servicios;
 import com.obrasviales.ms_operaciones.dtos.CrearOrdenRequest;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
-import com.obrasviales.ms_operaciones.modelo.TipoTrabajo;
 import com.obrasviales.ms_operaciones.modelo.EvaluacionClimatica;
 
 import java.time.LocalDate;
@@ -15,7 +14,7 @@ public interface OTServiceInterfaz {
     OrdenTrabajoDTO obtenerPorId(Long id);
     List<OrdenTrabajoDTO> listarPorFechaYEstado(LocalDate fecha, EstadoOrden estado);
     OrdenTrabajoDTO cambiarEstado(Long id, EstadoOrden nuevoEstado);
-    OrdenTrabajoDTO evaluarYActualizarEstadoClimatico(Long ordenId, Double latitud, Double longitud, TipoTrabajo tipoTrabajo);
+    OrdenTrabajoDTO habilitarOrden(Long ordenId);
     List<EvaluacionClimatica> obtenerHistorialClimatico(Long ordenId);
     OrdenTrabajoDTO resolverOrdenEnRiesgo(Long id, String decision);
 }

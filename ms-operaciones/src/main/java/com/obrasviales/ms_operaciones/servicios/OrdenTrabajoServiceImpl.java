@@ -34,8 +34,6 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
     private final InterfazClimaService climaService;
     private final ObrasClient obrasClient;
 
-    // Sin @Transactional a proposito: primero se consulta a Obras (una llamada HTTP) y no conviene
-    // tener una transaccion de base de datos abierta mientras se espera la respuesta. save() abre la suya.
     @Override
     public OrdenTrabajoDTO crearOrden(CrearOrdenRequest request) {
         ContextoFaseDTO contexto = obrasClient.obtenerContextoFase(request.getFaseId());
@@ -94,7 +92,7 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
 
     @Override
     @Transactional
-    public OrdenTrabajoDTO evaluarYActualizarEstadoClimatico(Long ordenId, Double latitud, Double longitud, TipoTrabajo tipoTrabajo) {
+    public OrdenTrabajoDTO habilitarOrden(Long ordenId) {
         OrdenTrabajo orden = ordenTrabajoRepository.findById(ordenId)
                 .orElseThrow(() -> new OrdenNoEncontrada(ordenId));
 
@@ -103,6 +101,20 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
                     "La orden debe tener recursos asignados antes de realizar la evaluación climática."
             );
         }
+
+        // los datos los sacamo de msobras
+        // una falla del clima manda la orden a PENDIENTE_CONFIRMACION_CLIMATICA.
+        ContextoFaseDTO contexto = obrasClient.obtenerContextoFase(orden.getFaseId());
+
+        // RN-01: fase no se habilita si la anterior no esta completa
+        if (!contexto.faseAnteriorCompletada()) {
+            throw new ConflictoEstadoException(
+                    "RN-01: la fase previa de la fase " + orden.getFaseId() + " no está completa; no se puede habilitar la orden.");
+        }
+
+        TipoTrabajo tipoTrabajo = tipoTrabajoDe(contexto);
+        Double latitud = contexto.latitud();
+        Double longitud = contexto.longitud();
 
         // buscamos los umbrales para el tipo de trabajo, si no hay bueno un error 
         UmbralClimatico umbral = umbralClimaticoRepository.findByTipoTrabajo(tipoTrabajo)
@@ -160,6 +172,16 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
 
         OrdenTrabajo actualizada = ordenTrabajoRepository.save(orden);
         return mapearADto(actualizada);
+    }
+
+    // obras manda el tipo de trabajo como texto, si pasa algo da error y no se habilita orden
+    private TipoTrabajo tipoTrabajoDe(ContextoFaseDTO contexto) {
+        try {
+            return TipoTrabajo.valueOf(contexto.tipoTrabajo());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new ReglaNegocioException(
+                    "El tipo de trabajo '" + contexto.tipoTrabajo() + "' de la fase no es reconocido por ms-operaciones.", "RN-09");
+        }
     }
 
     private OrdenTrabajoDTO mapearADto(OrdenTrabajo orden) {

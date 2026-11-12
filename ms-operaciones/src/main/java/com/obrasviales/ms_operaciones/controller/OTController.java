@@ -2,10 +2,8 @@ package com.obrasviales.ms_operaciones.controller;
 import com.obrasviales.ms_operaciones.dtos.EvaluacionClimaticaResponseDTO;
 import com.obrasviales.commons.security.Roles; // <--- Importamos los roles del commons de tu amigo
 import com.obrasviales.ms_operaciones.dtos.CrearOrdenRequest;
-import com.obrasviales.ms_operaciones.dtos.EvaluacionSolicitudRequest;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
-import com.obrasviales.ms_operaciones.modelo.TipoTrabajo;
 import com.obrasviales.ms_operaciones.servicios.OTServiceInterfaz;
 import com.obrasviales.ms_operaciones.modelo.EvaluacionClimatica;
 
@@ -70,18 +68,11 @@ public class OTController {
         return ResponseEntity.ok(actualizada);
     }
 
-    @PostMapping("/{id}/evaluar-clima")
-    @PreAuthorize("hasRole('" + Roles.CAPATAZ + "')") 
-    @Operation(summary = "Ejecuta la evaluación climática para una orden y actualiza su estado (HABILITADA, SUSPENDIDA o PENDIENTE)")
-    public ResponseEntity<OrdenTrabajoDTO> evaluarClima(
-            @PathVariable Long id,
-            @RequestParam TipoTrabajo tipoTrabajo,
-            @Valid @RequestBody EvaluacionSolicitudRequest request) {
-        
-        OrdenTrabajoDTO resultado = otService.evaluarYActualizarEstadoClimatico(
-                id, request.getLatitud(), request.getLongitud(), tipoTrabajo);
-        
-        return ResponseEntity.ok(resultado);
+    @PostMapping("/{id}/habilitacion")
+    @PreAuthorize("hasAnyRole('" + Roles.PLANIFICADOR + "', '" + Roles.SISTEMA + "')")
+    @Operation(summary = "Evalúa la habilitación de una orden: consulta la fase a Obras (RN-01) y decide por clima (HABILITADA, SUSPENDIDA o PENDIENTE_CONFIRMACION_CLIMATICA)")
+    public ResponseEntity<OrdenTrabajoDTO> habilitar(@PathVariable Long id) {
+        return ResponseEntity.ok(otService.habilitarOrden(id));
     }
 
     @GetMapping("/{id}/evaluaciones-climaticas")
