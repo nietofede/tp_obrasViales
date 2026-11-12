@@ -4,7 +4,9 @@ VALUES (1, 90, 480, 60, 15);
 INSERT INTO composicion_minima_trabajo (tipo_trabajo, min_operarios, tipo_maquina_requerida, cantidad_maquinas, requiere_mezcla) VALUES
 ('RELEVAMIENTO', 2, NULL, 0, FALSE),
 ('BASE', 2, 'RODILLO_COMPACTADOR', 1, FALSE),
-('PAVIMENTACION', 3, 'PAVIMENTADORA', 1, TRUE);
+('SUBBASE', 2, 'RODILLO_COMPACTADOR', 1, FALSE),
+('CARPETA_ASFALTICA', 3, 'PAVIMENTADORA', 1, TRUE),
+('LOSA_HORMIGON', 3, NULL, 0, TRUE);
 
 INSERT INTO plantas_mezcla (nombre, latitud, longitud, activa) VALUES
 ('Planta Asfáltica Córdoba Norte', -31.3500, -64.2000, TRUE);
