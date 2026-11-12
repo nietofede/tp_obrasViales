@@ -1,5 +1,5 @@
 package com.obrasviales.ms_operaciones.controller;
-
+import com.obrasviales.ms_operaciones.dtos.EvaluacionClimaticaResponseDTO;
 import com.obrasviales.commons.security.Roles; // <--- Importamos los roles del commons de tu amigo
 import com.obrasviales.ms_operaciones.dtos.CrearOrdenRequest;
 import com.obrasviales.ms_operaciones.dtos.EvaluacionSolicitudRequest;
@@ -84,14 +84,25 @@ public class OTController {
         return ResponseEntity.ok(resultado);
     }
 
-    // no consegui hacerlo andar, me tira error 500 y no da info, creo igual que es secundario, no obligatorio
     @GetMapping("/{id}/evaluaciones-climaticas")
-
-    public ResponseEntity<List<EvaluacionClimatica>> obtenerHistorialClimatico(@PathVariable Long id) {
-
-        List<EvaluacionClimatica> historial = otService.obtenerHistorialClimatico(id);
-
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Obtener el historial de evaluaciones climáticas de una orden")
+    public ResponseEntity<List<EvaluacionClimaticaResponseDTO>> obtenerHistorialClimatico(@PathVariable Long id) {
+        List<EvaluacionClimaticaResponseDTO> historial = otService.obtenerHistorialClimatico(id)
+                .stream()
+                .map(EvaluacionClimaticaResponseDTO::desde)
+                .toList();
         return ResponseEntity.ok(historial);
+    }
 
-    } 
+    @PatchMapping("/{id}/resolver-riesgo")
+    @PreAuthorize("hasRole('" + Roles.PLANIFICADOR + "')") 
+    @Operation(summary = "Permite al Planificador decidir el curso de acción para una orden en estado EN_RIESGO (RN-12)")
+    public ResponseEntity<OrdenTrabajoDTO> resolverOrdenEnRiesgo(
+            @PathVariable Long id,
+            @RequestParam String decision) {
+        
+        OrdenTrabajoDTO resultado = otService.resolverOrdenEnRiesgo(id, decision);
+        return ResponseEntity.ok(resultado);
+    }
 }

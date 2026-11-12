@@ -124,10 +124,19 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
             // transicion de estado segun los resultados 
             if (umbralesCumplidos) {
                 orden.setEstado(EstadoOrden.HABILITADA);
+                orden.setContadorSuspensiones(0);
             } else {
                 orden.setEstado(EstadoOrden.SUSPENDIDA);
+                
                 int suspensionesActuales = (orden.getContadorSuspensiones() != null) ? orden.getContadorSuspensiones() : 0;
-                orden.setContadorSuspensiones(suspensionesActuales + 1);
+                int nuevasSuspensiones = suspensionesActuales + 1;
+                orden.setContadorSuspensiones(nuevasSuspensiones);
+
+                // si se pasa del limite de suspensiones queda en riesgo
+                int LIMITE_SUSPENSIONES_RIESGO = 3; 
+                if (nuevasSuspensiones >= LIMITE_SUSPENSIONES_RIESGO) {
+                    orden.setEstado(EstadoOrden.EN_RIESGO);
+                }
             }
 
         } catch (Exception e) {
@@ -159,5 +168,26 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
                 .orElseThrow(() -> new RuntimeException("Orden de trabajo no encontrada con id: " + ordenId));
         
         return evaluacionClimaticaRepository.obtenerHistorialPorOrden(orden.getId());
+    }
+
+    @Override
+    @Transactional
+    public OrdenTrabajoDTO resolverOrdenEnRiesgo(Long id, String decision) {
+        OrdenTrabajo orden = ordenTrabajoRepository.findById(id)
+                .orElseThrow(() -> new OrdenNoEncontrada(id));
+
+        if (orden.getEstado() != EstadoOrden.EN_RIESGO) {
+            throw new IllegalStateException("La orden no se encuentra en estado EN_RIESGO.");
+        }
+
+        if ("REPROGRAMAR".equalsIgnoreCase(decision)) {
+            orden.setEstado(EstadoOrden.PROGRAMADA);
+            orden.setContadorSuspensiones(0); // reinicio contador de suspensiones
+        } else {
+            orden.setEstado(EstadoOrden.FINALIZADA);
+        }
+
+        OrdenTrabajo actualizada = ordenTrabajoRepository.save(orden);
+        return mapearADto(actualizada);
     }
 }

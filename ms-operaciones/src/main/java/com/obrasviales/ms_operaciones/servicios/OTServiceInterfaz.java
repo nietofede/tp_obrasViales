@@ -17,4 +17,5 @@ public interface OTServiceInterfaz {
     OrdenTrabajoDTO cambiarEstado(Long id, EstadoOrden nuevoEstado);
     OrdenTrabajoDTO evaluarYActualizarEstadoClimatico(Long ordenId, Double latitud, Double longitud, TipoTrabajo tipoTrabajo);
     List<EvaluacionClimatica> obtenerHistorialClimatico(Long ordenId);
+    OrdenTrabajoDTO resolverOrdenEnRiesgo(Long id, String decision);
 }
