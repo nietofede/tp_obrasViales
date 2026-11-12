@@ -250,3 +250,27 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - El DER pone `material_requerido` en la fase; acá se calcula al consultar.
 - La obra no guarda `estado` ni `fecha_inicio`; se derivan o no existen.
 - RN-03: el cuestionario pide rechazar un tipo de trabajo sin rendimiento definido; acá devuelve una lista vacía (RELEVAMIENTO no consume material).
+
+## Ajustes previos de ms-operaciones antes de integrar con Obras
+
+**Problema:** antes de conectar ms-operaciones con ms-obras había tres desalineaciones. Las rutas estaban bajo `/api/v1/...`, pero el gateway solo enruta `/api/operaciones/**` y no recorta el prefijo (ver «Rutas del gateway sin StripPrefix»). Los tipos de trabajo no coincidían con los `TipoFase` de Obras (`SUB_BASE` y `LOSA` frente a `SUBBASE` y `LOSA_HORMIGON`, y faltaba `RELEVAMIENTO`), así que `valueOf` sobre lo que manda Obras fallaría. Y varias excepciones (`OrdenNoEncontrada`, `TransicionInvalida`, `IllegalArgumentException`, `IllegalStateException`, `RuntimeException`) no las conoce el manejador global de commons y salían como 500.
+
+**Decisión:**
+- Los controllers quedan en `/api/operaciones/ordenes` y `/api/operaciones/umbrales-climaticos`, con los nombres del PDF. El resto de las rutas del PDF se agregan al implementar cada funcionalidad.
+- `TipoTrabajo` usa los mismos nombres que `TipoFase` de Obras. El `V2` se corrigió (todavía no estaba en `main`, por eso se pudo editar; una vez mergeado ya no se edita).
+- `RELEVAMIENTO` tiene un umbral permisivo de demo (humedad 0,60, lluvia 40 %, temperatura mínima 0): es la primera fase de cada tramo y, sin umbral, no se podría habilitar nunca y bloquearía las siguientes por RN-01. Los valores son de demo y el ADMIN los puede ajustar con `PUT /api/operaciones/umbrales-climaticos/{tipoTrabajo}`.
+- Las excepciones propias heredan de las de commons: `OrdenNoEncontrada` da 404, `TransicionInvalida` da 422 con código `RN-11`, un tipo de trabajo sin umbral da 422 con `RN-09` y resolver el riesgo de una orden que no está en riesgo da 409.
+
+**Alternativa descartada:** mantener un traductor entre `TipoTrabajo` y `TipoFase` (dos nombres para lo mismo y un lugar más donde desalinearse), y no cargar umbral para `RELEVAMIENTO` (bloquea la cadena de fases).
+
+**Consecuencias:** `EN_RIESGO` y `FINALIZADA` siguen siendo estados de la orden aunque el PDF habla de la fase en riesgo; se revisan al implementar RN-12. Quien tenga una base de ms-operaciones anterior debe recrearla (`docker compose down -v`).
+
+## Cliente de ms-operaciones hacia ms-obras
+
+**Problema:** Operaciones necesita datos de la fase (tramo, coordenadas, tipo de trabajo, si la fase previa está completa) y ningún servicio puede leer las tablas de otro.
+
+**Decisión:** `ObrasClient` (interfaz) con su implementación `ObrasHttpClient`, que llama a `GET /api/obras/internos/fases/{id}/contexto-ejecucion` con el `sistemaRestClient` de commons (token de la cuenta SISTEMA). La respuesta se recibe en un DTO propio, `ContextoFaseDTO`, que ignora campos desconocidos y trae el tipo de trabajo y el estado como texto. Un 404 de Obras se traduce a 404 («la fase no existe en ms-obras»); cualquier otro fallo (5xx, 401, 403, sin conexión) se traduce a `ServicioNoDisponibleException`, que ms-operaciones responde con 503 sin detalles internos (el detalle va al log). Al crear una orden se valida que la fase exista y que pertenezca al tramo indicado (422 con código `ORDEN-TRAMO`). `crearOrden` no es transaccional, para no mantener una transacción de base abierta mientras se espera la respuesta HTTP. Verificado con Obras real: 201, 404, 422 y 503 con Obras apagado. Fue la primera vez que `SistemaTokenService` se probó contra Keycloak.
+
+**Alternativas descartadas:** compartir el DTO de Obras por commons (acopla los dos servicios: un cambio en Obras obligaría a recompilar Operaciones); dejar que un error de red salga como 500 (no informa la causa); validar RN-01 al crear la orden (el PDF la ubica al habilitar).
+
+**Consecuencias:** el `sistemaRestClient` de commons no define timeouts, así que una Obras colgada (no caída) podría dejar la llamada esperando; queda pendiente. Si Obras cambia la ruta o el contrato hay que actualizar el cliente y su test. La URL de Obras está en `app.servicios.obras-url` y apunta a localhost: al dockerizar se cambia por el nombre del servicio.

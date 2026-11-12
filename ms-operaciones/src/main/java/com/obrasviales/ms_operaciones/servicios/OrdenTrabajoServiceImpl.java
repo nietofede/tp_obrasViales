@@ -2,7 +2,9 @@ package com.obrasviales.ms_operaciones.servicios;
 
 import com.obrasviales.commons.exception.ConflictoEstadoException;
 import com.obrasviales.commons.exception.ReglaNegocioException;
+import com.obrasviales.ms_operaciones.clientes.ObrasClient;
 import com.obrasviales.ms_operaciones.dtos.CrearOrdenRequest;
+import com.obrasviales.ms_operaciones.dtos.ContextoFaseDTO;
 import com.obrasviales.ms_operaciones.dtos.DatosClimaDTO;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
 import com.obrasviales.ms_operaciones.excepciones.OrdenNoEncontrada;
@@ -30,10 +32,20 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
     private final UmbralClimaticoRepository umbralClimaticoRepository;
     private final EvaluacionClimaticaRepository evaluacionClimaticaRepository;
     private final InterfazClimaService climaService;
+    private final ObrasClient obrasClient;
 
+    // Sin @Transactional a proposito: primero se consulta a Obras (una llamada HTTP) y no conviene
+    // tener una transaccion de base de datos abierta mientras se espera la respuesta. save() abre la suya.
     @Override
-    @Transactional
     public OrdenTrabajoDTO crearOrden(CrearOrdenRequest request) {
+        ContextoFaseDTO contexto = obrasClient.obtenerContextoFase(request.getFaseId());
+        if (!contexto.tramoId().equals(request.getTramoId())) {
+            throw new ReglaNegocioException(
+                    "La fase " + request.getFaseId() + " pertenece al tramo " + contexto.tramoId()
+                            + ", no al tramo " + request.getTramoId() + ".",
+                    "ORDEN-TRAMO");
+        }
+
         OrdenTrabajo orden = new OrdenTrabajo();
         orden.setFaseId(request.getFaseId());
         orden.setTramoId(request.getTramoId());
