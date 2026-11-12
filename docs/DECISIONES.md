@@ -81,3 +81,4 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 **Consecuencias:** `/v3/api-docs` y `/swagger-ui.html` quedan habilitados por defecto y necesitan `permitAll` cuando exista la seguridad. Está pendiente decidir si se apagan en producción.
 
+el 10 me parece que todavía falta hacer la revisión de quienes pueden usar los endpoints, osea hacerl la verificacion por usuario. Gemini dijo que se podia hacer con un preathorize algo asi. Un endopoint no me anda, el de historial de evaluacioens climaticas, creo que es secundario pero me tira error 500 
