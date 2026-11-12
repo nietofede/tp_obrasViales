@@ -9,7 +9,7 @@ CREATE TABLE ordenes_trabajo (
     contador_suspensiones INT NOT NULL DEFAULT 0,
     version BIGINT NOT NULL DEFAULT 0,
     creado TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    actualizado TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE evaluaciones_climaticas (

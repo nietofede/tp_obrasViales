@@ -81,40 +81,13 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 **Consecuencias:** Quedan habilitados por defecto, abiertos sin token (ver “Swagger sin token”) y se apagan en producción con variables de entorno.
 
-## Gateway: rutas, seguridad y correlation-id
+el 10 me parece que todavía falta hacer la revisión de quienes pueden usar los endpoints, osea hacerl la verificacion por usuario. Gemini dijo que se podia hacer con un preathorize algo asi. Un endopoint no me anda, el de historial de evaluacioens climaticas, creo que es secundario pero me tira error 500 
 
-**Decisión:** las rutas van bajo `spring.cloud.gateway.server.webmvc.routes`, porque el starter es `spring-cloud-starter-gateway-server-webmvc`. El gateway tiene su propia `SecurityConfig` y su propio filtro, sin depender de `obras-commons`. Solo autentica (valida el JWT); cada servicio autoriza por rol con `@PreAuthorize`. El filtro genera siempre un `X-Correlation-Id` nuevo, ignora el del cliente y lo reenvía a los servicios. `/actuator/health` queda abierto para el healthcheck de Docker (se agregó `spring-boot-starter-actuator`).
+## Tarea 11: Job Diario de Habilitación e Idempotencia (ms-operaciones)
 
-**Alternativas descartadas:** `spring.cloud.gateway.routes` (prefijo de la variante reactiva; el starter MVC lo ignora sin avisar y todo da 404). Depender de commons (arrastraría el handler global y el cliente SISTEMA, que el gateway no usa). Autorizar por rol en el gateway (duplica reglas que ya viven en los servicios, y todavía no hay endpoints). Aceptar el correlation-id del cliente (un cliente externo podría falsearlo o repetirlo).
-
-**Consecuencias:** el 401 del gateway sale con cuerpo vacío (pendiente de unificar con el handler de commons). La respuesta del servicio trae el mismo header y el proxy lo copia, así que el filtro lo reemplaza para que salga uno solo. El `issuer-uri` apunta a `localhost`: hay que revisarlo al dockerizar. El id se guarda en el MDC, pero no aparece en los logs hasta que se configure un patrón con `%X{correlationId}`. Verificado con token real: sin token 401, token basura 401, token válido llega a los tres servicios, el id del cuerpo del servicio coincide con el header y `mvn test` del gateway pasa.
-
-
-## Swagger sin token
-**Decisión:** `/v3/api-docs/**`, `/swagger-ui/**` y `/swagger-ui.html` son `permitAll` en `BaseResourceServerConfig` (commons). En producción se apagan con `SPRINGDOC_API_DOCS_ENABLED=false` y `SPRINGDOC_SWAGGER_UI_ENABLED=false`.
-
-**Alternativas descartadas:** dejarlo protegido (el navegador no puede mandar el header `Authorization` al abrir la página, así que Swagger no se puede usar) y abrir solo la UI protegiendo el contrato (la UI pide el contrato sin token).
-
-**Consecuencias:** el contrato de cada servicio es público en su puerto. Los servicios no se exponen fuera de Docker y el gateway no enruta esas rutas. 
-
-## OpenApi
-**Decisión:** cada servicio tiene una clase `OpenApiConfig` con `@OpenAPIDefinition` y `@SecurityScheme` que declaran un esquema `bearerAuth` (HTTP bearer, JWT) como requisito global, y un título propio. Así Swagger UI muestra el botón Authorize.
-
-**Alternativas descartadas:** una sola clase en commons (commons no tiene springdoc y todos los servicios tendrían el mismo título) y un `@Bean OpenAPI` (equivale a las anotaciones pero es más largo).
-
-**Consecuencias:** se repiten unas 20 líneas en tres servicios.
-
-## Matriz de permisos
-**Decisión:** `docs/matriz-permisos.md` define qué rol puede cada capacidad. Las filas con fuente en el enunciado están fijas; las demás son propuesta del equipo.
-
-**Alternativas descartadas:** esperar a los controladores para escribirla (los controladores se escribirían sin un criterio común).
-
-**Consecuencias:** quedan sin definir el OPERARIO, el alcance del AUDITOR y quién da de alta obras y recursos. Se resuelve antes del paso 8. Las pruebas 401/403/2xx por endpoint se completan en los pasos 8 a 10.
-
-## Rutas del gateway sin StripPrefix
-
-**Decisión:** las rutas del gateway no quitan el prefijo: `/api/obras/**` llega al servicio como `/api/obras/...`. Los `@RequestMapping` de ms-obras, ms-recursos y ms-operaciones empiezan con `/api/obras`, `/api/recursos` y `/api/operaciones`.
-
-**Alternativas descartadas:** `StripPrefix=2` en cada ruta (los controladores se mapearían sin el prefijo y la ruta del servicio sería distinta de la que ve el cliente; es razonamiento, no se probó).
-
-**Consecuencias:** el Swagger de cada servicio muestra las mismas rutas que usa el cliente. Verificado: el servicio respondió con `instance: /api/obras/x`. Si el equipo prefiere `StripPrefix`, hay que decidirlo antes del paso 8.
+- **Ejecución y Autenticación:** Se implementó `JobHabilitacionDiaria` con `@Scheduled` programado a las 06:00 AM. Para operar de forma autónoma sin intervención de usuarios humanos, interactúa con Keycloak mediante el flujo **OAuth2 Client Credentials** (`servicio-sistema`), obteniendo un token JWT con rol `SISTEMA`.
+- **Estrategia de Idempotencia:** El procesamiento filtra únicamente órdenes en estado `EVALUACION_CLIMATICA` con `fecha_programada = CURRENT_DATE`. Al ejecutarse, las órdenes transicionan a estados terminales/intermedios (`HABILITADA`, `SUSPENDIDA`, `CANCELADA`), evitando reprocesamientos si el job se dispara múltiples veces en el mismo día.
+- **Datos de Demostración (Seed):** Se creó la migración `V3__seed_demo_orders.sql` con 3 órdenes en fecha actual para evidenciar los 3 casos de negocio:
+  1. Tramo 1: Habilitada (condiciones climáticas y de distancia válidas).
+  2. Tramo 2: Suspendida (exceso de umbrales climáticos).
+  3. Tramo 3: Cancelada / Rechazada (distancia mayor a la permitida).

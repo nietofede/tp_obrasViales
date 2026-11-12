@@ -22,6 +22,19 @@ spring:
         jwt:
           issuer-uri: http://localhost:8080/realms/obras-viales
 
+resilience4j:
+  retry:
+    instances:
+      openMeteoRetry:
+        max-attempts: 3
+        wait-duration: 1s
+  circuitbreaker:
+    instances:
+      openMeteoCircuitBreaker:
+        sliding-window-size: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+
 app:
   open-meteo:
     url: https://api.open-meteo.com/v1/forecast
