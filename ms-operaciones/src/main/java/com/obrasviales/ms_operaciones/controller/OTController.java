@@ -23,7 +23,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/ordenes-trabajo")
+@RequestMapping("/api/operaciones/ordenes")
 @RequiredArgsConstructor
 @Tag(name = "Órdenes de Trabajo", description = "Endpoints para la gestión del ciclo de vida de órdenes diarias")
 public class OTController {

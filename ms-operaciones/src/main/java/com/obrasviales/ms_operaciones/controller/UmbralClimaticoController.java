@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 // lo separe por las dudas, es para la RN 09 de que solo el admin configura los umbrales 
 @RestController
-@RequestMapping("/api/v1/umbrales")
+@RequestMapping("/api/operaciones/umbrales-climaticos")
 @RequiredArgsConstructor
 @Tag(name = "Configuración Climática (RN-09)", description = "Gestión de límites meteorológicos por tipo de trabajo")
 public class UmbralClimaticoController {

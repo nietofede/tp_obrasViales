@@ -1,5 +1,7 @@
 package com.obrasviales.ms_operaciones.servicios;
 
+import com.obrasviales.commons.exception.ConflictoEstadoException;
+import com.obrasviales.commons.exception.ReglaNegocioException;
 import com.obrasviales.ms_operaciones.dtos.CrearOrdenRequest;
 import com.obrasviales.ms_operaciones.dtos.DatosClimaDTO;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
@@ -92,8 +94,8 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
 
         // buscamos los umbrales para el tipo de trabajo, si no hay bueno un error 
         UmbralClimatico umbral = umbralClimaticoRepository.findByTipoTrabajo(tipoTrabajo)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "No existen umbrales climáticos configurados para el tipo de trabajo: " + tipoTrabajo));
+                .orElseThrow(() -> new ReglaNegocioException(
+                        "No existen umbrales climáticos configurados para el tipo de trabajo: " + tipoTrabajo, "RN-09"));
 
         orden.setEstado(EstadoOrden.EVALUACION_CLIMATICA);
 
@@ -165,7 +167,7 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
     @Transactional(readOnly = true)
     public List<EvaluacionClimatica> obtenerHistorialClimatico(Long ordenId) {
         OrdenTrabajo orden = ordenTrabajoRepository.findById(ordenId)
-                .orElseThrow(() -> new RuntimeException("Orden de trabajo no encontrada con id: " + ordenId));
+                .orElseThrow(() -> new OrdenNoEncontrada(ordenId));
         
         return evaluacionClimaticaRepository.obtenerHistorialPorOrden(orden.getId());
     }
@@ -177,7 +179,7 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
                 .orElseThrow(() -> new OrdenNoEncontrada(id));
 
         if (orden.getEstado() != EstadoOrden.EN_RIESGO) {
-            throw new IllegalStateException("La orden no se encuentra en estado EN_RIESGO.");
+            throw new ConflictoEstadoException("La orden no se encuentra en estado EN_RIESGO.");
         }
 
         if ("REPROGRAMAR".equalsIgnoreCase(decision)) {
