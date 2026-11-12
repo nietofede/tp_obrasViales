@@ -11,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import com.obrasviales.commons.exception.ReglaNegocioException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,74 +52,66 @@ public class ReservaService {
         this.proveedorRutas = proveedorRutas;
     }
 
+    // Orden en que se revisan las reglas de elegibilidad. Si ninguna cuadrilla sirve, se informa la regla de la
+    // cuadrilla que llegó más lejos en esa secuencia (la que estuvo más cerca de ser elegible).
+    private static final List<String> ORDEN_REGLAS = List.of("RN-05", "RN-06", "RN-04", "RN-07");
+
+    // Resultado de evaluar una cuadrilla: o fue rechazada (regla y detalle) o es elegible (con su ruta al tramo).
+    private record Evaluacion(String regla, String detalle, ProveedorRutas.ResultadoRuta ruta) {
+        static Evaluacion rechazada(String regla, String detalle) {
+            return new Evaluacion(regla, detalle, null);
+        }
+
+        static Evaluacion elegida(ProveedorRutas.ResultadoRuta ruta) {
+            return new Evaluacion(null, null, ruta);
+        }
+
+        boolean esElegida() {
+            return regla == null;
+        }
+    }
+
     @Transactional
     public Reserva proponerYReservar(Long ordenTrabajoId, String tipoTrabajoStr, LocalDate fecha,
                                      double tramoLat, double tramoLon) {
-        Optional<Reserva> existente = reservaRepository.findByOrdenTrabajoId(ordenTrabajoId);
-        if (existente.isPresent() && bloqueaRecursos(existente.get(), LocalDateTime.now())) {
-            return existente.get();
-        }
 
         LocalDateTime ahora = LocalDateTime.now();
+
+        Optional<Reserva> existente = reservaRepository.findByOrdenTrabajoId(ordenTrabajoId);
+        if (existente.isPresent() && bloqueaRecursos(existente.get(), ahora)) {
+            return existente.get();
+        }
 
         ConfiguracionDesplazamiento config = configRepository.findById(1L)
                 .orElseThrow(() -> new IllegalStateException("Configuración de desplazamiento no encontrada"));
         ComposicionMinimaTrabajo requisitos = composicionMinimaRepository.findById(tipoTrabajoStr)
-                .orElseThrow(() -> new IllegalArgumentException("Tipo de trabajo no configurado: " + tipoTrabajoStr));
+                .orElseThrow(() -> new ReglaNegocioException("Tipo de trabajo no configurado: " + tipoTrabajoStr, "RN-06"));
         
-        List<Cuadrilla> cuadrillas = cuadrillaRepository.findAll();
         Cuadrilla cuadrillaElegida = null;
         ProveedorRutas.ResultadoRuta rutaCuadrilla = null;
-
-        for (Cuadrilla c : cuadrillas) {
+        List<String> motivos = new ArrayList<>();
+        String reglaMasAvanzada = null;
+        
+        for (Cuadrilla c : cuadrillaRepository.findAll()) {
             // RN-05: Verificar que la cuadrilla no tenga otra reserva activa en esa fecha
-            if (reservaRepository.existeReservaSolapada(c.getId(), fecha, ahora)) {
-                continue;
-            }
-            // RN-06: Verificar cantidad mínima de operarios activos
-            List<Operario> operarios = operarioRepository.findByCuadrillaIdAndEstado(c.getId(), "ACTIVO");
-            if (operarios.size() < requisitos.getMinOperarios()) {
-                continue;
-            }
+            Evaluacion evaluacion = evaluarCuadrilla(c, requisitos, config, fecha, ahora, tramoLat, tramoLon);
 
-            // RN-05 y RN-06: Verificar máquinas disponibles sin mantenimiento programado en esa fecha
-            if (requisitos.getTipoMaquinaRequerida() != null) {
-                List<Maquina> maquinasDisponibles = maquinaRepository.findByCuadrillaIdAndEstado(c.getId(), "DISPONIBLE")
-                        .stream()
-                        .filter(m -> m.getTipo().equalsIgnoreCase(requisitos.getTipoMaquinaRequerida()))
-                        .filter(m -> !mantenimientoRepository.tieneMantenimientoEnFecha(m.getId(), fecha))
-                        .toList();
-
-                if (maquinasDisponibles.size() < requisitos.getCantidadMaquinas()) {
-                    continue;
-                }
-
-                // RN-04: Al menos un operario debe tener certificación vigente en la fecha para esa máquina
-                boolean tieneCertificado = operarios.stream().anyMatch(op ->
-                        certificacionRepository.existsByOperarioIdAndTipoMaquinaAndVencimientoGreaterThanEqual(
-                                op.getId(), requisitos.getTipoMaquinaRequerida(), fecha
-                        )
-                );
-                if (!tieneCertificado) {
-                    continue;
-                }
-            }
-
-            // RN-07: Calcular viaje de la cuadrilla al tramo y validar límite de viaje y jornada
-            ProveedorRutas.ResultadoRuta ruta = proveedorRutas.calcularRuta(
-                    c.getUltimaLatitud(), c.getUltimaLongitud(), tramoLat, tramoLon
-            );
-
-            if (ruta.duracionMinutos() <= config.getViajeMaximoCuadrillaMin()
-                    && (ruta.duracionMinutos() * 2) < config.getDuracionJornadaMin()) {
+            if (evaluacion.esElegida()) {
                 cuadrillaElegida = c;
-                rutaCuadrilla = ruta;
+                rutaCuadrilla = evaluacion.ruta();
                 break;
             }
+            motivos.add(c.getNombre() + ": " + evaluacion.regla() + ", " + evaluacion.detalle());
+            if (reglaMasAvanzada == null || ORDEN_REGLAS.indexOf(evaluacion.regla()) > ORDEN_REGLAS.indexOf(reglaMasAvanzada)) {
+                reglaMasAvanzada = evaluacion.regla();
+            }
+            
         }
 
         if (cuadrillaElegida == null) {
-            throw new IllegalStateException("RECHAZADA: Ninguna cuadrilla cumple disponibilidad, composición mínima, certificaciones o tiempo máximo de viaje.");
+            String detalle = motivos.isEmpty() ? "no hay cuadrillas cargadas" : String.join("; ", motivos);
+            throw new ReglaNegocioException("Ninguna cuadrilla es elegible. " + detalle,
+                    reglaMasAvanzada != null ? reglaMasAvanzada : "RN-06");
         }
 
         // 4. RN-08: Si el trabajo requiere mezcla, buscar planta dentro de la ventana térmica y calcular salida del camión
@@ -127,6 +121,7 @@ public class ReservaService {
         LocalTime horaSalidaCamion = null;
 
         if (Boolean.TRUE.equals(requisitos.getRequiereMezcla())) {
+            List<String> motivosPlantas = new ArrayList<>();
             List<PlantaMezcla> plantas = plantaRepository.findByActivaTrue();
             for (PlantaMezcla p : plantas) {
                 ProveedorRutas.ResultadoRuta candidata = proveedorRutas.calcularRuta(
@@ -139,9 +134,12 @@ public class ReservaService {
                             .minusMinutes(candidata.duracionMinutos() + config.getMargenCamionMin());
                     break;
                 }
+                motivosPlantas.add(p.getNombre() + ": " + candidata.duracionMinutos() + " min de viaje");
             }
             if (plantaElegida == null) {
-                throw new IllegalStateException("RECHAZADA (RN-08): Ninguna planta activa cumple la ventana térmica de transporte de mezcla.");
+                String detalle = motivosPlantas.isEmpty() ? "no hay plantas activas" : String.join("; ", motivosPlantas);
+                throw new ReglaNegocioException("Ninguna planta llega dentro de la ventana de transporte de "
+                        + config.getVentanaTransporteMezclaMin() + " min. " + detalle, "RN-08");
             }
         }
 
@@ -166,6 +164,57 @@ public class ReservaService {
         return reservaRepository.save(reserva);
     }
 
+
+    // Revisa las reglas de una cuadrilla en orden: RN-05, RN-06, RN-04 y RN-07. Devuelve la primera que incumple.
+    private Evaluacion evaluarCuadrilla(Cuadrilla c, ComposicionMinimaTrabajo requisitos, ConfiguracionDesplazamiento config,
+                                        LocalDate fecha, LocalDateTime ahora, double tramoLat, double tramoLon) {
+        // RN-05: la cuadrilla no puede tener otra reserva vigente ese día
+        if (reservaRepository.existeReservaSolapada(c.getId(), fecha, ahora)) {
+            return Evaluacion.rechazada("RN-05", "ya tiene una reserva vigente para ese día");
+        }
+
+        // RN-06: cantidad mínima de operarios activos
+        List<Operario> operarios = operarioRepository.findByCuadrillaIdAndEstado(c.getId(), "ACTIVO");
+        if (operarios.size() < requisitos.getMinOperarios()) {
+            return Evaluacion.rechazada("RN-06", "tiene " + operarios.size() + " operarios activos y se necesitan "
+                    + requisitos.getMinOperarios());
+        }
+
+        String tipoMaquina = requisitos.getTipoMaquinaRequerida();
+        if (tipoMaquina != null) {
+            // RN-06: máquinas del tipo requerido, disponibles y sin mantenimiento ese día
+            long maquinas = maquinaRepository.findByCuadrillaIdAndEstado(c.getId(), "DISPONIBLE")
+                    .stream()
+                    .filter(m -> m.getTipo().equalsIgnoreCase(tipoMaquina))
+                    .filter(m -> !mantenimientoRepository.tieneMantenimientoEnFecha(m.getId(), fecha))
+                    .count();
+            if (maquinas < requisitos.getCantidadMaquinas()) {
+                return Evaluacion.rechazada("RN-06", "tiene " + maquinas + " máquinas " + tipoMaquina
+                        + " disponibles ese día y se necesitan " + requisitos.getCantidadMaquinas());
+            }
+
+            // RN-04: al menos un operario con certificación vigente ese día para esa máquina
+            boolean tieneCertificado = operarios.stream().anyMatch(op ->
+                    certificacionRepository.existsByOperarioIdAndTipoMaquinaAndVencimientoGreaterThanEqual(
+                            op.getId(), tipoMaquina, fecha));
+            if (!tieneCertificado) {
+                return Evaluacion.rechazada("RN-04", "ningún operario tiene certificación vigente para " + tipoMaquina);
+            }
+        }
+
+        // RN-07: el viaje al tramo no supera el máximo y la ida y vuelta entra en la jornada
+        ProveedorRutas.ResultadoRuta ruta = proveedorRutas.calcularRuta(
+                c.getUltimaLatitud(), c.getUltimaLongitud(), tramoLat, tramoLon);
+        if (ruta.duracionMinutos() > config.getViajeMaximoCuadrillaMin()) {
+            return Evaluacion.rechazada("RN-07", "el viaje al tramo es de " + ruta.duracionMinutos()
+                    + " min y el máximo es " + config.getViajeMaximoCuadrillaMin() + " min");
+        }
+        if (ruta.duracionMinutos() * 2 >= config.getDuracionJornadaMin()) {
+            return Evaluacion.rechazada("RN-07", "la ida y vuelta de " + (ruta.duracionMinutos() * 2)
+                    + " min no entra en la jornada de " + config.getDuracionJornadaMin() + " min");
+        }
+        return Evaluacion.elegida(ruta);
+    }
 
    
     // Sin noRollBack la transaccion se revierte al lanzar la excepcion y el estado EXPIRADA nunca queda guardado.
