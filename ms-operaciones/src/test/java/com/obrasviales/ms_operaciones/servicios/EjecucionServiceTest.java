@@ -2,9 +2,12 @@ package com.obrasviales.ms_operaciones.servicios;
 
 import com.obrasviales.commons.exception.ConflictoEstadoException;
 import com.obrasviales.ms_operaciones.clientes.ObrasClient;
+import com.obrasviales.ms_operaciones.clientes.RecursosClient;
 import com.obrasviales.ms_operaciones.dtos.AvanceOrdenResponse;
 import com.obrasviales.ms_operaciones.dtos.FaseDTO;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
+import com.obrasviales.ms_operaciones.dtos.ResolucionClimaticaRequest;
+import com.obrasviales.ms_operaciones.dtos.ResolucionClimaticaRequest.Decision;
 import com.obrasviales.ms_operaciones.excepciones.OrdenNoEncontrada;
 import com.obrasviales.ms_operaciones.excepciones.TransicionInvalida;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
@@ -25,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,6 +44,7 @@ class EjecucionServiceTest {
     @Mock private OrdenTrabajoRepository ordenRepository;
     @Mock private SuspensionService suspensionService;
     @Mock private ObrasClient obrasClient;
+    @Mock private RecursosClient recursosClient;
 
     @InjectMocks private EjecucionService service;
 
@@ -125,5 +131,68 @@ class EjecucionServiceTest {
         when(obrasClient.registrarAvance(FASE_ID, 40)).thenThrow(new ConflictoEstadoException("La fase está en riesgo."));
 
         assertThrows(ConflictoEstadoException.class, () -> service.registrarAvance(ORDEN_ID, 40));
+    }
+
+    @Test
+    void habilitarUnaOrdenPendienteDeClimaConfirmaLaReserva() {
+        OrdenTrabajo orden = ordenEn(EstadoOrden.PENDIENTE_CONFIRMACION_CLIMATICA);
+        orden.setReservaId(7L);
+        when(ordenRepository.save(any(OrdenTrabajo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        OrdenTrabajoDTO dto = service.resolverClima(ORDEN_ID, new ResolucionClimaticaRequest(Decision.HABILITAR, null));
+
+        assertEquals(EstadoOrden.HABILITADA, dto.getEstado());
+        verify(recursosClient).confirmar(7L);
+    }
+
+    @Test
+    void suspenderUnaOrdenPendienteDeClimaCorreLaSaga() {
+        OrdenTrabajo orden = ordenEn(EstadoOrden.PENDIENTE_CONFIRMACION_CLIMATICA);
+        when(ordenRepository.save(any(OrdenTrabajo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.resolverClima(ORDEN_ID, new ResolucionClimaticaRequest(Decision.SUSPENDER, "Llovió toda la noche"));
+
+        verify(suspensionService).suspender(orden, MotivoSuspension.CLIMA, "Llovió toda la noche");
+        verify(recursosClient, never()).confirmar(anyLong());
+    }
+
+    @Test
+    void suspenderSinMotivoUsaUnoPorDefecto() {
+        OrdenTrabajo orden = ordenEn(EstadoOrden.PENDIENTE_CONFIRMACION_CLIMATICA);
+        when(ordenRepository.save(any(OrdenTrabajo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.resolverClima(ORDEN_ID, new ResolucionClimaticaRequest(Decision.SUSPENDER, null));
+
+        verify(suspensionService).suspender(eq(orden), eq(MotivoSuspension.CLIMA), anyString());
+    }
+
+    @Test
+    void soloSeResuelveElClimaDeUnaOrdenPendiente() {
+        ordenEn(EstadoOrden.HABILITADA);
+
+        assertThrows(TransicionInvalida.class,
+                () -> service.resolverClima(ORDEN_ID, new ResolucionClimaticaRequest(Decision.HABILITAR, null)));
+
+        verify(recursosClient, never()).confirmar(anyLong());
+    }
+
+    @Test
+    void siLaReservaVencioLaOrdenSigueSinHabilitarse() {
+        OrdenTrabajo orden = ordenEn(EstadoOrden.PENDIENTE_CONFIRMACION_CLIMATICA);
+        orden.setReservaId(7L);
+        when(recursosClient.confirmar(7L)).thenThrow(new ConflictoEstadoException("La reserva provisoria ya expiró por TTL"));
+
+        assertThrows(ConflictoEstadoException.class,
+                () -> service.resolverClima(ORDEN_ID, new ResolucionClimaticaRequest(Decision.HABILITAR, null)));
+
+        verify(ordenRepository, never()).save(any());
+    }
+
+    @Test
+    void habilitarSinReservaVigenteDa409() {
+        ordenEn(EstadoOrden.PENDIENTE_CONFIRMACION_CLIMATICA);
+
+        assertThrows(ConflictoEstadoException.class,
+                () -> service.resolverClima(ORDEN_ID, new ResolucionClimaticaRequest(Decision.HABILITAR, null)));
     }
 }

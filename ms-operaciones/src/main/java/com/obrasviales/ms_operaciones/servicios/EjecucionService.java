@@ -1,9 +1,12 @@
 package com.obrasviales.ms_operaciones.servicios;
 
+import com.obrasviales.commons.exception.ConflictoEstadoException;
 import com.obrasviales.ms_operaciones.clientes.ObrasClient;
+import com.obrasviales.ms_operaciones.clientes.RecursosClient;
 import com.obrasviales.ms_operaciones.dtos.AvanceOrdenResponse;
 import com.obrasviales.ms_operaciones.dtos.FaseDTO;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
+import com.obrasviales.ms_operaciones.dtos.ResolucionClimaticaRequest;
 import com.obrasviales.ms_operaciones.excepciones.OrdenNoEncontrada;
 import com.obrasviales.ms_operaciones.excepciones.TransicionInvalida;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
@@ -22,6 +25,30 @@ public class EjecucionService {
     private final OrdenTrabajoRepository ordenTrabajoRepository;
     private final SuspensionService suspensionService;
     private final ObrasClient obrasClient;
+    private final RecursosClient recursosClient;
+
+    // sin dato climatico confiable la orden no se habilita sola queda pendiente
+    // capataz puede HABILITAR confirma la reserva que se conservo; SUSPENDER corre la saga como una suspension por clima.
+   
+    @Transactional
+    public OrdenTrabajoDTO resolverClima(Long ordenId, ResolucionClimaticaRequest request) {
+        OrdenTrabajo orden = buscar(ordenId);
+        exigirEstado(orden, EstadoOrden.PENDIENTE_CONFIRMACION_CLIMATICA, "resolver el clima");
+
+        if (request.decision() == ResolucionClimaticaRequest.Decision.HABILITAR) {
+            if (orden.getReservaId() == null) {
+                throw new ConflictoEstadoException("La orden " + orden.getId() + " no tiene una reserva de recursos vigente.");
+            }
+            recursosClient.confirmar(orden.getReservaId());
+            orden.setEstado(EstadoOrden.HABILITADA);
+        } else {
+            String motivo = (request.motivo() != null && !request.motivo().isBlank())
+                    ? request.motivo()
+                    : "Resolución manual del capataz ante un dato climático no confiable.";
+            suspensionService.suspender(orden, MotivoSuspension.CLIMA, motivo);
+        }
+        return OrdenTrabajoDTO.desde(ordenTrabajoRepository.save(orden));
+    }
 
     // de habilitada a ejecucion, el primer avance es el que inicia la fase alla.
     @Transactional

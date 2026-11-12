@@ -307,3 +307,11 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - **Rechazo** (`PATCH /ordenes/{id}/rechazo`, CAPATAZ, con `motivo`): solo una orden HABILITADA. Se suspende con motivo RECHAZO y corre la misma saga que una suspensión por clima, con RN-12 incluida; el rechazo del capataz cuenta para el límite de la fase.
 - **Avances** (`POST /ordenes/{id}/avances`, CAPATAZ, con `porcentaje`): solo una orden EN_EJECUCION. Se reenvía a Obras. El porcentaje es el acumulado de la fase (1 a 100) y no puede retroceder; los rechazos de Obras (409 si la fase está en riesgo o completada, 422 `AVANCE`) se informan tal cual.
 - **Cierre:** pendiente (consumo real de materiales y horas de máquina).
+
+## Resolución climática (RN-10) en ms-operaciones
+
+- **Cuándo ocurre:** si falta cualquier dato climático (o Open-Meteo falla o tarda más de 5 s) la orden no se habilita sola: queda PENDIENTE_CONFIRMACION_CLIMATICA y conserva su reserva de recursos.
+- **Quién decide:** `PATCH /api/operaciones/ordenes/{id}/resolucion-climatica` (solo CAPATAZ), con `decision` HABILITAR o SUSPENDER y un `motivo` opcional.
+- **HABILITAR** confirma la reserva en Recursos y deja la orden HABILITADA. Si la reserva ya venció por TTL (30 min), Recursos responde 409 y la orden sigue pendiente; queda la opción de suspenderla, que reserva de nuevo al volver a habilitar la orden nueva.
+- **SUSPENDER** corre la saga de suspensión con motivo CLIMA (cuenta para RN-12), con el motivo del capataz o uno por defecto.
+- Solo se puede resolver una orden en PENDIENTE_CONFIRMACION_CLIMATICA (RN-11).
