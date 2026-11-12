@@ -1,20 +1,19 @@
 package com.obrasviales.ms_operaciones.servicios;
 
-import com.obrasviales.ms_operaciones.dtos.DatosClimaDTO;
+import com.obrasviales.ms_operaciones.dtos.CrearOrdenRequest;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
-import com.obrasviales.ms_operaciones.modelo.*;
-import com.obrasviales.ms_operaciones.repositorios.EvaluacionClimaticaRepository;
+import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
+import com.obrasviales.ms_operaciones.modelo.OrdenTrabajo;
+import com.obrasviales.ms_operaciones.modelo.TipoTrabajo;
 import com.obrasviales.ms_operaciones.repositorios.OrdenTrabajoRepository;
-import com.obrasviales.ms_operaciones.repositorios.UmbralClimaticoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClient;
-import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClient;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -26,11 +25,8 @@ import java.util.Map;
 public class JobHabilitacionDiaria {
 
     private final OTServiceInterfaz otService;
-    private final InterfazClimaService climaService;
     private final RestClient sistemaRestClient; // Bean de obras-commons con interceptor de token SISTEMA
     private final OrdenTrabajoRepository ordenTrabajoRepository;
-    private final UmbralClimaticoRepository umbralClimaticoRepository;
-    private final EvaluacionClimaticaRepository evaluacionClimaticaRepository;
 
     @Value("${app.servicios.obras-url:http://localhost:8082}")
     private String obrasUrl;
@@ -65,17 +61,19 @@ public class JobHabilitacionDiaria {
     @Transactional
     protected void procesarOrden(OrdenTrabajoDTO ordenDto) {
         Long ordenId = ordenDto.getId();
+        Long faseId = ordenDto.getFaseId();
+
         OrdenTrabajo ordenEntidad = ordenTrabajoRepository.findById(ordenId)
                 .orElseThrow(() -> new IllegalStateException("Orden no encontrada: " + ordenId));
 
-        // 1. Consultar datos del tramo/fase en ms-obras usando sistemaRestClient (token SISTEMA)
-        DatosTramoFase datosObra = obtenerDatosObra(ordenDto.getFaseId());
+        // 1. Consultar datos del tramo/fase en ms-obras usando sistemaRestClient
+        DatosTramoFase datosObra = obtenerDatosObra(faseId);
         if (!datosObra.faseAnteriorCompletada()) {
             log.warn("Orden ID {}: la fase anterior no está completa (RN-01). Queda PROGRAMADA.", ordenId);
             return;
         }
 
-        // 2. Reservar recursos en ms-recursos usando sistemaRestClient
+        // 2. Reservar recursos en ms-recursos
         Long reservaId = reservarRecursos(ordenDto, datosObra);
         if (reservaId == null) {
             otService.cambiarEstado(ordenId, EstadoOrden.CANCELADA);
@@ -86,56 +84,64 @@ public class JobHabilitacionDiaria {
         ordenEntidad.setReservaId(reservaId);
         ordenTrabajoRepository.save(ordenEntidad);
         otService.cambiarEstado(ordenId, EstadoOrden.RECURSOS_ASIGNADOS);
-        log.info("Orden ID {}: Recursos asignados (Reserva ID {}).", ordenId, reservaId);
+        log.info("Orden ID {}: Recursos asignados en estado PRE_RESERVADA (Reserva ID {}).", ordenId, reservaId);
 
-        // 3. Pasar a EVALUACION_CLIMATICA y consultar Open-Meteo
-        otService.cambiarEstado(ordenId, EstadoOrden.EVALUACION_CLIMATICA);
-        DatosClimaDTO clima;
-        try {
-            clima = climaService.obtenerCondicionesClimaticas(datosObra.latitud(), datosObra.longitud());
-        } catch (Exception e) {
-            log.warn("Orden ID {}: Falló consulta climática ({}). Pasa a PENDIENTE_CONFIRMACION_CLIMATICA.", ordenId, e.getMessage());
-            otService.cambiarEstado(ordenId, EstadoOrden.PENDIENTE_CONFIRMACION_CLIMATICA);
-            return;
-        }
+        // 3. Evaluar y actualizar estado climático usando el servicio de Fede
+        OrdenTrabajoDTO evaluada = otService.evaluarYActualizarEstadoClimatico(
+                ordenId,
+                datosObra.latitud(),
+                datosObra.longitud(),
+                datosObra.tipoTrabajo()
+        );
 
-        // 4. Evaluar clima contra umbrales configurados en BD
-        UmbralClimatico umbral = umbralClimaticoRepository.findByTipoTrabajo(datosObra.tipoTrabajo())
-                .orElseThrow(() -> new IllegalStateException("No hay umbral configurado para " + datosObra.tipoTrabajo()));
+        // 4. Acciones posteriores según el resultado de la evaluación climática
+        if (evaluada.getEstado() == EstadoOrden.HABILITADA) {
+            confirmarReservaRecursos(reservaId);
+            log.info("Orden ID {}: HABILITADA y reserva {} CONFIRMADA.", ordenId, reservaId);
 
-        // OpenMeteoService devuelve humedad relativa en % (0-100) y umbral en decimal (ej. 0.40)
-        double humedadNormalizada = clima.getHumedadSuelo() > 1.0 ? clima.getHumedadSuelo() / 100.0 : clima.getHumedadSuelo();
+        } else if (evaluada.getEstado() == EstadoOrden.SUSPENDIDA) {
+            // 4.a Liberar la reserva de recursos
+            liberarReservaRecursos(reservaId);
 
-        boolean cumpleHumedad = humedadNormalizada <= umbral.getHumedadSueloMaxima();
-        boolean cumpleLluvia = clima.getProbabilidadLluvia() <= umbral.getProbPrecipitacionMaxima();
-        boolean cumpleTemp = clima.getTemperatura() >= umbral.getTemperaturaMinima();
-        boolean umbralesCumplidos = cumpleHumedad && cumpleLluvia && cumpleTemp;
+            // 4.b Reprogramar para el día siguiente en ms-obras y crear nueva orden
+            LocalDate nuevaFecha = ordenDto.getFechaProgramada().plusDays(1);
+            reprogramarFaseEnObras(faseId, nuevaFecha);
 
-        // 5. Persistir registro de evaluación climática
-        EvaluacionClimatica eval = new EvaluacionClimatica();
-        eval.setOrdenTrabajo(ordenEntidad);
-        eval.setHumedadSueloRegistrada(humedadNormalizada);
-        eval.setProbPrecipitacionRegistrada(clima.getProbabilidadLluvia());
-        eval.setTemperaturaRegistrada(clima.getTemperatura());
-        eval.setUmbralesCumplidos(umbralesCumplidos);
-        evaluacionClimaticaRepository.save(eval);
+            CrearOrdenRequest nuevaOrdenReq = new CrearOrdenRequest();
+            nuevaOrdenReq.setFaseId(faseId);
+            nuevaOrdenReq.setTramoId(ordenDto.getTramoId());
+            nuevaOrdenReq.setFechaProgramada(nuevaFecha);
 
-        // 6. Transición final según evaluación climática
-        if (umbralesCumplidos) {
-            otService.cambiarEstado(ordenId, EstadoOrden.HABILITADA);
-            log.info("Orden ID {}: HABILITADA (Temp: {}°C, Lluvia: {}%, Humedad: {}).",
-                    ordenId, clima.getTemperatura(), clima.getProbabilidadLluvia(), humedadNormalizada);
+            OrdenTrabajoDTO nuevaOrden = otService.crearOrden(nuevaOrdenReq);
+            otService.cambiarEstado(ordenId, EstadoOrden.REPROGRAMADA);
+
+            // 4.c Contar suspensiones acumuladas por FASE (no solo por orden individual)
+            int suspensionesFase = contarSuspensionesPorFase(faseId);
+
+            OrdenTrabajo nuevaEntidad = ordenTrabajoRepository.findById(nuevaOrden.getId())
+                    .orElseThrow(() -> new IllegalStateException("Nueva orden no encontrada: " + nuevaOrden.getId()));
+            nuevaEntidad.setContadorSuspensiones(suspensionesFase);
+            ordenTrabajoRepository.save(nuevaEntidad);
+
+            log.info("Orden ID {}: SUSPENDIDA y pasada a REPROGRAMADA. Creada nueva orden ID {} para {}. Suspensiones acumuladas de la fase {}: {}.",
+                    ordenId, nuevaOrden.getId(), nuevaFecha, faseId, suspensionesFase);
+
+            // RN-06: Si la fase acumula 3 o más suspensiones climáticas, marcar fase en riesgo en ms-obras
+            if (suspensionesFase >= 3) {
+                marcarFaseEnRiesgo(faseId);
+                log.warn("Fase ID {} alcanzó {} suspensiones climáticas. Marcada EN_RIESGO en ms-obras.", faseId, suspensionesFase);
+            }
         } else {
-            otService.cambiarEstado(ordenId, EstadoOrden.SUSPENDIDA);
-
-            OrdenTrabajo actual = ordenTrabajoRepository.findById(ordenId)
-            .orElseThrow(() -> new IllegalStateException("Orden no encontrada: " + ordenId));
-            
-            actual.setContadorSuspensiones(actual.getContadorSuspensiones() + 1);
-            ordenTrabajoRepository.save(actual);
-            log.info("Orden ID {}: SUSPENDIDA por clima adverso (Temp: {}°C, Lluvia: {}%, Humedad: {}).",
-                    ordenId, clima.getTemperatura(), clima.getProbabilidadLluvia(), humedadNormalizada);
+            log.warn("Orden ID {}: Quedó en estado {} tras la evaluación climática.", ordenId, evaluada.getEstado());
         }
+    }
+
+    private int contarSuspensionesPorFase(Long faseId) {
+        List<OrdenTrabajo> ordenesDeLaFase = ordenTrabajoRepository.findByFaseId(faseId);
+        // Contamos cuántas órdenes de esta misma fase fueron suspendidas/reprogramadas por clima
+        return (int) ordenesDeLaFase.stream()
+                .filter(o -> o.getEstado() == EstadoOrden.SUSPENDIDA || o.getEstado() == EstadoOrden.REPROGRAMADA)
+                .count();
     }
 
     @SuppressWarnings("unchecked")
@@ -149,10 +155,12 @@ public class JobHabilitacionDiaria {
             throw new IllegalStateException("ms-obras devolvió una respuesta vacía para la fase " + faseId);
         }
 
-        return new DatosTramoFase(((Number) ctx.get("latitud")).doubleValue(),
+        return new DatosTramoFase(
+                ((Number) ctx.get("latitud")).doubleValue(),
                 ((Number) ctx.get("longitud")).doubleValue(),
                 TipoTrabajo.valueOf(ctx.get("tipoTrabajo").toString()),
-                Boolean.TRUE.equals(ctx.get("faseAnteriorCompletada")));
+                Boolean.TRUE.equals(ctx.get("faseAnteriorCompletada"))
+        );
     }
 
     @SuppressWarnings("unchecked")
@@ -163,20 +171,19 @@ public class JobHabilitacionDiaria {
                 "fecha", orden.getFechaProgramada().toString(),
                 "tramoLat", datosObra.latitud(),
                 "tramoLon", datosObra.longitud()
-            );
+        );
 
         try {
             Map<String, Object> resp = sistemaRestClient.post()
-                            .uri(recursosUrl + "/api/recursos/internos/reservas")
-                            .body(body)
-                            .retrieve()
-                            .body(Map.class);
-            
+                    .uri(recursosUrl + "/api/recursos/internos/reservas")
+                    .body(body)
+                    .retrieve()
+                    .body(Map.class);
 
             if (resp == null || resp.get("id") == null) {
-                throw new IllegalStateException("ms-recursos respondio sin id de reserva para la orden" + orden.getId());
+                throw new IllegalStateException("ms-recursos respondió sin id de reserva para la orden " + orden.getId());
             }
-            return ((Number) resp.get("id")).longValue();     
+            return ((Number) resp.get("id")).longValue();
         } catch (HttpClientErrorException e) {
             if (e.getStatusCode().value() == 422) {
                 log.warn("Orden ID {}: Recursos rechazó la reserva: {}", orden.getId(), e.getResponseBodyAsString());
@@ -184,6 +191,36 @@ public class JobHabilitacionDiaria {
             }
             throw e;
         }
+    }
+
+    private void confirmarReservaRecursos(Long reservaId) {
+        sistemaRestClient.post()
+                .uri(recursosUrl + "/api/recursos/internos/reservas/" + reservaId + "/confirmar")
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    private void liberarReservaRecursos(Long reservaId) {
+        sistemaRestClient.post()
+                .uri(recursosUrl + "/api/recursos/internos/reservas/" + reservaId + "/liberar")
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    private void reprogramarFaseEnObras(Long faseId, LocalDate nuevaFechaInicio) {
+        Map<String, Object> body = Map.of("nuevaFechaInicio", nuevaFechaInicio.toString());
+        sistemaRestClient.patch()
+                .uri(obrasUrl + "/api/obras/fases/" + faseId + "/programacion")
+                .body(body)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    private void marcarFaseEnRiesgo(Long faseId) {
+        sistemaRestClient.patch()
+                .uri(obrasUrl + "/api/obras/internos/fases/" + faseId + "/riesgo")
+                .retrieve()
+                .toBodilessEntity();
     }
 
     private record DatosTramoFase(Double latitud, Double longitud, TipoTrabajo tipoTrabajo, boolean faseAnteriorCompletada) {}
