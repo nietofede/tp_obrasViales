@@ -37,6 +37,7 @@ Leyenda: ✔ permitido, — no permitido, ? a definir con el equipo.
 | Consultar (solo lectura) | los tres | ? | ? | ? | ? | ✔ | — | Propuesta |
 | Crear obras, tramos y fases | obras | — | ✔ | — | — | — | — | TP: el PLANIFICADOR crea obras, tramos y fases |
 | Consultar el cronograma de un tramo | obras | — | ✔ | ✔ | — | ✔ | — | Propuesta |
+| Consultar obras y los tramos de una obra | obras | — | ✔ | ✔ | — | ✔ | — | Propuesta: pedido en la revisión del PR |
 | Iniciar una fase (RN-01) | obras | — | — | ✔ | — | — | ✔ | TP: el CAPATAZ registra inicio y fin; Operaciones la llama como SISTEMA o con el token del capataz |
 | Reprogramar una fase en cascada (RN-02) | obras | — | ✔ | — | — | — | ✔ | TP: el PLANIFICADOR arma el cronograma; la saga de suspensión la llama como SISTEMA |
 | Datos de una fase para Operaciones (incluye materiales, RN-03) | obras | — | ✔ | ✔ | — | — | ✔ | Propuesta: los consume Operaciones |
@@ -56,3 +57,6 @@ Tres casos para cada endpoint protegido, con test automático y request en la co
 | POST /api/obras/fases/{id}/iniciar | 401 | 403 con OPERARIO | 200 con CAPATAZ | FaseControllerTest | colección (tarea 12) |
 | POST /api/obras/fases/{id}/reprogramar | 401 | 403 con CAPATAZ | 200 con PLANIFICADOR | FaseControllerTest | colección (tarea 12) |
 | GET /api/obras/fases/{id}/datos-operacion | 401 | 403 con OPERARIO | 200 con SISTEMA | OperacionControllerTest | colección (tarea 12) |
+| GET /api/obras | 401 | 403 con OPERARIO | 200 con AUDITOR | ObraControllerConsultasTest | colección (tarea 12) |
+| GET /api/obras/{obraId} | 401 | 403 con OPERARIO | 200 con CAPATAZ | ObraControllerConsultasTest | colección (tarea 12) |
+| GET /api/obras/{obraId}/tramos | 401 | 403 con OPERARIO | 200 con PLANIFICADOR | ObraControllerConsultasTest | colección (tarea 12) |

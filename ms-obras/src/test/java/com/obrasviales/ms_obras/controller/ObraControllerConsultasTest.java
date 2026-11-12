@@ -119,4 +119,26 @@ class ObraControllerConsultasTest {
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_AUDITOR"))))
                 .andExpect(status().isNotFound());
     }
+
+    // ---------- 401 y 403 que completan los tres casos de cada GET ----------
+
+    @Test
+    void obtenerSinTokenDevuelve401() throws Exception {
+        mockMvc.perform(get("/api/obras/1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void obtenerConOperarioDevuelve403() throws Exception {
+        mockMvc.perform(get("/api/obras/1")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_OPERARIO"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void tramosConOperarioDevuelve403() throws Exception {
+        mockMvc.perform(get("/api/obras/5/tramos")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_OPERARIO"))))
+                .andExpect(status().isForbidden());
+    }
 }

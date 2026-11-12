@@ -219,3 +219,14 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 **Alternativa descartada:** editar V1 otra vez (Flyway guarda su checksum y falla en las bases que ya lo aplicaron).
 
 **Consecuencias:** quien ya tenía la base debe recrearla (`docker compose down -v`).
+
+
+## Consultas de lectura en ms-obras
+
+**Problema:** la revisión del PR notó que no se podían ver ni listar las obras, y que el cronograma exigía conocer el id del tramo de antemano.
+
+**Decisión:** se agregaron `GET /api/obras`, `GET /api/obras/{obraId}` y `GET /api/obras/{obraId}/tramos`, para PLANIFICADOR, CAPATAZ y AUDITOR (los mismos roles de lectura del cronograma). Devuelven DTOs y responden 404 si la obra no existe.
+
+**Alternativa descartada:** paginación y filtros, porque el volumen del TP no lo justifica.
+
+**Consecuencias:** siguen sin implementarse editar y borrar. El estado EN_RIESGO de las fases queda pendiente de acordar el contrato con ms-operaciones.

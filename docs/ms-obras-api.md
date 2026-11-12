@@ -76,3 +76,14 @@ Fin anterior al inicio (422 `FASE-FECHAS`), fase anterior de otro tramo (422 `FA
 
 ## 7. Tests
 `mvnw test "-Dtest=!MsObrasApplicationTests"` corre 61 tests sin base de datos. `MsObrasApplicationTests` arranca la aplicacion completa y necesita la base levantada y `OBRAS_DB_PASSWORD`.
+
+## 8. Consultas de obras y tramos (se suman a las 17 requests)
+Se agregaron tras la revision del PR. Son GET sin cuerpo.
+
+| # | Request | Token | Esperado |
+| --- | --- | --- | --- |
+| 18 | GET /api/obras | auditor | 200, lista de obras |
+| 19 | GET /api/obras/{{obraId}} | capataz | 200 |
+| 20 | GET /api/obras/{{obraId}}/tramos | planificador | 200, lista de tramos |
+
+Para los tres: sin token da 401 y con operario da 403. Una obra inexistente da 404.
