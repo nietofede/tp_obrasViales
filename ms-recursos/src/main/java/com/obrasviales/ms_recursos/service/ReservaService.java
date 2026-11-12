@@ -1,5 +1,7 @@
 package com.obrasviales.ms_recursos.service;
 
+import com.obrasviales.commons.exception.ConflictoEstadoException;
+import com.obrasviales.commons.exception.RecursoNoEncontradoException;
 import com.obrasviales.ms_recursos.client.ProveedorRutas;
 import com.obrasviales.ms_recursos.entity.*;
 import com.obrasviales.ms_recursos.repository.*;
@@ -52,7 +54,7 @@ public class ReservaService {
     public Reserva proponerYReservar(Long ordenTrabajoId, String tipoTrabajoStr, LocalDate fecha,
                                      double tramoLat, double tramoLon) {
         Optional<Reserva> existente = reservaRepository.findByOrdenTrabajoId(ordenTrabajoId);
-        if (existente.isPresent()) {
+        if (existente.isPresent() && bloqueaRecursos(existente.get(), LocalDateTime.now())) {
             return existente.get();
         }
 
@@ -144,7 +146,7 @@ public class ReservaService {
         }
 
         // 5. Crear y guardar la reserva PROVISORIA con vencimiento (TTL de 30 minutos)
-        Reserva reserva = new Reserva();
+        Reserva reserva = existente.orElseGet(Reserva::new);
         reserva.setOrdenTrabajoId(ordenTrabajoId);
         reserva.setCuadrilla(cuadrillaElegida);
         reserva.setPlanta(plantaElegida);
@@ -154,6 +156,8 @@ public class ReservaService {
         reserva.setTiempoViajeCuadrillaMin(rutaCuadrilla.duracionMinutos());
         reserva.setHoraLlegadaCuadrilla(horaLlegadaCuadrilla);
         reserva.setFuenteRuta(rutaCuadrilla.fuente());
+        reserva.setTiempoViajeMezclaMin(null);
+        reserva.setHoraSalidaCamion(null);
 
         if (plantaElegida != null && rutaMezcla != null) {
             reserva.setTiempoViajeMezclaMin(rutaMezcla.duracionMinutos());
@@ -162,15 +166,28 @@ public class ReservaService {
         return reservaRepository.save(reserva);
     }
 
-    @Transactional
+
+   
+    // Sin noRollBack la transaccion se revierte al lanzar la excepcion y el estado EXPIRADA nunca queda guardado.
+    @Transactional(noRollbackFor = ConflictoEstadoException.class)
     public Reserva confirmarReserva(Long id) {
         Reserva r = reservaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Reserva no encontrada: " + id));
-        if ("PROVISORIA".equals(r.getEstado()) && r.getFechaVencimientoTtl().isBefore(LocalDateTime.now())) {
+                .orElseThrow(() -> new RecursoNoEncontradoException("Reserva no encontrada: " + id));
+
+        if ("CONFIRMADA".equals(r.getEstado())) {
+            return r; // idempotente: Operaciones puede reintentar
+        }
+        
+        if (!"PROVISORIA".equals(r.getEstado())) {
+            throw new ConflictoEstadoException("No se puede confirmar una reserva en estado " + r.getEstado());
+        }
+
+        if (r.getFechaVencimientoTtl().isBefore(LocalDateTime.now())) {
             r.setEstado("EXPIRADA");
             reservaRepository.save(r);
-            throw new IllegalStateException("La reserva provisoria ya expiró por TTL");
+            throw new ConflictoEstadoException("La reserva provisoria ya expiró por TTL");
         }
+        
         r.setEstado("CONFIRMADA");
         return reservaRepository.save(r);
     }
@@ -178,8 +195,19 @@ public class ReservaService {
     @Transactional
     public Reserva liberarReserva(Long id) {
         Reserva r = reservaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Reserva no encontrada: " + id));
-        r.setEstado("LIBERADA");
-        return reservaRepository.save(r);
+                .orElseThrow(() -> new RecursoNoEncontradoException("Reserva no encontrada: " + id));
+        if ("PROVISORIA".equals(r.getEstado()) || "CONFIRMADA".equals(r.getEstado())) {
+            r.setEstado("LIBERADA");
+            return reservaRepository.save(r);
+        }
+
+        return r; // LIBERADA o EXPIRADA: ya no bloquea recursos, liberar es idempotente
     }
+
+    // Una reserva bloquea recursos solo si está CONFIRMADA, o PROVISORIA y todavía no venció su TTL.
+    private boolean bloqueaRecursos(Reserva r, LocalDateTime ahora) {
+        return "CONFIRMADA".equals(r.getEstado())
+                || ("PROVISORIA".equals(r.getEstado()) && r.getFechaVencimientoTtl().isAfter(ahora));
+    }
+
 }

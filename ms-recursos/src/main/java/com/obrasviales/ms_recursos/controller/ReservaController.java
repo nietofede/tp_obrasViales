@@ -62,33 +62,27 @@ public class ReservaController {
         }
     }
 
+    // Sin try/catch: el handler global de commons convierte RecursoNoEncontradoException en 404
+    // y ConflictoEstadoException en 409, con el formato estándar de error.
     @PostMapping("/{id}/confirmar")
     public ResponseEntity<?> confirmar(@PathVariable Long id) {
-        try {
-            Reserva reserva = reservaService.confirmarReserva(id);
-            return ResponseEntity.ok(Map.of(
-                "id", reserva.getId(),
-                "ordenTrabajoId", reserva.getOrdenTrabajoId(),
-                "estado", reserva.getEstado(),
-                "fechaReserva", reserva.getFechaReserva().toString()
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        Reserva reserva = reservaService.confirmarReserva(id);
+        return ResponseEntity.ok(Map.of(
+            "id", reserva.getId(),
+            "ordenTrabajoId", reserva.getOrdenTrabajoId(),
+            "estado", reserva.getEstado(),
+            "fechaReserva", reserva.getFechaReserva().toString()
+        ));
     }
 
     @PostMapping("/{id}/liberar")
     public ResponseEntity<?> liberar(@PathVariable Long id) {
-        try {
-            Reserva reserva = reservaService.liberarReserva(id);
-            return ResponseEntity.ok(Map.of(
-                "id", reserva.getId(),
-                "ordenTrabajoId", reserva.getOrdenTrabajoId(),
-                "estado", reserva.getEstado()
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        Reserva reserva = reservaService.liberarReserva(id);
+        return ResponseEntity.ok(Map.of(
+            "id", reserva.getId(),
+            "ordenTrabajoId", reserva.getOrdenTrabajoId(),
+            "estado", reserva.getEstado()
+        ));
     }
 
 }
