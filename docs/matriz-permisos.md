@@ -72,3 +72,30 @@ Tres casos para cada endpoint protegido, con test automático y request en la co
 | GET /api/obras/internos/fases/{id}/contexto-ejecucion | 401 | 403 con OPERARIO | 200 con SISTEMA | OperacionControllerTest | docs/ms-obras-api.md |
 | POST /api/obras/internos/fases/{id}/avances | 401 | 403 con PLANIFICADOR | 201 con SISTEMA | FaseInternaControllerTest | docs/ms-obras-api.md |
 | PATCH /api/obras/internos/fases/{id}/riesgo | 401 | 403 con CAPATAZ | 200 con SISTEMA | FaseInternaControllerTest | docs/ms-obras-api.md |
+
+### ms-operaciones
+
+Los tres casos de cada endpoint están en `SeguridadEndpointsTest` (parametrizado: una fila por endpoint y tres chequeos por fila). Los endpoints que solo exigen estar autenticado no tienen caso 403.
+
+| Endpoint | Sin token (401) | Rol insuficiente (403) | Rol correcto (2xx) | Test |
+|---|---|---|---|---|
+| POST /api/operaciones/ordenes | 401 | 403 con CAPATAZ | 201 con PLANIFICADOR | SeguridadEndpointsTest |
+| GET /api/operaciones/ordenes | 401 | — (cualquier autenticado) | 200 con AUDITOR | SeguridadEndpointsTest |
+| GET /api/operaciones/ordenes/{id} | 401 | — (cualquier autenticado) | 200 con AUDITOR | SeguridadEndpointsTest |
+| PATCH /api/operaciones/ordenes/{id}/estado | 401 | 403 con AUDITOR | 200 con CAPATAZ | SeguridadEndpointsTest |
+| POST /api/operaciones/ordenes/{id}/habilitacion | 401 | 403 con CAPATAZ | 200 con PLANIFICADOR | SeguridadEndpointsTest |
+| GET /api/operaciones/ordenes/{id}/evaluaciones-climaticas | 401 | — (cualquier autenticado) | 200 con AUDITOR | SeguridadEndpointsTest |
+| PATCH /api/operaciones/ordenes/{id}/cancelacion | 401 | 403 con CAPATAZ | 200 con PLANIFICADOR | SeguridadEndpointsTest |
+| PATCH /api/operaciones/ordenes/{id}/reprogramacion | 401 | 403 con CAPATAZ | 200 con PLANIFICADOR | SeguridadEndpointsTest |
+| PATCH /api/operaciones/ordenes/{id}/resolucion-climatica | 401 | 403 con PLANIFICADOR | 200 con CAPATAZ | SeguridadEndpointsTest |
+| PATCH /api/operaciones/ordenes/{id}/inicio | 401 | 403 con PLANIFICADOR | 200 con CAPATAZ | SeguridadEndpointsTest |
+| PATCH /api/operaciones/ordenes/{id}/rechazo | 401 | 403 con PLANIFICADOR | 200 con CAPATAZ | SeguridadEndpointsTest |
+| POST /api/operaciones/ordenes/{id}/avances | 401 | 403 con PLANIFICADOR | 201 con CAPATAZ | SeguridadEndpointsTest |
+| PATCH /api/operaciones/ordenes/{id}/cierre | 401 | 403 con PLANIFICADOR | 200 con CAPATAZ | SeguridadEndpointsTest |
+| POST /api/operaciones/habilitaciones-diarias | 401 | 403 con CAPATAZ | 200 con PLANIFICADOR (o SISTEMA) | SeguridadEndpointsTest |
+| GET /api/operaciones/suspensiones | 401 | 403 con CAPATAZ | 200 con AUDITOR | SeguridadEndpointsTest |
+| GET /api/operaciones/fases-en-riesgo | 401 | 403 con CAPATAZ | 200 con AUDITOR | SeguridadEndpointsTest |
+| POST /api/operaciones/fases-en-riesgo/{faseId}/decisiones | 401 | 403 con AUDITOR | 200 con PLANIFICADOR | SeguridadEndpointsTest |
+| PUT /api/operaciones/configuracion/limite-suspensiones | 401 | 403 con PLANIFICADOR | 200 con ADMIN | SeguridadEndpointsTest |
+| GET /api/operaciones/umbrales-climaticos | 401 | 403 con OPERARIO | 200 con AUDITOR | SeguridadEndpointsTest |
+| PUT /api/operaciones/umbrales-climaticos/{tipoTrabajo} | 401 | 403 con PLANIFICADOR | 200 con ADMIN | SeguridadEndpointsTest |

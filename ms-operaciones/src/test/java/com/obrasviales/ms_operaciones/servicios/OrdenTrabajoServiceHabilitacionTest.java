@@ -217,6 +217,21 @@ class OrdenTrabajoServiceHabilitacionTest {
     }
 
     @Test
+    void rn09SinUmbralConfiguradoParaElTipoNoSeHabilitaNiSeReserva() {
+        OrdenTrabajo orden = ordenEn(EstadoOrden.PROGRAMADA);
+        when(obrasClient.obtenerContextoFase(FASE_ID)).thenReturn(contexto(true, "BASE"));
+        when(umbralRepository.findByTipoTrabajo(TipoTrabajo.BASE)).thenReturn(Optional.empty());
+
+        ReglaNegocioException ex = assertThrows(ReglaNegocioException.class,
+                () -> service.habilitarOrden(ORDEN_ID));
+
+        assertEquals("RN-09", ex.getCodigoRegla());
+        assertEquals(EstadoOrden.PROGRAMADA, orden.getEstado());
+        verify(recursosClient, never()).proponerYReservar(any(), any(), any(), any(), any());
+        verify(climaService, never()).obtenerCondicionesClimaticas(any(), any());
+    }
+
+    @Test
     void siObrasFallaLaOrdenNoCambiaDeEstado() {
         OrdenTrabajo orden = ordenEn(EstadoOrden.PROGRAMADA);
         when(obrasClient.obtenerContextoFase(FASE_ID)).thenThrow(new ServicioNoDisponibleException("No se pudo consultar a ms-obras."));
