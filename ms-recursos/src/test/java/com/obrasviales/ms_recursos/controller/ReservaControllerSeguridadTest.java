@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -96,13 +97,13 @@ class ReservaControllerSeguridadTest {
 
     @Test
     void confirmar_sinToken_devuelve401() throws Exception {
-        mockMvc.perform(post(URL + "/5/confirmar"))
+        mockMvc.perform(patch(URL + "/5/confirmacion"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void confirmar_conPlanificador_devuelve403() throws Exception {
-        mockMvc.perform(post(URL + "/5/confirmar")
+        mockMvc.perform(patch(URL + "/5/confirmacion")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_PLANIFICADOR"))))
                 .andExpect(status().isForbidden());
     }
@@ -111,7 +112,7 @@ class ReservaControllerSeguridadTest {
     void confirmar_conSistema_devuelve200() throws Exception {
         when(reservaService.confirmarReserva(5L)).thenReturn(reserva("CONFIRMADA"));
 
-        mockMvc.perform(post(URL + "/5/confirmar")
+        mockMvc.perform(patch(URL + "/5/confirmacion")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_SISTEMA"))))
                 .andExpect(status().isOk());
     }
@@ -120,13 +121,13 @@ class ReservaControllerSeguridadTest {
 
     @Test
     void liberar_sinToken_devuelve401() throws Exception {
-        mockMvc.perform(post(URL + "/5/liberar"))
+        mockMvc.perform(patch(URL + "/5/liberacion"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void liberar_conPlanificador_devuelve403() throws Exception {
-        mockMvc.perform(post(URL + "/5/liberar")
+        mockMvc.perform(patch(URL + "/5/liberacion")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_PLANIFICADOR"))))
                 .andExpect(status().isForbidden());
     }
@@ -135,7 +136,7 @@ class ReservaControllerSeguridadTest {
     void liberar_conSistema_devuelve200() throws Exception {
         when(reservaService.liberarReserva(5L)).thenReturn(reserva("LIBERADA"));
 
-        mockMvc.perform(post(URL + "/5/liberar")
+        mockMvc.perform(patch(URL + "/5/liberacion")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_SISTEMA"))))
                 .andExpect(status().isOk());
     }
