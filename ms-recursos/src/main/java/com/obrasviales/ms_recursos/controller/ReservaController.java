@@ -1,9 +1,11 @@
 package com.obrasviales.ms_recursos.controller;
 
+import com.obrasviales.commons.security.Roles;
 import com.obrasviales.ms_recursos.entity.Reserva;
 import com.obrasviales.ms_recursos.service.ReservaService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -11,6 +13,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/recursos/internos/reservas")
+@PreAuthorize("hasRole('" + Roles.SISTEMA + "')")
 public class ReservaController {
     
     private final ReservaService reservaService;
