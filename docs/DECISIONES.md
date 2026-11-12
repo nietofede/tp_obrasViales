@@ -151,3 +151,71 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 * **Contexto:** La ejecución de tests automatizados no debe depender de conectividad a internet ni requerir infraestructura pesada levantada (Keycloak, base de datos en contenedores) para validar la lógica del cliente y la caché.
 * **Decisión:** Se implementaron pruebas de integración utilizando `MockRestServiceServer` interceptando el `RestTemplate` interno de `OsrmProveedorRutas`, validando respuestas exitosas (`200 OK`) y el comportamiento de aciertos de caché sin realizar tráfico de red real.
 * **Consecuencias:** Ejecución determinística y reproducible de pruebas sin consumo de servicios externos.
+
+## Dependencia entre fases (ms-obras)
+
+**Problema:** RN-01 necesita saber si la fase anterior está completada y RN-02 necesita encontrar las fases que dependen de la que se reprograma.
+
+**Decisión:** cada fase guarda `fase_anterior_id`. RN-01 mira esa referencia y RN-02 recorre la cadena hacia adelante con `findByFaseAnteriorId`, corriendo inicio y fin la misma cantidad de días (mantiene la duración) y cortando si detecta un ciclo.
+
+**Alternativa descartada:** número de orden por tramo (la dependencia queda implícita y hay que renumerar al insertar una fase) y tabla muchos a muchos (permite fases en paralelo, que el TP no pide).
+
+**Consecuencias:** la cadena es lineal por tramo. Al crear una fase se valida que la anterior sea del mismo tramo y que no tenga ya una siguiente (409). Cubierto con tests.
+
+## Materiales por superficie (RN-03)
+
+**Problema:** el TP no define cuánto material lleva cada tipo de fase por m².
+
+**Decisión:** tabla `consumos_material` (tipo de fase, material, consumo por m², unidad) cargada por Flyway. El cálculo `superficie × consumo`, con `BigDecimal` y redondeo a 2 decimales, se hace al consultar.
+
+**Alternativa descartada:** calcular y guardar los materiales de cada fase (hay que recalcular si cambia la superficie o la tabla).
+
+**Consecuencias:** los consumos son valores de demo, calibrables sin tocar el código. Si cambian, cambia el resultado de las fases existentes.
+
+## Contrato entre ms-obras y ms-operaciones
+
+**Problema:** Operaciones necesita datos de la fase y poder iniciarla, pero ningún servicio puede leer las tablas de otro.
+
+**Decisión:** `GET /api/obras/fases/{id}/datos-operacion` (SISTEMA, PLANIFICADOR y CAPATAZ) devuelve tipo de trabajo, tramo, coordenadas (latitud y longitud por separado), materiales y si la fase previa está completa. Operaciones cambia estados llamando a `POST .../iniciar` y `POST .../reprogramar`. El armado de datos vive en `OperacionService`, separado de `FaseService`.
+
+**Alternativa descartada:** que Operaciones lea la base de Obras, o compartir los DTOs en `obras-commons`.
+
+**Consecuencias:** Obras sigue siendo dueña del estado y es quien valida RN-01. El DTO es propio de Obras y Operaciones define el suyo.
+
+## Errores de ms-obras con las excepciones de obras-commons
+
+**Problema:** teníamos una `ReglaNegocioException` local que el manejador global de commons no conoce (saldría como 500).
+
+**Decisión:** se eliminó y se usan las de commons: 404 (`RecursoNoEncontradoException`), 409 (`ConflictoEstadoException`, estado incompatible) y 422 (`ReglaNegocioException` con código: RN-01, RN-02, RN-03 y los propios FASE-FECHAS y FASE-TRAMO).
+
+**Alternativa descartada:** manejador de errores propio en ms-obras.
+
+**Consecuencias:** mismo formato RFC 7807 en los tres servicios.
+
+## DTOs y validación en el borde (ms-obras)
+
+**Problema:** las entidades tienen relaciones `LAZY` y exponerlas ataría la API al modelo de la base.
+
+**Decisión:** los controllers reciben y devuelven DTOs, con Bean Validation. Las coordenadas se validan con `@DecimalMin` y `@DecimalMax` y no con `Coordenada` de commons, porque esa clase lanza `IllegalArgumentException` y saldría 500 en vez de 400.
+
+**Alternativa descartada:** construir `Coordenada` en el service.
+
+**Consecuencias:** los rangos quedan escritos en dos lugares. Probado con latitud 91 (400).
+
+## Alcance de la API de ms-obras
+
+**Decisión:** crear obra, tramo y fase; consultar el cronograma de un tramo; iniciar y reprogramar fases; datos para Operaciones.
+
+**Alternativa descartada:** CRUD completo. Quedó fuera editar y borrar, editar consumos por API (se cambian por migración), paginación y filtros.
+
+**Consecuencias:** cumplir lo comprometido pesa más que agregar extras. Lo incluido tiene tests y seguridad por rol.
+
+## Migración V3 de ms-obras
+
+**Problema:** V1 y V2, ya en `main`, no coincidían con las entidades (faltaban el nombre del tramo y las fechas de las fases, dos columnas tenían otro nombre y no existía `consumos_material`) y con `ddl-auto: validate` el servicio no arrancaba.
+
+**Decisión:** V3 corrige y completa el esquema y carga los consumos de demo. No se editaron V1 y V2.
+
+**Alternativa descartada:** editar V1 otra vez (Flyway guarda su checksum y falla en las bases que ya lo aplicaron).
+
+**Consecuencias:** quien ya tenía la base debe recrearla (`docker compose down -v`).
