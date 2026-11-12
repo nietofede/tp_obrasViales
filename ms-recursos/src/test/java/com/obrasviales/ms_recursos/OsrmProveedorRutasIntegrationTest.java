@@ -24,6 +24,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
 
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.client.ExpectedCount.once;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -88,7 +89,7 @@ class OsrmProveedorRutasIntegrationTest {
 
         assertNotNull(resultado);
         assertEquals("OSRM", resultado.fuente());
-        assertEquals(10, resultado.duracionMinutos());
+        assertEquals(13, resultado.duracionMinutos());
         assertEquals(10.0, resultado.distanciaKm(), 0.01);
         mockServer.verify();
     }
@@ -129,6 +130,20 @@ class OsrmProveedorRutasIntegrationTest {
         assertEquals("ESTIMADA", resultado.fuente());
         assertTrue(resultado.duracionMinutos() > 0);
         assertTrue(resultado.distanciaKm() > 0);
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("Debe identificarse con un User-Agent propio ante el servidor de OSRM")
+    void testEnviaUserAgentPropio() {
+        mockServer.expect(requestTo(startsWith("https://router.project-osrm.org/route/v1/driving/")))
+                .andExpect(header("User-Agent", startsWith("GOVP-ms-recursos")))
+                .andRespond(withSuccess(
+                        "{\"code\":\"Ok\",\"routes\":[{\"duration\":60.0,\"distance\":1000.0}]}",
+                        MediaType.APPLICATION_JSON));
+
+        osrmProveedorRutas.calcularRuta(-31.4300, -64.2000, -31.4400, -64.2100);
+
         mockServer.verify();
     }
 }

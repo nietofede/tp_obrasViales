@@ -6,14 +6,38 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import java.time.Duration;
 
 @Component
 public class OsrmProveedorRutas implements ProveedorRutas {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private static final String USER_AGENT = "GOVP-ms-recursos/0.0.1 (TPI UTN FRC; Backend de Aplicaciones)";
 
-    @Value("${osrm.base-url:https://router.project-osrm.org}")
+    private final RestTemplate restTemplate;
+
+    // Claves del application.yml (app.osrm.*). Sin valor por defecto: si falta la clave, la aplicación no arranca.
+
+    @Value("${app.osrm.url}")
     private String osrmBaseUrl;
+
+    // Multiplica los tiempos de OSRM (el perfil "driving" no considera el tránsito) y el desvío de la estimación en línea recta.
+    @Value("${app.osrm.factor-correccion}")
+    private double factorCorreccion;
+
+    public OsrmProveedorRutas() {
+        // Timeouts: sin ellos, una respuesta colgada de OSRM bloquearsi el hilo indefinidamente.
+        SimpleClientHttpRequestFactory fabrica = new SimpleClientHttpRequestFactory();
+        fabrica.setConnectTimeout(Duration.ofSeconds(2));
+        fabrica.setReadTimeout(Duration.ofSeconds(5));
+        this.restTemplate = new RestTemplate(fabrica);
+        // El servidor de OSRM pide identificar al cliente.
+        this.restTemplate.getInterceptors().add((request, body, ejecucion) -> {
+            request.getHeaders().set(HttpHeaders.USER_AGENT, USER_AGENT);
+            return ejecucion.execute(request, body);
+        });
+    }
 
     public record OsrmResponse(String code, OsrmRoute[] routes) {}
     public record OsrmRoute(double duration, double distance) {}
@@ -32,7 +56,7 @@ public class OsrmProveedorRutas implements ProveedorRutas {
         if (response != null && "Ok".equals(response.code())
                 && response.routes() != null && response.routes().length > 0) {
             OsrmRoute route = response.routes()[0];
-            int minutos = (int) Math.ceil(route.duration() / 60.0);
+            int minutos = (int) Math.ceil(route.duration() / 60.0 * factorCorreccion);
             double km = route.distance() / 1000.0;
             return new ResultadoRuta(minutos, km, "OSRM");
         }
@@ -47,7 +71,7 @@ public class OsrmProveedorRutas implements ProveedorRutas {
         System.err.println("WARN [Resilience4j]: OSRM no disponible o limitado. Motivo: " 
                 + ex.getMessage() + ". Usando estimación en línea recta.");
 
-        double distanciaKm = calcularDistanciaHaversine(origenLat, origenLon, destinoLat, destinoLon);
+        double distanciaKm = calcularDistanciaHaversine(origenLat, origenLon, destinoLat, destinoLon) * factorCorreccion;
         int minutosEstimados = (int) Math.ceil((distanciaKm / 50.0) * 60.0);
 
         return new ResultadoRuta(Math.max(minutosEstimados, 5), distanciaKm, "ESTIMADA");
