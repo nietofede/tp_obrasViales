@@ -274,3 +274,15 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 **Alternativas descartadas:** compartir el DTO de Obras por commons (acopla los dos servicios: un cambio en Obras obligaría a recompilar Operaciones); dejar que un error de red salga como 500 (no informa la causa); validar RN-01 al crear la orden (el PDF la ubica al habilitar).
 
 **Consecuencias:** el `sistemaRestClient` de commons no define timeouts, así que una Obras colgada (no caída) podría dejar la llamada esperando; queda pendiente. Si Obras cambia la ruta o el contrato hay que actualizar el cliente y su test. La URL de Obras está en `app.servicios.obras-url` y apunta a localhost: al dockerizar se cambia por el nombre del servicio.
+
+## Habilitación de órdenes en ms-operaciones (Obras + Recursos + clima)
+
+- **Un solo flujo.** `POST /api/operaciones/ordenes/{id}/habilitacion` toma una orden PROGRAMADA (o RECURSOS_ASIGNADOS si un intento anterior quedó a medias) y hace: contexto de la fase en Obras (RN-01) → umbral del tipo de trabajo (RN-09) → reserva en Recursos (RN-04 a RN-08) → clima → HABILITADA o SUSPENDIDA.
+- **Orden de los pasos.** El umbral se busca antes de reservar para no reservar recursos de una orden que igual no se puede evaluar.
+- **Rechazo de Recursos (422) o Recursos caído (503):** la orden queda como estaba y el error se informa. Recursos es idempotente por orden, así que reintentar es seguro.
+- **Clima OK:** se confirma la reserva y la orden queda HABILITADA. Si la confirmación falla (reserva vencida, Recursos caído) se deshace todo y la orden queda como estaba.
+- **Clima malo:** SUSPENDIDA y se libera la reserva. Si Recursos no responde al liberar, no se frena la suspensión: la reserva provisoria vence sola por TTL (30 min).
+- **Clima caído:** PENDIENTE_CONFIRMACION_CLIMATICA y se conserva la reserva.
+- **Hora de salida del camión.** Recursos devuelve solo la hora; la orden guarda `fechaProgramada` + esa hora.
+- **Proceso diario.** `POST /api/operaciones/habilitaciones-diarias` con `{"fecha":"yyyy-MM-dd"}` (PLANIFICADOR o SISTEMA) habilita las órdenes PROGRAMADAS y RECURSOS_ASIGNADOS de la fecha. Cada orden va en su propia transacción: una que falla no frena a las demás. Devuelve por orden el estado resultante y el motivo si falló. Se puede reejecutar.
+- **Pendiente.** La transacción de `habilitarOrden` sigue abierta durante las llamadas HTTP; se revisa junto con la saga de suspensión.

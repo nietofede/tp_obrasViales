@@ -3,10 +3,12 @@ package com.obrasviales.ms_operaciones.servicios;
 import com.obrasviales.commons.exception.ConflictoEstadoException;
 import com.obrasviales.commons.exception.ReglaNegocioException;
 import com.obrasviales.ms_operaciones.clientes.ObrasClient;
+import com.obrasviales.ms_operaciones.clientes.RecursosClient;
 import com.obrasviales.ms_operaciones.dtos.CrearOrdenRequest;
 import com.obrasviales.ms_operaciones.dtos.ContextoFaseDTO;
 import com.obrasviales.ms_operaciones.dtos.DatosClimaDTO;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
+import com.obrasviales.ms_operaciones.dtos.ReservaDTO;
 import com.obrasviales.ms_operaciones.excepciones.OrdenNoEncontrada;
 import com.obrasviales.ms_operaciones.excepciones.TransicionInvalida;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
@@ -18,12 +20,14 @@ import com.obrasviales.ms_operaciones.repositorios.EvaluacionClimaticaRepository
 import com.obrasviales.ms_operaciones.repositorios.OrdenTrabajoRepository;
 import com.obrasviales.ms_operaciones.repositorios.UmbralClimaticoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
@@ -33,6 +37,7 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
     private final EvaluacionClimaticaRepository evaluacionClimaticaRepository;
     private final InterfazClimaService climaService;
     private final ObrasClient obrasClient;
+    private final RecursosClient recursosClient;
 
     @Override
     public OrdenTrabajoDTO crearOrden(CrearOrdenRequest request) {
@@ -96,14 +101,14 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
         OrdenTrabajo orden = ordenTrabajoRepository.findById(ordenId)
                 .orElseThrow(() -> new OrdenNoEncontrada(ordenId));
 
-        if (!orden.getEstado().puedeTransicionarHacia(EstadoOrden.EVALUACION_CLIMATICA)) {
+        // RN-11: solo se habilita una orden programada (o con recursos ya asignados por un intento anterior)
+        EstadoOrden estadoInicial = orden.getEstado();
+        if (estadoInicial != EstadoOrden.PROGRAMADA && estadoInicial != EstadoOrden.RECURSOS_ASIGNADOS) {
             throw new TransicionInvalida(
-                    "La orden debe tener recursos asignados antes de realizar la evaluación climática."
-            );
+                    "La orden debe estar PROGRAMADA o con recursos asignados para habilitarla (estado actual: " + estadoInicial + ").");
         }
 
-        // los datos los sacamo de msobras
-        // una falla del clima manda la orden a PENDIENTE_CONFIRMACION_CLIMATICA.
+        // los datos de la fase (tipo de trabajo, coordenadas, fase previa) los saca de ms-obras
         ContextoFaseDTO contexto = obrasClient.obtenerContextoFase(orden.getFaseId());
 
         // RN-01: fase no se habilita si la anterior no esta completa
@@ -116,29 +121,41 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
         Double latitud = contexto.latitud();
         Double longitud = contexto.longitud();
 
-        // buscamos los umbrales para el tipo de trabajo, si no hay bueno un error 
+        // buscamos los umbrales para el tipo de trabajo, si no hay bueno un error
         UmbralClimatico umbral = umbralClimaticoRepository.findByTipoTrabajo(tipoTrabajo)
                 .orElseThrow(() -> new ReglaNegocioException(
                         "No existen umbrales climáticos configurados para el tipo de trabajo: " + tipoTrabajo, "RN-09"));
 
+        // Recursos (RN-04 a RN-08): si no hay reserva vigente se pide una. Si Recursos rechaza (422) o no responde
+        // la excepcion corta aca y la orden queda como estaba. Recursos es idempotente por orden, repetir es seguro.
+        if (estadoInicial == EstadoOrden.PROGRAMADA || orden.getReservaId() == null) {
+            ReservaDTO reserva = recursosClient.proponerYReservar(
+                    orden.getId(), tipoTrabajo.name(), orden.getFechaProgramada(), latitud, longitud);
+            orden.setReservaId(reserva.id());
+            orden.setHoraSalidaCamion(reserva.horaSalidaCamion() != null
+                    ? orden.getFechaProgramada().atTime(reserva.horaSalidaCamion())
+                    : null);
+            orden.setEstado(EstadoOrden.RECURSOS_ASIGNADOS);
+        }
+
         orden.setEstado(EstadoOrden.EVALUACION_CLIMATICA);
 
+        boolean umbralesCumplidos;
         try {
-            // pedimos los datos 
+            // pedimos los datos
             DatosClimaDTO datosClima = climaService.obtenerCondicionesClimaticas(latitud, longitud);
 
             if (datosClima == null) {
                 throw new IllegalStateException("El servicio de clima devolvió datos vacíos.");
             }
 
-            // vemos si se cumplen los umbrales climaticos segun los resultados de la api 
+            // vemos si se cumplen los umbrales climaticos segun los resultados de la api
             boolean humedadOk = datosClima.getHumedadSuelo() <= umbral.getHumedadSueloMaxima();
             boolean lluviaOk = datosClima.getProbabilidadLluvia() <= umbral.getProbPrecipitacionMaxima();
             boolean temperaturaOk = datosClima.getTemperatura() >= umbral.getTemperaturaMinima();
+            umbralesCumplidos = humedadOk && lluviaOk && temperaturaOk;
 
-            boolean umbralesCumplidos = humedadOk && lluviaOk && temperaturaOk;
-
-            // registro de la evaluacion climatica 
+            // registro de la evaluacion climatica
             EvaluacionClimatica evaluacion = new EvaluacionClimatica();
             evaluacion.setOrdenTrabajo(orden);
             evaluacion.setHumedadSueloRegistrada(datosClima.getHumedadSuelo());
@@ -146,32 +163,50 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
             evaluacion.setTemperaturaRegistrada(datosClima.getTemperatura());
             evaluacion.setUmbralesCumplidos(umbralesCumplidos);
             evaluacionClimaticaRepository.save(evaluacion);
-
-            // transicion de estado segun los resultados 
-            if (umbralesCumplidos) {
-                orden.setEstado(EstadoOrden.HABILITADA);
-                orden.setContadorSuspensiones(0);
-            } else {
-                orden.setEstado(EstadoOrden.SUSPENDIDA);
-                
-                int suspensionesActuales = (orden.getContadorSuspensiones() != null) ? orden.getContadorSuspensiones() : 0;
-                int nuevasSuspensiones = suspensionesActuales + 1;
-                orden.setContadorSuspensiones(nuevasSuspensiones);
-
-                // si se pasa del limite de suspensiones queda en riesgo
-                int LIMITE_SUSPENSIONES_RIESGO = 3; 
-                if (nuevasSuspensiones >= LIMITE_SUSPENSIONES_RIESGO) {
-                    orden.setEstado(EstadoOrden.EN_RIESGO);
-                }
-            }
-
         } catch (Exception e) {
-            // Fallback: Ante fallo de red, timeout o circuito abierto, pasa a revisión manual
+            // Fallback: ante fallo de red, timeout o circuito abierto, pasa a revision manual.
+            // La reserva se mantiene (todavia puede confirmarse cuando se resuelva).
             orden.setEstado(EstadoOrden.PENDIENTE_CONFIRMACION_CLIMATICA);
+            return mapearADto(ordenTrabajoRepository.save(orden));
         }
 
-        OrdenTrabajo actualizada = ordenTrabajoRepository.save(orden);
-        return mapearADto(actualizada);
+        if (umbralesCumplidos) {
+            // Si Recursos no puede confirmar (reserva vencida, caido) la excepcion deshace todo y la orden
+            // queda como estaba; al reintentar se vuelve a reservar.
+            recursosClient.confirmar(orden.getReservaId());
+            orden.setEstado(EstadoOrden.HABILITADA);
+            orden.setContadorSuspensiones(0);
+        } else {
+            orden.setEstado(EstadoOrden.SUSPENDIDA);
+            liberarReserva(orden);
+
+            int suspensionesActuales = (orden.getContadorSuspensiones() != null) ? orden.getContadorSuspensiones() : 0;
+            int nuevasSuspensiones = suspensionesActuales + 1;
+            orden.setContadorSuspensiones(nuevasSuspensiones);
+
+            // si se pasa del limite de suspensiones queda en riesgo
+            int LIMITE_SUSPENSIONES_RIESGO = 3;
+            if (nuevasSuspensiones >= LIMITE_SUSPENSIONES_RIESGO) {
+                orden.setEstado(EstadoOrden.EN_RIESGO);
+            }
+        }
+
+        return mapearADto(ordenTrabajoRepository.save(orden));
+    }
+
+    // Al suspender se libera la reserva. Si Recursos no responde no se frena la suspension: la reserva provisoria
+    // vence sola por TTL (30 min).
+    private void liberarReserva(OrdenTrabajo orden) {
+        if (orden.getReservaId() != null) {
+            try {
+                recursosClient.liberar(orden.getReservaId());
+            } catch (RuntimeException e) {
+                log.warn("No se pudo liberar la reserva {} de la orden {}; vence por TTL: {}",
+                        orden.getReservaId(), orden.getId(), e.getMessage());
+            }
+        }
+        orden.setReservaId(null);
+        orden.setHoraSalidaCamion(null);
     }
 
     // obras manda el tipo de trabajo como texto, si pasa algo da error y no se habilita orden
