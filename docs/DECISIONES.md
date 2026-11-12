@@ -118,3 +118,36 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 **Alternativas descartadas:** `StripPrefix=2` en cada ruta (los controladores se mapearían sin el prefijo y la ruta del servicio sería distinta de la que ve el cliente; es razonamiento, no se probó).
 
 **Consecuencias:** el Swagger de cada servicio muestra las mismas rutas que usa el cliente. Verificado: el servicio respondió con `instance: /api/obras/x`. Si el equipo prefiere `StripPrefix`, hay que decidirlo antes del paso 8.
+
+## Integración con Proveedor Externo de Rutas (OSRM)
+* **Contexto:** El microservicio necesita calcular distancias y duraciones estimadas de traslado entre depósitos, cuadrillas y obras viales para planificar las reservas.
+* **Decisión:** Se implementó una abstracción mediante la interfaz `ProveedorRutas` y su implementación concreta `OsrmProveedorRutas`, consumiendo la API pública de Project OSRM (`/route/v1/driving/...`) mediante `RestTemplate`.
+* **Consecuencias:** 
+  * Se desacopla la lógica de negocio de la API concreta de mapas, permitiendo migrar a otro proveedor (Google Maps, Mapbox, etc.) sin modificar la capa de servicios.
+  * Se introduce una dependencia de red externa que requiere mecanismos de tolerancia a fallos.
+
+---
+
+## Estrategia de Caché Local en Memoria (`@Cacheable`)
+* **Contexto:** Las consultas de cálculo de rutas entre coordenadas idénticas son recurrentes; consultar una API externa en cada petición genera latencia innecesaria y consumo de cuota de red.
+* **Decisión:** Se anotó el método `calcularRuta` con `@Cacheable(value = "rutas", key = "{#origenLat, #origenLon, #destinoLat, #destinoLon}")`, respaldado por `ConcurrentMapCacheManager`.
+* **Consecuencias:**
+  * Respuestas en tiempo constante ($O(1)$) para trayectos previamente calculados.
+  * Reducción significativa de peticiones salientes hacia la API externa de OSRM.
+
+---
+
+## Tolerancia a Fallos y Resiliencia (Circuit Breaker y Rate Limiter)
+* **Contexto:** OSRM es un servicio de terceros sujeto a caídas de red, latencias elevadas o bloqueos por exceso de tráfico (*HTTP 429 / 500*). El fallo de este servicio externo no debe interrumpir la gestión de reservas en el sistema.
+* **Decisión:** Se integró **Resilience4j** configurando dos patrones coordinados sobre el cliente de rutas:
+  * **Rate Limiter (`osrmLimiter`):** Limita el caudal de peticiones salientes por ventana de tiempo para respetar los límites de uso del proveedor externo.
+  * **Circuit Breaker (`osrmBreaker`):** Monitorea la tasa de errores y abre el circuito ante fallos repetidos para evitar degradar los hilos de ejecución del microservicio.
+  * **Fallback (`fallbackCalcularRuta`):** Ante cualquier excepción o apertura del circuito, se calcula la distancia geodésica en línea recta mediante la **fórmula de Haversine** y se proyecta el tiempo de traslado asumiendo una velocidad promedio de `50 km/h` (con un piso mínimo de 5 minutos). El resultado se etiqueta explícitamente con `fuente: "ESTIMADA"`.
+* **Consecuencias:** El microservicio garantiza alta disponibilidad funcional mediante *degradación elegante*, evitando propagar errores `500` hacia `ms-operaciones` o los usuarios finales.
+
+---
+
+## Estrategia de Pruebas de Integración Desacopladas
+* **Contexto:** La ejecución de tests automatizados no debe depender de conectividad a internet ni requerir infraestructura pesada levantada (Keycloak, base de datos en contenedores) para validar la lógica del cliente y la caché.
+* **Decisión:** Se implementaron pruebas de integración utilizando `MockRestServiceServer` interceptando el `RestTemplate` interno de `OsrmProveedorRutas`, validando respuestas exitosas (`200 OK`) y el comportamiento de aciertos de caché sin realizar tráfico de red real.
+* **Consecuencias:** Ejecución determinística y reproducible de pruebas sin consumo de servicios externos.
