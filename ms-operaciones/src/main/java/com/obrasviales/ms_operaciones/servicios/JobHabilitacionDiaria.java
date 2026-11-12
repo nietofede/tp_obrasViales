@@ -13,6 +13,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
+import org.springframework.http.MediaType;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -67,7 +69,11 @@ public class JobHabilitacionDiaria {
                 .orElseThrow(() -> new IllegalStateException("Orden no encontrada: " + ordenId));
 
         // 1. Consultar datos del tramo/fase en ms-obras usando sistemaRestClient (token SISTEMA)
-        DatosTramoFase datosObra = obtenerDatosObra(ordenDto.getTramoId(), ordenDto.getFaseId());
+        DatosTramoFase datosObra = obtenerDatosObra(ordenDto.getFaseId());
+        if (!datosObra.faseAnteriorCompletada()) {
+            log.warn("Orden ID {}: la fase anterior no está completa (RN-01). Queda PROGRAMADA.", ordenId);
+            return;
+        }
 
         // 2. Reservar recursos en ms-recursos usando sistemaRestClient
         Long reservaId = reservarRecursos(ordenDto, datosObra);
@@ -120,62 +126,65 @@ public class JobHabilitacionDiaria {
             log.info("Orden ID {}: HABILITADA (Temp: {}°C, Lluvia: {}%, Humedad: {}).",
                     ordenId, clima.getTemperatura(), clima.getProbabilidadLluvia(), humedadNormalizada);
         } else {
-            ordenEntidad.setContadorSuspensiones(ordenEntidad.getContadorSuspensiones() + 1);
-            ordenTrabajoRepository.save(ordenEntidad);
             otService.cambiarEstado(ordenId, EstadoOrden.SUSPENDIDA);
+
+            OrdenTrabajo actual = ordenTrabajoRepository.findById(ordenId)
+            .orElseThrow(() -> new IllegalStateException("Orden no encontrada: " + ordenId));
+            
+            actual.setContadorSuspensiones(actual.getContadorSuspensiones() + 1);
+            ordenTrabajoRepository.save(actual);
             log.info("Orden ID {}: SUSPENDIDA por clima adverso (Temp: {}°C, Lluvia: {}%, Humedad: {}).",
                     ordenId, clima.getTemperatura(), clima.getProbabilidadLluvia(), humedadNormalizada);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private DatosTramoFase obtenerDatosObra(Long tramoId, Long faseId) {
-        try {
-            Map<String, Object> tramo = sistemaRestClient.get()
-                    .uri(obrasUrl + "/api/tramos/" + tramoId)
-                    .retrieve()
-                    .body(Map.class);
+    private DatosTramoFase obtenerDatosObra(Long faseId) {
+        Map<String, Object> ctx = sistemaRestClient.get()
+                .uri(obrasUrl + "/api/obras/internos/fases/" + faseId + "/contexto-ejecucion")
+                .retrieve()
+                .body(Map.class);
 
-            Map<String, Object> fase = sistemaRestClient.get()
-                    .uri(obrasUrl + "/api/fases/" + faseId)
-                    .retrieve()
-                    .body(Map.class);
-
-            Double lat = tramo != null && tramo.get("latitud") != null ? ((Number) tramo.get("latitud")).doubleValue() : -31.245;
-            Double lon = tramo != null && tramo.get("longitud") != null ? ((Number) tramo.get("longitud")).doubleValue() : -64.456;
-            TipoTrabajo tipo = fase != null && fase.get("tipoFase") != null
-                    ? TipoTrabajo.valueOf(fase.get("tipoFase").toString())
-                    : TipoTrabajo.BASE;
-
-            return new DatosTramoFase(lat, lon, tipo);
-        } catch (Exception e) {
-            log.warn("No se pudo contactar ms-obras ({}). Usando coordenadas demo del Tramo 1 (-31.245, -64.456, BASE).", e.getMessage());
-            return new DatosTramoFase(-31.245, -64.456, TipoTrabajo.BASE);
+        if (ctx == null) {
+            throw new IllegalStateException("ms-obras devolvió una respuesta vacía para la fase " + faseId);
         }
+
+        return new DatosTramoFase(((Number) ctx.get("latitud")).doubleValue(),
+                ((Number) ctx.get("longitud")).doubleValue(),
+                TipoTrabajo.valueOf(ctx.get("tipoTrabajo").toString()),
+                Boolean.TRUE.equals(ctx.get("faseAnteriorCompletada")));
     }
 
     @SuppressWarnings("unchecked")
     private Long reservarRecursos(OrdenTrabajoDTO orden, DatosTramoFase datosObra) {
-        try {
-            Map<String, Object> body = Map.of(
-                    "ordenTrabajoId", orden.getId(),
-                    "tramoId", orden.getTramoId(),
-                    "tipoTrabajo", datosObra.tipoTrabajo().name(),
-                    "fecha", orden.getFechaProgramada().toString()
+        Map<String, Object> body = Map.of(
+                "ordenTrabajoId", orden.getId(),
+                "tipoTrabajo", datosObra.tipoTrabajo().name(),
+                "fecha", orden.getFechaProgramada().toString(),
+                "tramoLat", datosObra.latitud(),
+                "tramoLon", datosObra.longitud()
             );
 
+        try {
             Map<String, Object> resp = sistemaRestClient.post()
-                    .uri(recursosUrl + "/api/reservas")
-                    .body(body)
-                    .retrieve()
-                    .body(Map.class);
+                            .uri(recursosUrl + "/api/recursos/internos/reservas")
+                            .body(body)
+                            .retrieve()
+                            .body(Map.class);
+            
 
-            return resp != null && resp.get("id") != null ? ((Number) resp.get("id")).longValue() : 1L;
-        } catch (Exception e) {
-            log.warn("No se pudo contactar ms-recursos ({}). Simulando ID de reserva 1 para continuar flujo operativo.", e.getMessage());
-            return 1L;
+            if (resp == null || resp.get("id") == null) {
+                throw new IllegalStateException("ms-recursos respondio sin id de reserva para la orden" + orden.getId());
+            }
+            return ((Number) resp.get("id")).longValue();     
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode().value() == 422) {
+                log.warn("Orden ID {}: Recursos rechazó la reserva: {}", orden.getId(), e.getResponseBodyAsString());
+                return null;
+            }
+            throw e;
         }
     }
 
-    private record DatosTramoFase(Double latitud, Double longitud, TipoTrabajo tipoTrabajo) {}
+    private record DatosTramoFase(Double latitud, Double longitud, TipoTrabajo tipoTrabajo, boolean faseAnteriorCompletada) {}
 }
