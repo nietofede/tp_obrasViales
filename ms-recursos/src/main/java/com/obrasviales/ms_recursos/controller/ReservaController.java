@@ -51,12 +51,12 @@ public class ReservaController {
 
     // Sin try/catch: el handler global de commons convierte RecursoNoEncontradoException en 404
     // y ConflictoEstadoException en 409, con el formato estándar de error.
-    @PostMapping("/{id}/confirmar")
+    @PatchMapping("/{id}/confirmacion")
     public ResponseEntity<ReservaResponse> confirmar(@PathVariable Long id) {
         return ResponseEntity.ok(ReservaResponse.desde(reservaService.confirmarReserva(id)));
     }
 
-    @PostMapping("/{id}/liberar")
+    @PatchMapping("/{id}/liberacion")
     public ResponseEntity<ReservaResponse> liberar(@PathVariable Long id) {
         return ResponseEntity.ok(ReservaResponse.desde(reservaService.liberarReserva(id)));
     }

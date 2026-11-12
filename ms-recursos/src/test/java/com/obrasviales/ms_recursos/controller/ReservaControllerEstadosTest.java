@@ -16,7 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 // Los errores de estado salen con el formato estandar de commons: 404 si la reserva no existe y 409 si el estado no lo permite.
@@ -40,7 +40,7 @@ class ReservaControllerEstadosTest {
         when(reservaService.confirmarReserva(9999L))
                 .thenThrow(new RecursoNoEncontradoException("Reserva no encontrada: 9999"));
 
-        mockMvc.perform(post(URL + "/9999/confirmar")
+        mockMvc.perform(patch(URL + "/9999/confirmacion")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_SISTEMA"))))
                 .andExpect(status().isNotFound());
     }
@@ -50,7 +50,7 @@ class ReservaControllerEstadosTest {
         when(reservaService.confirmarReserva(5L))
                 .thenThrow(new ConflictoEstadoException("No se puede confirmar una reserva en estado LIBERADA"));
 
-        mockMvc.perform(post(URL + "/5/confirmar")
+        mockMvc.perform(patch(URL + "/5/confirmacion")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_SISTEMA"))))
                 .andExpect(status().isConflict());
     }
@@ -60,7 +60,7 @@ class ReservaControllerEstadosTest {
         when(reservaService.liberarReserva(9999L))
                 .thenThrow(new RecursoNoEncontradoException("Reserva no encontrada: 9999"));
 
-        mockMvc.perform(post(URL + "/9999/liberar")
+        mockMvc.perform(patch(URL + "/9999/liberacion")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_SISTEMA"))))
                 .andExpect(status().isNotFound());
     }
