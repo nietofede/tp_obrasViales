@@ -91,7 +91,7 @@ public class SuspensionService {
     }
 
     // Si Recursos no responde no se frena la suspension: la reserva provisoria vence sola por TTL (30 min).
-    private void liberarReserva(OrdenTrabajo orden) {
+    public void liberarReserva(OrdenTrabajo orden) {
         if (orden.getReservaId() != null) {
             try {
                 recursosClient.liberar(orden.getReservaId());

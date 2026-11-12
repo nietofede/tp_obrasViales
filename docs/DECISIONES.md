@@ -324,3 +324,9 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - **Persistencia** (migración V5): tabla `cierres_orden` (una por orden, restricción única) y `cierre_consumos` (una fila por material).
 - **Fuera de alcance:** cerrar no libera la reserva en Recursos ni completa la fase en Obras. La fase se completa sola cuando el avance llega al 100 %.
 
+## Cancelación, reprogramación de órdenes y consulta de umbrales
+
+- **Cancelación** (`PATCH /api/operaciones/ordenes/{id}/cancelacion`, PLANIFICADOR): pasa la orden a CANCELADA y libera su reserva en Recursos (si la liberación falla no se frena: la reserva vence por TTL). Solo desde los estados que la máquina de estados permite (PROGRAMADA, RECURSOS_ASIGNADOS, SUSPENDIDA); el resto da 422 `RN-11`.
+- **Orden que dejó a su fase en riesgo:** no se cancela por acá (409). La decisión del PLANIFICADOR se toma en `POST /fases-en-riesgo/{faseId}/decisiones`, que es el que reinicia el conteo de la fase.
+- **Reprogramación** (`PATCH /ordenes/{id}/reprogramacion`, PLANIFICADOR, con `fecha`): mueve de fecha una orden PROGRAMADA, es decir sin recursos, para reintentar su reserva otro día. La fecha no puede ser anterior a hoy. No toca la fase en Obras: solo cambia la fecha de la orden.
+- **Umbrales** (`GET /api/operaciones/umbrales-climaticos`): lista los umbrales de todos los tipos de trabajo, para ADMIN, PLANIFICADOR, CAPATAZ y AUDITOR.

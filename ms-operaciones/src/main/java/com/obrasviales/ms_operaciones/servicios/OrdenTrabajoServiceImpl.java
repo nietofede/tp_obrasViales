@@ -18,6 +18,7 @@ import com.obrasviales.ms_operaciones.modelo.OrdenTrabajo;
 import com.obrasviales.ms_operaciones.modelo.TipoTrabajo;
 import com.obrasviales.ms_operaciones.modelo.UmbralClimatico;
 import com.obrasviales.ms_operaciones.repositorios.EvaluacionClimaticaRepository;
+import com.obrasviales.ms_operaciones.repositorios.FaseEnRiesgoRepository;
 import com.obrasviales.ms_operaciones.repositorios.OrdenTrabajoRepository;
 import com.obrasviales.ms_operaciones.repositorios.UmbralClimaticoRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
     private final ObrasClient obrasClient;
     private final RecursosClient recursosClient;
     private final SuspensionService suspensionService;
+    private final FaseEnRiesgoRepository faseEnRiesgoRepository;
 
     @Override
     public OrdenTrabajoDTO crearOrden(CrearOrdenRequest request) {
@@ -210,5 +212,43 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
                 .orElseThrow(() -> new OrdenNoEncontrada(ordenId));
         
         return evaluacionClimaticaRepository.obtenerHistorialPorOrden(orden.getId());
+    }
+
+    // Cancela una orden y libera su reserva de recursos. Solo desde los estados que la maquina de estados permite (RN-11).
+    // Si la orden es la que dejo a su fase en riesgo, la decision se toma en fases-en-riesgo/{faseId}/decisiones.
+    @Override
+    @Transactional
+    public OrdenTrabajoDTO cancelarOrden(Long id) {
+        OrdenTrabajo orden = ordenTrabajoRepository.findById(id)
+                .orElseThrow(() -> new OrdenNoEncontrada(id));
+
+        if (!orden.getEstado().puedeTransicionarHacia(EstadoOrden.CANCELADA)) {
+            throw new TransicionInvalida(
+                    String.format("Transición no permitida desde %s hacia CANCELADA para la orden ID: %d", orden.getEstado(), id));
+        }
+        if (orden.getEstado() == EstadoOrden.SUSPENDIDA && faseEnRiesgoRepository.existsByFaseIdAndResueltaFalse(orden.getFaseId())) {
+            throw new ConflictoEstadoException("La fase " + orden.getFaseId()
+                    + " está en riesgo: la decisión se toma en POST /api/operaciones/fases-en-riesgo/" + orden.getFaseId() + "/decisiones.");
+        }
+
+        suspensionService.liberarReserva(orden);
+        orden.setEstado(EstadoOrden.CANCELADA);
+        return mapearADto(ordenTrabajoRepository.save(orden));
+    }
+
+    // Mueve de fecha una orden que todavia no tiene recursos (PROGRAMADA), para reintentar su reserva otro dia.
+    @Override
+    @Transactional
+    public OrdenTrabajoDTO reprogramarOrden(Long id, LocalDate nuevaFecha) {
+        OrdenTrabajo orden = ordenTrabajoRepository.findById(id)
+                .orElseThrow(() -> new OrdenNoEncontrada(id));
+
+        if (orden.getEstado() != EstadoOrden.PROGRAMADA) {
+            throw new TransicionInvalida("Solo se puede mover de fecha una orden PROGRAMADA, sin recursos reservados (estado actual: "
+                    + orden.getEstado() + ").");
+        }
+
+        orden.setFechaProgramada(nuevaFecha);
+        return mapearADto(ordenTrabajoRepository.save(orden));
     }
 }

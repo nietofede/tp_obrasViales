@@ -3,6 +3,7 @@ import com.obrasviales.ms_operaciones.dtos.EvaluacionClimaticaResponseDTO;
 import com.obrasviales.commons.security.Roles; // <--- Importamos los roles del commons de tu amigo
 import com.obrasviales.ms_operaciones.dtos.CrearOrdenRequest;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
+import com.obrasviales.ms_operaciones.dtos.ReprogramacionOrdenRequest;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
 import com.obrasviales.ms_operaciones.servicios.OTServiceInterfaz;
 import com.obrasviales.ms_operaciones.modelo.EvaluacionClimatica;
@@ -84,5 +85,20 @@ public class OTController {
                 .map(EvaluacionClimaticaResponseDTO::desde)
                 .toList();
         return ResponseEntity.ok(historial);
+    }
+
+    @PatchMapping("/{id}/cancelacion")
+    @PreAuthorize("hasRole('" + Roles.PLANIFICADOR + "')")
+    @Operation(summary = "Cancelar una orden y liberar sus reservas (PLANIFICADOR)")
+    public ResponseEntity<OrdenTrabajoDTO> cancelar(@PathVariable Long id) {
+        return ResponseEntity.ok(otService.cancelarOrden(id));
+    }
+
+    @PatchMapping("/{id}/reprogramacion")
+    @PreAuthorize("hasRole('" + Roles.PLANIFICADOR + "')")
+    @Operation(summary = "Mover de fecha una orden PROGRAMADA sin recursos, para reintentar su reserva (PLANIFICADOR)")
+    public ResponseEntity<OrdenTrabajoDTO> reprogramar(@PathVariable Long id,
+                                                       @Valid @RequestBody ReprogramacionOrdenRequest request) {
+        return ResponseEntity.ok(otService.reprogramarOrden(id, request.fecha()));
     }
 }

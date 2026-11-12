@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 // lo separe por las dudas, es para la RN 09 de que solo el admin configura los umbrales 
 @RestController
 @RequestMapping("/api/operaciones/umbrales-climaticos")
@@ -31,5 +33,12 @@ public class UmbralClimaticoController {
         
         UmbralClimatico actualizado = umbralService.guardarOActualizarUmbral(tipoTrabajo, request);
         return ResponseEntity.ok(actualizado);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('" + Roles.ADMIN + "', '" + Roles.PLANIFICADOR + "', '" + Roles.CAPATAZ + "', '" + Roles.AUDITOR + "')")
+    @Operation(summary = "Consultar los umbrales climáticos vigentes de todos los tipos de trabajo")
+    public ResponseEntity<List<UmbralClimatico>> listarUmbrales() {
+        return ResponseEntity.ok(umbralService.listarUmbrales());
     }
 }
