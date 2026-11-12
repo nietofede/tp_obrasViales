@@ -11,6 +11,7 @@ import com.obrasviales.ms_obras.domain.Tramo;
 import com.obrasviales.ms_obras.dto.FaseResponse;
 import com.obrasviales.ms_obras.service.CronogramaService;
 import com.obrasviales.ms_obras.service.FaseService;
+import com.obrasviales.ms_obras.service.ObraService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -55,6 +56,9 @@ class TramoControllerTest {
     @MockitoBean
     private JwtDecoder jwtDecoder;
 
+    @MockitoBean
+    private ObraService obraService;
+
     private Fase faseCreada() {
         Tramo tramo = new Tramo();
         tramo.setId(10L);
@@ -73,7 +77,7 @@ class TramoControllerTest {
 
     private FaseResponse respuesta(Long id, TipoFase tipo) {
         return new FaseResponse(id, 10L, tipo, EstadoFase.PENDIENTE,
-                LocalDate.of(2026, 12, 6), LocalDate.of(2026, 12, 9), null);
+                LocalDate.of(2026, 12, 6), LocalDate.of(2026, 12, 9), null, 0);
     }
 
     // ---------- Crear fase ----------

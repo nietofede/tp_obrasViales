@@ -13,7 +13,8 @@ public record FaseResponse(
         EstadoFase estado,
         LocalDate fechaInicioPlanificada,
         LocalDate fechaFinPlanificada,
-        Long faseAnteriorId) {
+        Long faseAnteriorId,
+        Integer avance) {
 
     public static FaseResponse desde(Fase fase) {
         return new FaseResponse(
@@ -23,6 +24,7 @@ public record FaseResponse(
                 fase.getEstado(),
                 fase.getFechaInicioPlanificada(),
                 fase.getFechaFinPlanificada(),
-                fase.getFaseAnterior() != null ? fase.getFaseAnterior().getId() : null);
+                fase.getFaseAnterior() != null ? fase.getFaseAnterior().getId() : null,
+                fase.getAvancePorcentaje());
     }
 }

@@ -10,15 +10,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/obras/fases")
+@RequestMapping("/api/obras/internos/fases")
 @RequiredArgsConstructor
 public class OperacionController {
 
     private final OperacionService operacionService;
 
-    @GetMapping("/{id}/datos-operacion")
-    @PreAuthorize("hasAnyRole('SISTEMA', 'PLANIFICADOR', 'CAPATAZ')")
-    public DatosOperacionResponse datosOperacion(@PathVariable Long id) {
+    @GetMapping("/{id}/contexto-ejecucion")
+    @PreAuthorize("hasRole('SISTEMA')")
+    public DatosOperacionResponse contextoEjecucion(@PathVariable Long id) {
         return operacionService.obtenerDatosOperacion(id);
     }
 }

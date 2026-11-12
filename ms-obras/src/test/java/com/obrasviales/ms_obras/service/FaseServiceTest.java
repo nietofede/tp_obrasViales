@@ -101,8 +101,7 @@ class FaseServiceTest {
         when(faseRepository.findById(2L)).thenReturn(Optional.of(fase));
 
         assertThatThrownBy(() -> faseService.iniciarFase(2L))
-                .isInstanceOfSatisfying(ReglaNegocioException.class,
-                        ex -> assertThat(ex.getCodigoRegla()).isEqualTo("RN-01"))
+                .isInstanceOf(ConflictoEstadoException.class)
                 .hasMessageContaining("anterior no está completada");
 
         verify(faseRepository, never()).save(any(Fase.class));

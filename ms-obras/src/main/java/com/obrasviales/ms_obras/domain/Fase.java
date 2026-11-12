@@ -37,4 +37,7 @@ public class Fase {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "fase_anterior_id")
     private Fase faseAnterior;
+
+    @Column(name = "avance_porcentaje", nullable = false)
+    private Integer avancePorcentaje = 0;
 }

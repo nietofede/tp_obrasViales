@@ -1,6 +1,7 @@
 package com.obrasviales.ms_obras.controller;
 
 import com.obrasviales.commons.exception.GlobalExceptionHandler;
+import com.obrasviales.commons.exception.ConflictoEstadoException;
 import com.obrasviales.commons.exception.ReglaNegocioException;
 import com.obrasviales.commons.security.BaseResourceServerConfig;
 import com.obrasviales.ms_obras.domain.EstadoFase;
@@ -22,6 +23,7 @@ import java.time.LocalDate;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -80,14 +82,13 @@ class FaseControllerTest {
 
     // RN-01 incumplida: el manejador de commons responde 422 con el código de la regla
     @Test
-    void iniciarQueIncumpleRn01Devuelve422ConCodigoDeRegla() throws Exception {
+    void iniciarQueIncumpleRn01Devuelve409() throws Exception {
         when(faseService.iniciarFase(1L)).thenThrow(
-                new ReglaNegocioException("la fase anterior no está completada", "RN-01"));
+                new ConflictoEstadoException("RN-01: la fase anterior no esta completada"));
 
         mockMvc.perform(post("/api/obras/fases/1/iniciar")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_CAPATAZ"))))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.codigoRegla").value("RN-01"));
+                .andExpect(status().isConflict());
     }
 
     // ---------- Reprogramar fase ----------
@@ -95,7 +96,7 @@ class FaseControllerTest {
     // SEG-01: CAPATAZ no puede reprogramar, responde 403
     @Test
     void reprogramarConRolInsuficienteDevuelve403() throws Exception {
-        mockMvc.perform(post("/api/obras/fases/1/reprogramar")
+        mockMvc.perform(patch("/api/obras/fases/1/programacion")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_CAPATAZ")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nuevaFechaInicio\":\"2026-12-13\"}"))
@@ -108,7 +109,7 @@ class FaseControllerTest {
         when(faseService.reprogramarFase(eq(1L), eq(LocalDate.of(2026, 12, 13))))
                 .thenReturn(faseEnCurso());
 
-        mockMvc.perform(post("/api/obras/fases/1/reprogramar")
+        mockMvc.perform(patch("/api/obras/fases/1/programacion")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_PLANIFICADOR")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nuevaFechaInicio\":\"2026-12-13\"}"))
@@ -119,7 +120,7 @@ class FaseControllerTest {
     // Bean Validation: sin la fecha, responde 400 indicando qué campo falló
     @Test
     void reprogramarSinFechaDevuelve400() throws Exception {
-        mockMvc.perform(post("/api/obras/fases/1/reprogramar")
+        mockMvc.perform(patch("/api/obras/fases/1/programacion")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_PLANIFICADOR")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))

@@ -56,14 +56,14 @@ class OperacionControllerTest {
     // SEG-01: sin token, el servicio responde 401
     @Test
     void datosOperacionSinTokenDevuelve401() throws Exception {
-        mockMvc.perform(get("/api/obras/fases/1/datos-operacion"))
+        mockMvc.perform(get("/api/obras/internos/fases/1/contexto-ejecucion"))
                 .andExpect(status().isUnauthorized());
     }
 
     // SEG-01: con un rol que no corresponde (OPERARIO), responde 403
     @Test
     void datosOperacionConRolInsuficienteDevuelve403() throws Exception {
-        mockMvc.perform(get("/api/obras/fases/1/datos-operacion")
+        mockMvc.perform(get("/api/obras/internos/fases/1/contexto-ejecucion")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_OPERARIO"))))
                 .andExpect(status().isForbidden());
     }
@@ -73,7 +73,7 @@ class OperacionControllerTest {
     void datosOperacionConSistemaDevuelve200ConLosDatos() throws Exception {
         when(operacionService.obtenerDatosOperacion(1L)).thenReturn(datosDeEjemplo());
 
-        mockMvc.perform(get("/api/obras/fases/1/datos-operacion")
+        mockMvc.perform(get("/api/obras/internos/fases/1/contexto-ejecucion")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_SISTEMA"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.faseId").value(1))
@@ -92,7 +92,7 @@ class OperacionControllerTest {
         when(operacionService.obtenerDatosOperacion(99L))
                 .thenThrow(new RecursoNoEncontradoException("No existe la fase con id 99"));
 
-        mockMvc.perform(get("/api/obras/fases/99/datos-operacion")
+        mockMvc.perform(get("/api/obras/internos/fases/99/contexto-ejecucion")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_SISTEMA"))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.detail").value("No existe la fase con id 99"));
