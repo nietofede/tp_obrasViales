@@ -17,10 +17,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-// Proceso diario: habilita todas las ordenes de una fecha. Va en una clase aparte y SIN @Transactional a proposito:
-// cada orden se habilita en su propia transaccion (la de habilitarOrden), asi una que falle no deshace a las otras.
-// Es reejecutable: toma las PROGRAMADAS y las que quedaron a medias en RECURSOS_ASIGNADOS, y Recursos es
-// idempotente por orden.
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -40,7 +37,7 @@ public class HabilitacionDiariaService {
                 OrdenTrabajoDTO resultado = ordenService.habilitarOrden(orden.getId());
                 resultados.add(new ResultadoHabilitacionDTO(orden.getId(), resultado.getEstado(), null));
             } catch (RuntimeException e) {
-                // la orden quedo como estaba (la transaccion se deshizo)
+                // la orden queda como estaba 
                 log.warn("No se pudo habilitar la orden {}: {}", orden.getId(), e.getMessage());
                 resultados.add(new ResultadoHabilitacionDTO(orden.getId(), orden.getEstado(), motivoDe(e)));
             }

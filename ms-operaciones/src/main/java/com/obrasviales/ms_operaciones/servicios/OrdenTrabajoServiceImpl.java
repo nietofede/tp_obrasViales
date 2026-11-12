@@ -101,7 +101,7 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
         OrdenTrabajo orden = ordenTrabajoRepository.findById(ordenId)
                 .orElseThrow(() -> new OrdenNoEncontrada(ordenId));
 
-        // RN-11: solo se habilita una orden programada (o con recursos ya asignados por un intento anterior)
+        //solo se habilita una orden programada (o con recursos ya asignados por un intento anterior)
         EstadoOrden estadoInicial = orden.getEstado();
         if (estadoInicial != EstadoOrden.PROGRAMADA && estadoInicial != EstadoOrden.RECURSOS_ASIGNADOS) {
             throw new TransicionInvalida(
@@ -111,7 +111,7 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
         // los datos de la fase (tipo de trabajo, coordenadas, fase previa) los saca de ms-obras
         ContextoFaseDTO contexto = obrasClient.obtenerContextoFase(orden.getFaseId());
 
-        // RN-01: fase no se habilita si la anterior no esta completa
+        // fase no se habilita si la anterior no esta completa
         if (!contexto.faseAnteriorCompletada()) {
             throw new ConflictoEstadoException(
                     "RN-01: la fase previa de la fase " + orden.getFaseId() + " no está completa; no se puede habilitar la orden.");
@@ -121,13 +121,13 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
         Double latitud = contexto.latitud();
         Double longitud = contexto.longitud();
 
-        // buscamos los umbrales para el tipo de trabajo, si no hay bueno un error
+        // buscamos los umbrales para el tipo de trabajo, si no hay da error
         UmbralClimatico umbral = umbralClimaticoRepository.findByTipoTrabajo(tipoTrabajo)
                 .orElseThrow(() -> new ReglaNegocioException(
                         "No existen umbrales climáticos configurados para el tipo de trabajo: " + tipoTrabajo, "RN-09"));
 
-        // Recursos (RN-04 a RN-08): si no hay reserva vigente se pide una. Si Recursos rechaza (422) o no responde
-        // la excepcion corta aca y la orden queda como estaba. Recursos es idempotente por orden, repetir es seguro.
+        // si no hay reserva vigente se pide una. Si Recursos rechaza  o no responde
+        // la excepcion corta aca y la orden queda como estaba
         if (estadoInicial == EstadoOrden.PROGRAMADA || orden.getReservaId() == null) {
             ReservaDTO reserva = recursosClient.proponerYReservar(
                     orden.getId(), tipoTrabajo.name(), orden.getFechaProgramada(), latitud, longitud);
@@ -194,8 +194,8 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
         return mapearADto(ordenTrabajoRepository.save(orden));
     }
 
-    // Al suspender se libera la reserva. Si Recursos no responde no se frena la suspension: la reserva provisoria
-    // vence sola por TTL (30 min).
+    // Al suspender se libera la reserva. Si Recursos no responde no se frena la suspension, la reserva provisoria
+    // vence sola (30 min).
     private void liberarReserva(OrdenTrabajo orden) {
         if (orden.getReservaId() != null) {
             try {
