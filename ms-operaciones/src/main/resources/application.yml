@@ -26,6 +26,9 @@ app:
   open-meteo:
     url: https://api.open-meteo.com/v1/forecast
     ventana-ejecucion-horas: 6
+  servicios:
+    obras-url: http://localhost:8082
+    recursos-url: http://localhost:8083
 
 obrasviales:
   sistema-client:
