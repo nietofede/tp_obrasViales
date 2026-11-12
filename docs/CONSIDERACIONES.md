@@ -14,7 +14,7 @@ este proyecto usa **Spring Boot 4.1.2, Spring Framework 7 y Java 25**
 
 | Módulo | Puerto | Qué hace |
 |---|---|---|
-| `api-gateway` | 8081 | Único punto de entrada (Spring Cloud Gateway MVC). Valida el JWT y debe generar el correlation-id |
+| `api-gateway` | 8081 | Único punto de entrada (Spring Cloud Gateway MVC). Valida el JWT y genera el correlation-id |
 | `ms-obras` | 8082 | Obras, tramos (con coordenadas), fases (relevamiento, base, sub-base, carpeta asfáltica o losa), materiales, cronograma. RN-01, 02, 03 |
 | `ms-recursos` | 8083 | Máquinas, operarios, certificaciones, mantenimiento, cuadrillas, plantas de mezcla. "Proponer y reservar" (reserva con TTL, idempotente) o rechazo motivado. Integra OSRM. RN-04 a 08 |
 | `ms-operaciones` | 8084 | Órdenes de trabajo diarias y su máquina de estados, evaluación climática (es el único que habla con Open-Meteo), historial de suspensiones, orquestador de la saga. RN-09 a 12 |
@@ -38,7 +38,7 @@ Estados de una orden: `PROGRAMADA → RECURSOS_ASIGNADOS → EVALUACION_CLIMATIC
 
 **Convenciones:** validar entradas con Bean Validation; errores en formato estándar vía el handler global de commons; OpenAPI/Swagger (springdoc) en cada servicio; un test por regla de negocio (normal, límite y rechazo); una rama por tarea, un commit por paso, PR a `main` revisado por otra persona (no se pushea directo a `main`).
 
-**Estado:** terminados la base de datos por servicio, los usuarios del realm, los secretos fuera del código, las versiones, `obras-commons` y Flyway + springdoc. Sigue la seguridad del gateway.
+**Estado:** terminados la base de datos por servicio, los usuarios del realm, los secretos fuera del código, las versiones, `obras-commons` , Flyway + springdoc y la seguridad del gateway. Sigue ms-obras (paso 8).
 
 ---
 
@@ -88,11 +88,11 @@ Estados de una orden: `PROGRAMADA → RECURSOS_ASIGNADOS → EVALUACION_CLIMATIC
 
 ### 3.4 Seguridad
 
-- **Toda ruta exige JWT, salvo `/actuator/**`** **[P]**. Si agregás un endpoint público (por ejemplo Swagger), hay que abrirlo en la configuración base de commons, no en cada servicio.
+- **Toda ruta exige JWT, salvo `/actuator/**` y Swagger (`/v3/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html`) en los servicios, y `/actuator/health/**` en el gateway** **[P]**. Si agregás un endpoint público, hay que abrirlo en la configuración base de commons (servicios) o en la `SecurityConfig` del gateway, no en cada controlador.
 - **`@PreAuthorize("hasRole('ADMIN')")`** va con el nombre del rol **sin** el prefijo `ROLE_`: el conversor de commons lo agrega solo **[P]**. Usá las constantes de `Roles` en vez de escribir los nombres a mano.
 - **Los roles se leen de `realm_access.roles` del token** **[P]**. Un rol cargado en otro lugar del token (por ejemplo `resource_access`) no se ve.
 - **Códigos de respuesta:** sin token → 401 con el cuerpo **vacío**; rol insuficiente → 403 en formato `ProblemDetail` **[P]**. Probá siempre los tres casos por endpoint: sin token (401), rol insuficiente (403) y rol correcto.
-- **Swagger UI y `/v3/api-docs` dan 401 sin token** **[P]** (con token dan 200). No es un error de springdoc: es la seguridad.
+- **Swagger UI y `/v3/api-docs` se abren sin token** **[P]**. En producción se apagan con `SPRINGDOC_API_DOCS_ENABLED=false` y `SPRINGDOC_SWAGGER_UI_ENABLED=false`; apagados, esas rutas responden 500 por el handler genérico (ver 3.5) **[P]**.
 - **Secretos:** nunca los pongas en el código ni en un `application.yml` con valor por defecto (`${VAR:valor}` deja el secreto en el historial de Git para siempre). Los valores demo (`<rol>123`, `sistema_secret_demo`) son públicos y solo valen para local.
 - **Keycloak:** el cliente `servicio-sistema` tiene habilitado el flujo de contraseña aunque es una cuenta de servicio, y `obras-public-client` es público con ese flujo. Es aceptable solo en local.
 
@@ -105,10 +105,12 @@ Estados de una orden: `PROGRAMADA → RECURSOS_ASIGNADOS → EVALUACION_CLIMATIC
 
 ### 3.6 Gateway
 
-- **Hoy las rutas no se aplican** (prefijo equivocado): cualquier pedido con token da 404 **[P]**. Es el próximo paso del plan.
-- **Hoy no genera correlation-id** **[P]**: lo genera cada servicio con el filtro de commons.
-- **`/actuator/health` del gateway da 401** **[P]**: todavía no tiene configuración de seguridad propia.
-- **Las URI de las rutas apuntan a `localhost:808x`**: cuando los servicios estén en Docker hay que cambiarlas por los nombres de servicio.
+- **Las rutas se aplican solo con `spring.cloud.gateway.server.webmvc.routes`** **[P]**. Si falta el nivel `server`, o si se usa `spring.cloud.gateway.routes`, Spring lo ignora sin avisar y todo da 404. Para saber si una ruta está aplicada, probá con el servicio apagado: una ruta aplicada da un error 5xx, no 404.
+- **El gateway genera un `X-Correlation-Id` nuevo por pedido e ignora el del cliente** **[P]**; lo reenvía y los servicios lo reutilizan. La respuesta lleva un solo header. Todavía no aparece en las líneas de log: falta un patrón con `%X{correlationId}` **[C]**.
+- **`/actuator/health` del gateway da 200 sin token** **[P]** (necesita `spring-boot-starter-actuator`). El resto exige JWT. El gateway solo autentica; los roles los revisa cada servicio.
+- **El gateway no depende de `obras-commons`**: tiene su propia `SecurityConfig` y su filtro, sin conversor de roles.
+- **Swagger no pasa por el gateway**: cada servicio publica el suyo en su puerto.
+- **Las URI de las rutas apuntan a `localhost:808x`** y el `issuer-uri` a `localhost:8080`: cuando todo esté en Docker hay que cambiar las URI por los nombres de servicio y revisar de dónde se leen las claves del token **[C]**.
 
 ### 3.7 Entre servicios y reglas del dominio
 
