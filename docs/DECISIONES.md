@@ -306,7 +306,7 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - **Inicio** (`PATCH /api/operaciones/ordenes/{id}/inicio`, CAPATAZ): HABILITADA pasa a EN_EJECUCION. No llama a Obras: ahí el primer avance es el que inicia la fase y vuelve a aplicar RN-01.
 - **Rechazo** (`PATCH /ordenes/{id}/rechazo`, CAPATAZ, con `motivo`): solo una orden HABILITADA. Se suspende con motivo RECHAZO y corre la misma saga que una suspensión por clima, con RN-12 incluida; el rechazo del capataz cuenta para el límite de la fase.
 - **Avances** (`POST /ordenes/{id}/avances`, CAPATAZ, con `porcentaje`): solo una orden EN_EJECUCION. Se reenvía a Obras. El porcentaje es el acumulado de la fase (1 a 100) y no puede retroceder; los rechazos de Obras (409 si la fase está en riesgo o completada, 422 `AVANCE`) se informan tal cual.
-- **Cierre:** pendiente (consumo real de materiales y horas de máquina).
+- **Cierre:** ver «Cierre de órdenes en ms-operaciones».
 
 ## Resolución climática (RN-10) en ms-operaciones
 
@@ -315,3 +315,12 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - **HABILITAR** confirma la reserva en Recursos y deja la orden HABILITADA. Si la reserva ya venció por TTL (30 min), Recursos responde 409 y la orden sigue pendiente; queda la opción de suspenderla, que reserva de nuevo al volver a habilitar la orden nueva.
 - **SUSPENDER** corre la saga de suspensión con motivo CLIMA (cuenta para RN-12), con el motivo del capataz o uno por defecto.
 - Solo se puede resolver una orden en PENDIENTE_CONFIRMACION_CLIMATICA (RN-11).
+
+## Cierre de órdenes en ms-operaciones
+
+- **Endpoint:** `PATCH /api/operaciones/ordenes/{id}/cierre` (solo CAPATAZ), con `horasMaquina` y `materiales` (lista de `material`, `cantidad`, `unidad`; puede ir vacía si no hubo consumo).
+- **Efecto:** una orden EN_EJECUCION pasa a COMPLETADA y queda registrado su cierre. Cualquier otro estado da 422 `RN-11`, así que una orden se cierra una sola vez.
+- **Forma del consumo:** el PDF solo dice «consumo real de materiales y horas de máquina» y no define los campos. Se eligió un total de horas de máquina por orden y una línea por material con la misma forma que usa Obras (`material`, `cantidad`, `unidad`), para poder compararlo con lo planificado.
+- **Persistencia** (migración V5): tabla `cierres_orden` (una por orden, restricción única) y `cierre_consumos` (una fila por material).
+- **Fuera de alcance:** cerrar no libera la reserva en Recursos ni completa la fase en Obras. La fase se completa sola cuando el avance llega al 100 %.
+

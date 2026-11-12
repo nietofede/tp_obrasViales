@@ -4,6 +4,9 @@ import com.obrasviales.commons.exception.ConflictoEstadoException;
 import com.obrasviales.ms_operaciones.clientes.ObrasClient;
 import com.obrasviales.ms_operaciones.clientes.RecursosClient;
 import com.obrasviales.ms_operaciones.dtos.AvanceOrdenResponse;
+import com.obrasviales.ms_operaciones.dtos.CierreOrdenRequest;
+import com.obrasviales.ms_operaciones.dtos.CierreOrdenRequest.MaterialConsumido;
+import com.obrasviales.ms_operaciones.dtos.CierreOrdenResponse;
 import com.obrasviales.ms_operaciones.dtos.FaseDTO;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
 import com.obrasviales.ms_operaciones.dtos.ResolucionClimaticaRequest;
@@ -13,14 +16,18 @@ import com.obrasviales.ms_operaciones.excepciones.TransicionInvalida;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
 import com.obrasviales.ms_operaciones.modelo.MotivoSuspension;
 import com.obrasviales.ms_operaciones.modelo.OrdenTrabajo;
+import com.obrasviales.ms_operaciones.modelo.CierreOrden;
+import com.obrasviales.ms_operaciones.repositorios.CierreOrdenRepository;
 import com.obrasviales.ms_operaciones.repositorios.OrdenTrabajoRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -45,6 +52,7 @@ class EjecucionServiceTest {
     @Mock private SuspensionService suspensionService;
     @Mock private ObrasClient obrasClient;
     @Mock private RecursosClient recursosClient;
+    @Mock private CierreOrdenRepository cierreOrdenRepository;
 
     @InjectMocks private EjecucionService service;
 
@@ -194,5 +202,45 @@ class EjecucionServiceTest {
 
         assertThrows(ConflictoEstadoException.class,
                 () -> service.resolverClima(ORDEN_ID, new ResolucionClimaticaRequest(Decision.HABILITAR, null)));
+    }
+
+    @Test
+    void cerrarGuardaElConsumoYDejaLaOrdenCompletada() {
+        ordenEn(EstadoOrden.EN_EJECUCION);
+        when(ordenRepository.save(any(OrdenTrabajo.class))).thenAnswer(inv -> inv.getArgument(0));
+        CierreOrdenRequest request = new CierreOrdenRequest(new BigDecimal("7.50"),
+                List.of(new MaterialConsumido("Grava", new BigDecimal("1480.5"), "m3")));
+
+        CierreOrdenResponse r = service.cerrar(ORDEN_ID, request);
+
+        assertEquals(EstadoOrden.COMPLETADA, r.estado());
+        assertEquals(new BigDecimal("7.50"), r.horasMaquina());
+        assertEquals(1, r.materiales().size());
+
+        ArgumentCaptor<CierreOrden> cierre = ArgumentCaptor.forClass(CierreOrden.class);
+        verify(cierreOrdenRepository).save(cierre.capture());
+        assertEquals(ORDEN_ID, cierre.getValue().getOrdenTrabajoId());
+        assertEquals("Grava", cierre.getValue().getConsumos().get(0).getMaterial());
+    }
+
+    @Test
+    void sePuedeCerrarSinConsumoDeMateriales() {
+        ordenEn(EstadoOrden.EN_EJECUCION);
+        when(ordenRepository.save(any(OrdenTrabajo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CierreOrdenResponse r = service.cerrar(ORDEN_ID, new CierreOrdenRequest(new BigDecimal("3"), List.of()));
+
+        assertEquals(EstadoOrden.COMPLETADA, r.estado());
+        assertEquals(0, r.materiales().size());
+    }
+
+    @Test
+    void soloSeCierraUnaOrdenEnEjecucion() {
+        ordenEn(EstadoOrden.HABILITADA);
+
+        assertThrows(TransicionInvalida.class,
+                () -> service.cerrar(ORDEN_ID, new CierreOrdenRequest(new BigDecimal("3"), List.of())));
+
+        verify(cierreOrdenRepository, never()).save(any());
     }
 }
