@@ -3,8 +3,11 @@ package com.obrasviales.ms_operaciones.controller;
 import com.obrasviales.commons.security.Roles;
 import com.obrasviales.ms_operaciones.dtos.AvanceOrdenRequest;
 import com.obrasviales.ms_operaciones.dtos.AvanceOrdenResponse;
+import com.obrasviales.ms_operaciones.dtos.CierreOrdenRequest;
+import com.obrasviales.ms_operaciones.dtos.CierreOrdenResponse;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
 import com.obrasviales.ms_operaciones.dtos.RechazoOrdenRequest;
+import com.obrasviales.ms_operaciones.dtos.ResolucionClimaticaRequest;
 import com.obrasviales.ms_operaciones.servicios.EjecucionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,10 +26,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/operaciones/ordenes")
 @RequiredArgsConstructor
-@Tag(name = "Ejecución de órdenes", description = "Inicio, rechazo y avances de una orden habilitada")
+@Tag(name = "Ejecución de órdenes", description = "Decisiones del capataz: resolución climática, inicio, rechazo y avances")
 public class EjecucionController {
 
     private final EjecucionService ejecucionService;
+
+    @PatchMapping("/{id}/resolucion-climatica")
+    @PreAuthorize("hasRole('" + Roles.CAPATAZ + "')")
+    @Operation(summary = "Resolver una orden PENDIENTE_CONFIRMACION_CLIMATICA: habilitarla o suspenderla (RN-10, CAPATAZ)")
+    public ResponseEntity<OrdenTrabajoDTO> resolverClima(@PathVariable Long id,
+                                                         @Valid @RequestBody ResolucionClimaticaRequest request) {
+        return ResponseEntity.ok(ejecucionService.resolverClima(id, request));
+    }
 
     @PatchMapping("/{id}/inicio")
     @PreAuthorize("hasRole('" + Roles.CAPATAZ + "')")
@@ -48,5 +59,12 @@ public class EjecucionController {
     public ResponseEntity<AvanceOrdenResponse> registrarAvance(@PathVariable Long id,
                                                                @Valid @RequestBody AvanceOrdenRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ejecucionService.registrarAvance(id, request.porcentaje()));
+    }
+
+    @PatchMapping("/{id}/cierre")
+    @PreAuthorize("hasRole('" + Roles.CAPATAZ + "')")
+    @Operation(summary = "Cerrar una orden EN_EJECUCION registrando las horas de máquina y el consumo real de materiales (CAPATAZ)")
+    public ResponseEntity<CierreOrdenResponse> cerrar(@PathVariable Long id, @Valid @RequestBody CierreOrdenRequest request) {
+        return ResponseEntity.ok(ejecucionService.cerrar(id, request));
     }
 }

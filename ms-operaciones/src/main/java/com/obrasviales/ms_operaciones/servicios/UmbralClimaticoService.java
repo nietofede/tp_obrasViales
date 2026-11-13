@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class UmbralClimaticoService {
@@ -32,5 +34,10 @@ public class UmbralClimaticoService {
     public UmbralClimatico obtenerUmbralPorTipo(TipoTrabajo tipoTrabajo) {
         return umbralRepository.findByTipoTrabajo(tipoTrabajo)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No hay umbrales configurados para el tipo de trabajo: " + tipoTrabajo));
+    }
+
+    @Transactional(readOnly = true)
+    public List<UmbralClimatico> listarUmbrales() {
+        return umbralRepository.findAll();
     }
 }
