@@ -24,6 +24,7 @@ public class OpenMeteoService implements InterfazClimaService {
     private final String url;
 
     // La URL sale de app.open-meteo.url, tiene timeout
+    @Autowired
     public OpenMeteoService(@Value("${app.open-meteo.url}") String url) {
         this(construirRestClient(), url);
     }
