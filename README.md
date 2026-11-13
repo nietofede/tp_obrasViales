@@ -121,6 +121,7 @@ Conviene usar `clean` al cambiar de rama: si no, Maven puede arrastrar archivos 
 
 ## Dónde está la documentación
 
+- [`docs/c2-contenedores.md`](docs/c2-contenedores.md): diagrama de contenedores de lo que levanta el compose, con quién se habla con quién y qué queda expuesto.
 - [`docs/DECISIONES.md`](docs/DECISIONES.md): la bitácora de decisiones, con las alternativas que evaluamos y sus consecuencias.
 - [`docs/matriz-permisos.md`](docs/matriz-permisos.md): qué rol puede hacer qué.
 - [`docs/CONSIDERACIONES.md`](docs/CONSIDERACIONES.md): guía para el equipo con lo que conviene saber antes de tocar cada área.
