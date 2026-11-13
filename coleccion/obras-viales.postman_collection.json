@@ -4,6 +4,18 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "description": "Orden: correr Auth, Setup, Seguridad, Flujo principal, Reglas y Fallas sobre `docker compose up -d --build` desde cero. Cada request documenta su resultado esperado. El flujo principal usa el seed (obra 1, fase 2, órdenes 1 a 3 de Operaciones). Las rutas pasan por el gateway (8081)."
   },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.collectionVariables.set(\"correlation_id\", pm.variables.replaceIn(\"{{$guid}}\"));",
+          "pm.request.headers.upsert({ key: \"X-Correlation-Id\", value: pm.collectionVariables.get(\"correlation_id\") });"
+        ]
+      }
+    }
+  ],
   "item": [
     {
       "name": "00-Auth",
@@ -1101,6 +1113,113 @@
           ]
         },
         {
+          "name": "RN-02 replanificación en cascada",
+          "description": "",
+          "item": [
+            {
+              "name": "Reprogramar fase 1: corre la fase 2 en cascada",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/fases/{{faseId1}}/programacion",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nuevaFechaInicio\": \"2027-04-01\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Usa las fases de Setup. Esperado: 200; la fase 1 empieza el 2027-04-01 y la fase 2, que depende de ella, se corre en cascada (verlo en el cronograma)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Cronograma tras la cascada",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/{{obraId}}/cronograma",
+                "description": "Esperado: 200; ambas fases con fechas de abril de 2027."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Reprogramar fase 2 antes del fin de la fase previa -> 422",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/fases/{{faseId2}}/programacion",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nuevaFechaInicio\": \"2027-03-01\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Esperado: 422 con código RN-02: la fase 2 no puede empezar antes de que termine la 1."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
           "name": "RN-03 materiales según superficie",
           "description": "",
           "item": [
@@ -1741,7 +1860,7 @@
                 }
               }
             },
-            "description": "ANTES: `docker compose stop ms-recursos`. Correr este request. Esperado: la orden no queda reservada ni habilitada; el resultado informa el motivo y el estado no cambia. DESPUÉS: `docker compose start ms-recursos`. (Código exacto de la respuesta: confirmar al correrlo.)"
+            "description": "ANTES: `docker compose stop ms-recursos`. Correr este request. Verificado: 200 con `estado: PROGRAMADA` y `motivo: No se pudo consultar a ms-recursos.`; la orden no queda reservada. DESPUÉS: `docker compose start ms-recursos`."
           },
           "event": [
             {
@@ -1789,7 +1908,7 @@
                 }
               }
             },
-            "description": "ANTES: `docker compose stop ms-obras`. Esperado: la orden conserva su estado (siObrasFallaLaOrdenNoCambiaDeEstado). DESPUÉS: `docker compose start ms-obras`."
+            "description": "ANTES: `docker compose stop ms-obras`. Verificado: 200 con `estado: PROGRAMADA` y `motivo: No se pudo consultar a ms-obras.`; la orden no cambia. DESPUÉS: `docker compose start ms-obras`."
           },
           "event": [
             {
@@ -1837,7 +1956,7 @@
                 }
               }
             },
-            "description": "ANTES: en docker-compose.yml, bajo ms-operaciones/environment agregar una URL de clima inválida (variable de Spring correspondiente a la propiedad que hoy es `url: https://api.open-meteo.com/v1/forecast` en application.yml) y `docker compose up -d ms-operaciones`. Esperado: la orden queda PENDIENTE_CONFIRMACION_CLIMATICA y conserva la reserva; el CAPATAZ decide con PATCH /resolucion-climatica. DESPUÉS: quitar la variable."
+            "description": "ANTES: en docker-compose.yml, bajo ms-operaciones/environment agregar `APP_OPEN_METEO_URL: http://clima-inexistente.invalid/v1/forecast` y correr `docker compose up -d ms-operaciones`. Verificado: tarda unos 7 s (3 reintentos) y responde 200 con `estado: PENDIENTE_CONFIRMACION_CLIMATICA`; la orden conserva su `reservaId`. El CAPATAZ resuelve con `PATCH /ordenes/{id}/resolucion-climatica` y `{\"decision\":\"HABILITAR\"}` (200, pasa a HABILITADA). DESPUÉS: quitar la variable y repetir `up -d ms-operaciones`."
           },
           "event": [
             {
@@ -1885,7 +2004,7 @@
                 }
               }
             },
-            "description": "ANTES: cortar la salida a internet de ms-recursos (o apuntar la URL de OSRM a un host inexistente). Esperado: 201 con fuenteRuta = ESTIMADA (distancia en línea recta). Usa una fecha libre (hoy + 6 días) para no chocar con las demás reservas; con internet funcionando devuelve fuenteRuta OSRM. Nota: ordenTrabajoId 9001 es ficticio; liberar luego la reserva."
+            "description": "ANTES: en docker-compose.yml, bajo ms-recursos/environment agregar `APP_OSRM_URL: http://osrm-inexistente.invalid` y correr `docker compose up -d ms-recursos`. Verificado: 201 con `fuenteRuta: ESTIMADA` (distancia en línea recta por el factor de corrección). Con OSRM sano, el mismo request da `fuenteRuta: OSRM`. DESPUÉS: quitar la variable y repetir `up -d ms-recursos`. Usa una fecha libre (hoy + 6 días) para no chocar con las demás reservas; con internet funcionando devuelve fuenteRuta OSRM. Nota: ordenTrabajoId 9001 es ficticio; liberar luego la reserva."
           },
           "event": [
             {
@@ -1968,6 +2087,10 @@
     },
     {
       "key": "reservaId",
+      "value": ""
+    },
+    {
+      "key": "correlation_id",
       "value": ""
     },
     {
