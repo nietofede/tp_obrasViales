@@ -1,0 +1,29 @@
+# Perfil "docker": solo se activa con SPRING_PROFILES_ACTIVE=docker (lo pone el compose).
+# Dentro de la red de Docker "localhost" es el propio contenedor, asi que cada servicio
+# se llama por su nombre. Las listas del yml NO se fusionan con las del application.yml:
+# se reemplazan enteras, por eso se repiten las tres rutas completas.
+spring:
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: ms-obras-route
+              uri: http://ms-obras:8082
+              predicates:
+                - Path=/api/obras/**
+            - id: ms-recursos-route
+              uri: http://ms-recursos:8083
+              predicates:
+                - Path=/api/recursos/**
+            - id: ms-operaciones-route
+              uri: http://ms-operaciones:8084
+              predicates:
+                - Path=/api/operaciones/**
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Las claves publicas se bajan por la red interna. El issuer-uri del application.yml
+          # (http://localhost:8080/...) queda solo para comprobar el claim "iss" del token.
+          jwk-set-uri: http://keycloak:8080/realms/obras-viales/protocol/openid-connect/certs
