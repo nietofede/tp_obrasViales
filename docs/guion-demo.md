@@ -92,10 +92,10 @@ Para mostrar RN-12: `ADMIN fija límite de suspensiones = 1` antes de suspender;
 
 Condición: la API de clima no responde y no hay caché reciente.
 
-1. Dejar el servicio de operaciones apuntando a una URL de clima inválida (variable de entorno en el compose; el paso exacto está en la descripción de `05-Fallas-y-Resiliencia > Habilitación sin Open-Meteo`) y reiniciar `ms-operaciones`.
+1. En `docker-compose.yml`, bajo `ms-operaciones` > `environment`, agregar `APP_OPEN_METEO_URL: http://clima-inexistente.invalid/v1/forecast` y correr `docker compose up -d ms-operaciones`.
 2. Habilitar una orden `PROGRAMADA`.
-3. Esperado: la orden queda `PENDIENTE_CONFIRMACION_CLIMATICA` y conserva su reserva. El CAPATAZ decide con `PATCH /ordenes/{id}/resolucion-climatica` (`HABILITAR` o `SUSPENDER`).
-4. Restaurar la variable.
+3. Esperado (verificado): tarda unos 7 segundos por los tres reintentos y responde 200 con la orden en `PENDIENTE_CONFIRMACION_CLIMATICA`, con su `reservaId` conservada. El CAPATAZ decide con `PATCH /ordenes/{id}/resolucion-climatica` (`HABILITAR` o `SUSPENDER`).
+4. Restaurar: quitar la variable y repetir `docker compose up -d ms-operaciones`.
 
 **[Rama 2]** La caché con TTL del último pronóstico cambia este escenario: sin dato reciente en caché es igual; con caché reciente la orden se habilita sola. Ensayarlo con la versión final.
 
@@ -106,6 +106,8 @@ Condición: un tramo cuya distancia supera la jornada o el viaje máximo.
 - **[Rama 2]** La orden 3 del seed (fase 3, tramo 2, lejano): habilitación diaria con la fecha de pasado mañana. Esperado: Recursos rechaza con 422 y `RN-07`; la orden sigue `PROGRAMADA` y la respuesta informa el motivo.
 - Hasta entonces: `04-Reglas-Negocio > RN-07 > Tramo lejano (Buenos Aires)`. Esperado: 422 con el motivo.
 
+Para mostrar OSRM caído: agregar `APP_OSRM_URL: http://osrm-inexistente.invalid` bajo `ms-recursos` > `environment`, `docker compose up -d ms-recursos` y repetir una reserva; devuelve 201 con `fuenteRuta: ESTIMADA`.
+
 Para RN-04 (operario sin certificación vigente) y RN-08, usar los requests que se agregan en la segunda pasada **[Rama 1]**.
 
 ### 3.8 Escenario 5: vencimiento de reservas (3 min)
@@ -114,7 +116,7 @@ Condición: reserva provisoria emitida y el orquestador cae antes de confirmar.
 
 1. `POST /api/recursos/internos/reservas` con SISTEMA (request `RN-05 > Reserva 1`).
 2. Detener Operaciones: `docker compose stop ms-operaciones`.
-3. Esperar el vencimiento. La reserva dura 30 minutos por defecto; para la demo, acortar el TTL con la variable correspondiente (a confirmar cuál) o usar una reserva ya vencida.
+3. El TTL es de 30 minutos y está fijo en el código (`ReservaService`): no hay variable para acortarlo. Para la demo, o se espera, o se adelanta `fecha_vencimiento_ttl` de la reserva en la base de Recursos con `psql`.
 4. Esperado: el job de Recursos pasa la reserva a `EXPIRADA` y la cuadrilla queda libre.
 5. `docker compose start ms-operaciones`.
 

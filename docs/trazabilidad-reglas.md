@@ -7,7 +7,7 @@ Estado: ✔ test y request en la colección · ≈ test, request parcial o pendi
 | Regla | Servicio | Test automático | Request en la colección | Resultado esperado | Estado |
 |---|---|---|---|---|---|
 | RN-01 Una fase no inicia sin la anterior completa | Obras (y Operaciones al habilitar) | `FaseControllerTest.iniciarQueIncumpleRn01Devuelve409`, `FaseServiceTest`, `FaseServiceAvanceTest`; `OrdenTrabajoServiceHabilitacionTest.rn01RechazaSiLaFasePreviaNoEstaCompletaYNoReserva` | 04-Reglas-Negocio > RN-01 | 409 | ✔ |
-| RN-02 Replanificación en cascada | Obras | `FaseServiceTest`, `FaseServiceAvanceTest`; `ObrasHttpClientTest.siObrasRechazaLaReprogramacionPorRn02SeReenviaConSuCodigo` | `PATCH /api/obras/fases/{id}/programacion` (a agregar) | 200 con las dependientes corridas; 422 `RN-02` si hay ciclo o fecha anterior | ≈ falta request |
+| RN-02 Replanificación en cascada | Obras | `FaseServiceTest`, `FaseServiceAvanceTest`; `ObrasHttpClientTest.siObrasRechazaLaReprogramacionPorRn02SeReenviaConSuCodigo` | 04-Reglas-Negocio > RN-02 (cascada y rechazo) | 200 con las dependientes corridas; 422 `RN-02` si la fecha es anterior al fin de la previa | ✔ |
 | RN-03 Materiales según la superficie | Obras | `MaterialServiceTest`, `FaseServiceAvanceTest`, `FaseControllerLecturaTest` | 04-Reglas-Negocio > RN-03 | 200 con cantidades proporcionales a 5000 m² | ✔ |
 | RN-04 Operario solo con certificación vigente | Recursos | `ReservaServiceReglasTest`: `rn04_sinCertificacionVigente_esRechazada`, `rn04_conCertificacionVigente_esElegible` | Pendiente: requiere altas de operarios y certificaciones (Rama 1) | 422 `RN-04` sin certificación vigente | ≈ segunda pasada |
 | RN-05 Sin solapamiento de operario ni máquina | Recursos | `ReservaServiceReglasTest`: `rn05_cuadrillaConReservaVigente_esRechazada`, `rn05_conVariasCuadrillas_pasaALaSiguienteLibre` | 04-Reglas-Negocio > RN-05 | 201 la primera reserva; 422 `RN-05` la segunda del mismo día | ✔ (cuadrilla; máquinas en la segunda pasada) |
@@ -21,6 +21,5 @@ Estado: ✔ test y request en la colección · ≈ test, request parcial o pendi
 
 ## Pendientes
 
-- RN-02: agregar el request de reprogramación de fase a la colección.
 - RN-04, RN-06 y RN-08: completar en la segunda pasada, cuando la Rama 1 incorpore altas de operarios, composición mínima y configuración de desplazamiento.
 - Los códigos esperados salen de los controllers y de las trazabilidades; falta corroborarlos corriendo la colección sobre el stack.
