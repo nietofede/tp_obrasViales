@@ -365,3 +365,11 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 **Alternativas:** un `docker-compose.docs.yml` que publique los puertos en `127.0.0.1` (descartada: el documento de compromisos declara que los microservicios no se exponen al exterior y ningún documento pide ver Swagger en el despliegue); publicar los puertos en el compose base (descartada por lo mismo).
 
 **Consecuencias:** por el gateway, `/api/<servicio>/v3/api-docs` no existe (hoy responde 500 por la limitación de errores de commons) y el gateway no tiene Swagger propio. Verificado: con el compose arriba, los puertos 8082 a 8084 no responden desde la máquina.
+
+## Errores de Spring MVC en el formato estándar
+
+**Decisión:** `GlobalExceptionHandler` extiende `ResponseEntityExceptionHandler`: la validación de DTO y el JSON ilegible son `@Override`, y `handleExceptionInternal` suma `type`, `title`, `timestamp` y `correlationId` a las excepciones de Spring MVC. El handler genérico ahora registra el error en el log.
+
+**Alternativas:** `spring.mvc.problemdetails.enabled` por servicio (descartada: sin `timestamp` ni `correlationId` y repetida en cada servicio) y borrar el handler genérico (descartada: dos formatos de error).
+
+**Consecuencias:** ruta inexistente da 404, método no permitido 405, JSON ilegible y enum inválido 400; antes todos daban 500. Verificado con los tests de los tres servicios y con pedidos reales contra el compose.
