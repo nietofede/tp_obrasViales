@@ -40,3 +40,8 @@ resilience4j:
         limit-for-period: 10
         limit-refresh-period: 1s
         timeout-duration: 500ms
+
+# correlation-id del pedido (lo pone el filtro de correlacion en el MDC) en cada linea de log
+logging:
+  pattern:
+    correlation: "[%X{correlationId:-}] "

@@ -48,3 +48,8 @@ obrasviales:
     token-url: http://localhost:8080/realms/obras-viales/protocol/openid-connect/token
     client-id: servicio-sistema
     client-secret: ${SERVICIO_SISTEMA_SECRET}
+
+# correlation-id del pedido (lo pone el filtro de correlacion en el MDC) en cada linea de log
+logging:
+  pattern:
+    correlation: "[%X{correlationId:-}] "
