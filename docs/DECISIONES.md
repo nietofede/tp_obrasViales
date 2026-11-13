@@ -366,6 +366,94 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 **Consecuencias:** por el gateway, `/api/<servicio>/v3/api-docs` no existe (hoy responde 500 por la limitación de errores de commons) y el gateway no tiene Swagger propio. Verificado: con el compose arriba, los puertos 8082 a 8084 no responden desde la máquina.
 
+## Errores de Spring MVC en el formato estándar
+
+**Decisión:** `GlobalExceptionHandler` extiende `ResponseEntityExceptionHandler`: la validación de DTO y el JSON ilegible son `@Override`, y `handleExceptionInternal` suma `type`, `title`, `timestamp` y `correlationId` a las excepciones de Spring MVC. El handler genérico ahora registra el error en el log.
+
+**Alternativas:** `spring.mvc.problemdetails.enabled` por servicio (descartada: sin `timestamp` ni `correlationId` y repetida en cada servicio) y borrar el handler genérico (descartada: dos formatos de error).
+
+**Consecuencias:** ruta inexistente da 404, método no permitido 405, JSON ilegible y enum inválido 400; antes todos daban 500. Verificado con los tests de los tres servicios y con pedidos reales contra el compose.
+
+## 401 y 403 del filtro de seguridad en el formato estándar
+
+**Decisión:** `BaseResourceServerConfig` (commons) conecta `ProblemDetailAuthenticationEntryPoint` y `ProblemDetailAccessDeniedHandler`, que responden `application/problem+json` con los mismos campos que el resto de la API (`type`, `title`, `status`, `detail`, `instance`, `timestamp` y, si existe, `correlationId`). El 401 conserva el header `WWW-Authenticate: Bearer`.
+
+**Alternativas:** dejar el cuerpo vacío (descartada: el cliente ve dos formatos de error según dónde falle el pedido) y resolverlo con `@ControllerAdvice` (descartada: el filtro de seguridad corre antes de Spring MVC, el advice no lo alcanza).
+
+**Consecuencias:** los tres servicios devuelven el mismo formato para 401, 403, 404, 405, 400, 409, 422 y 500. El gateway no depende de commons y su 401 sigue con cuerpo vacío. Verificado con `ProblemDetailSeguridadTest` y llamando directo a un servicio.
+
+## Estados de la reserva y por qué `confirmar` usa `noRollbackFor`
+
+**Decisión:** la reserva pasa de PROVISORIA a CONFIRMADA, LIBERADA o EXPIRADA, y de CONFIRMADA a LIBERADA; no hay otros caminos. `confirmar` y `liberar` son idempotentes (repetirlos devuelve la reserva sin error si ya está en el estado pedido). Confirmar una provisoria vencida la guarda como EXPIRADA y responde 409. Para que ese EXPIRADA se guarde, `confirmarReserva` lleva `@Transactional(noRollbackFor = ConflictoEstadoException.class)`: sin eso, lanzar la excepción revierte la transacción y el cambio se pierde.
+
+**Alternativas:** devolver un resultado en vez de lanzar la excepción (descartada: el handler global ya traduce `ConflictoEstadoException` a 409 y los controladores quedan sin `try/catch`) y no guardar EXPIRADA (descartada: el estado guardado mentiría hasta que corriera el job).
+
+**Consecuencias:** `proponerYReservar` solo devuelve la reserva existente de una orden si todavía bloquea recursos (CONFIRMADA, o PROVISORIA con TTL vigente); si está LIBERADA, EXPIRADA o vencida, vuelve a evaluar y reutiliza la fila (`orden_trabajo_id` es único). Evidencia: `ReservaServiceEstadosTest` (17 casos).
+
+## Expiración de reservas por TTL
+
+**Decisión:** `ExpiracionReservasJob` corre cada 60 s (`app.reservas.expiracion-ms`) y pasa a EXPIRADA las provisorias con TTL vencido. Una provisoria vencida ya no bloquea recursos aunque nadie la toque (la condición de RN-05 mira el TTL), así que el job solo mantiene coherente el estado guardado. Es idempotente y un fallo (por ejemplo, la base caída) se registra y no frena las corridas siguientes.
+
+**Alternativas:** expirar al consultar (descartada: una reserva que nadie consulta quedaría PROVISORIA para siempre) y una tarea del sistema operativo o de Operaciones (descartada: Recursos es dueño de sus reservas).
+
+**Consecuencias:** `@EnableScheduling` en `MsRecursosApplication`. Verificado corriendo: con el TTL de una reserva vencido a mano, la siguiente corrida la pasó a EXPIRADA y dejó de figurar en las asignaciones del operario; también con `ExpiracionReservasTest`. El TTL (30 min) y la hora de inicio de jornada (08:00) siguen fijos en el código.
+
+## Contrato de rechazo del motor de elegibilidad
+
+**Decisión:** un rechazo es una `ReglaNegocioException` (422) con `codigoRegla` y un mensaje que lista el motivo por cada cuadrilla y por la planta. Las reglas se revisan por cuadrilla en el orden RN-05, RN-06, RN-04 y RN-07, y RN-08 para la planta; `codigoRegla` es la regla más avanzada entre las cuadrillas rechazadas, o sea la que estuvo más cerca de aprobar. Un tipo de trabajo sin composición configurada se rechaza como RN-06. La respuesta exitosa (201) es un `record` (`ReservaResponse`) con la hora de llegada de la cuadrilla, la hora de salida del camión y la fuente de la ruta (OSRM o ESTIMADA).
+
+**Alternativas:** devolver 200 con un campo `rechazada` (descartada: Operaciones tendría que inspeccionar el cuerpo para distinguir el caso) y un `Map.of` en la respuesta (descartada: no admite nulos ni más de 10 pares).
+
+**Consecuencias:** Operaciones decide con el código HTTP y lee el motivo del cuerpo. Limitación conocida: con una cuadrilla rechazada por RN-05 y otra por RN-06, `codigoRegla` informa RN-06 y el detalle completo va en el mensaje.
+
+## Endpoints internos solo para SISTEMA y rutas del cuestionario
+
+**Decisión:** `POST /api/recursos/internos/reservas` y los `PATCH .../{id}/confirmacion` y `.../{id}/liberacion` llevan `@PreAuthorize("hasRole('SISTEMA')")` a nivel de clase; Operaciones los llama con el cliente HTTP de commons y el token de la cuenta de servicio, directo al servicio y sin pasar por el gateway. Las rutas de confirmar y liberar son `PATCH` con los nombres del cuestionario (antes eran `POST .../confirmar` y `.../liberar`). La consulta `GET /api/recursos/reservas/{id}` va en otro controlador porque también la leen PLANIFICADOR, CAPATAZ y AUDITOR.
+
+**Alternativas:** dejar los `POST` (descartada: se alejaban de lo comprometido) y un solo controlador con permisos por método (descartada: se pierde la garantía de que todo lo interno es solo de SISTEMA).
+
+**Consecuencias:** el consumidor tuvo que actualizar sus llamadas (`RecursosHttpClient` de Operaciones ya usa los `PATCH`). Endurecimiento opcional: que el gateway deniegue `/api/*/internos/**`.
+
+## Vocabulario de tipos de trabajo
+
+**Decisión:** los cinco códigos de `TipoFase` de Obras (`RELEVAMIENTO`, `BASE`, `SUBBASE`, `CARPETA_ASFALTICA`, `LOSA_HORMIGON`) son el vocabulario de los tres servicios. Recursos los usa en `composicion_minima_trabajo` (V2) y valida contra esa lista al modificar una composición. `PAVIMENTADORA` y `RODILLO_COMPACTADOR` son tipos de máquina, vocabulario interno de Recursos (`maquinas.tipo`, `certificaciones.tipo_maquina`, `tipo_maquina_requerida`), y no se mezclan con los tipos de trabajo.
+
+**Alternativas:** una categoría más gruesa (asfalto, hormigón, bacheo) con tabla de equivalencia (descartada: los documentos de la cátedra no la piden y suma una traducción entre servicios).
+
+**Consecuencias:** un tipo de trabajo nuevo hay que sumarlo en Obras, en el `Set` de `ConfiguracionService` y en los umbrales de Operaciones.
+
+## Catálogos y personal de Recursos: qué se valida al armar una cuadrilla
+
+**Decisión:** al crear o modificar una cuadrilla se valida lo que se puede decidir sin conocer el trabajo: (1) RN-04, cada tipo de máquina de la cuadrilla necesita al menos un operario con certificación vigente para ese tipo; (2) un operario o una máquina pertenece a una sola cuadrilla (409 si ya está en otra); (3) no se aceptan operarios inactivos ni máquinas fuera de servicio; (4) hace falta al menos un operario (422 RN-06). La composición mínima por tipo de trabajo (RN-06 completa) se evalúa al reservar, porque depende del trabajo. Quien sale de la lista en un `PUT` queda libre.
+
+**Alternativas:** exigir en el alta la composición mínima más exigente de todos los tipos (descartada: impediría armar cuadrillas chicas para relevamiento) y no validar nada hasta reservar (descartada: el cuestionario dice que `POST /cuadrillas` valida certificaciones y composición).
+
+**Consecuencias:** no hace falta migración: el esquema V1/V2 ya tenía todo. El alta de máquinas, operarios, certificaciones y plantas es del ADMIN; armar cuadrillas es del PLANIFICADOR (el ADMIN recibe 403); la lectura es de ADMIN, PLANIFICADOR, CAPATAZ y AUDITOR (el cuestionario lista los tres últimos: el ADMIN se suma para poder verificar lo que carga). `GET /operarios` informa certificaciones pero no la disponibilidad del día. El código de una máquina no se modifica. Evidencia: `CuadrillaServiceTest`, `CatalogoServiceTest` y la matriz `CatalogoControllerSeguridadTest`.
+
+## Check-in de ubicación y asignaciones del operario
+
+**Decisión:** `POST /api/recursos/cuadrillas/{id}/ubicaciones` actualiza la última ubicación y la fecha de check-in de la cuadrilla, y solo lo puede hacer el CAPATAZ de esa cuadrilla: se compara el `preferred_username` del token con el `keycloak_username` del operario, que tiene que ser CAPATAZ y estar en esa cuadrilla (si no, 403). `GET /api/recursos/operarios/me/asignaciones` toma el usuario del token (nunca de la URL) y devuelve las reservas vigentes de su cuadrilla, de la fecha pedida o de hoy en adelante.
+
+**Alternativas:** que cualquier CAPATAZ registre cualquier cuadrilla (descartada: un capataz podría mover la ubicación de otra cuadrilla y alterar RN-07) y recibir el id del operario por la URL (descartada: permitiría ver asignaciones ajenas).
+
+**Consecuencias:** el rol del token (CAPATAZ) y el rol operativo (`rol_operativo`) tienen que coincidir en los datos de demo (`capataz` es CAPATAZ de la Cuadrilla Alfa). Un usuario con rol OPERARIO que no figura en la tabla de operarios recibe 404 en sus asignaciones.
+
+## Configuración de desplazamiento y composición mínima editables
+
+**Decisión:** el ADMIN modifica `PUT /api/recursos/configuracion/desplazamiento` (viaje máximo, jornada, ventana de transporte de mezcla y margen del camión) y `PUT /api/recursos/tipos-trabajo/{tipo}/composicion-minima`; PLANIFICADOR y ADMIN consultan la configuración. Se rechaza un viaje máximo mayor que la jornada (422 RN-07) y pedir máquinas sin indicar su tipo (422 RN-06). Los valores viven en la base (tabla de una sola fila `id = 1`, sembrada por V2), no en el `application.yml`.
+
+**Alternativas:** dejarlos en el yml (descartada: cambiar un umbral exigiría reiniciar el servicio y el cuestionario pide que los defina el ADMIN).
+
+**Consecuencias:** el motor lee la configuración en cada evaluación, así que un cambio rige desde la siguiente reserva. Verificado corriendo: cambiar el viaje máximo y volver al valor original.
+
+## Swagger de Recursos y atribución de OSRM
+
+**Decisión:** la descripción de `OpenApiConfig` lista lo que el servicio expone de verdad e incluye la atribución exigida por la guía de la cátedra: los tiempos de viaje se calculan con OSRM con datos de © OpenStreetMap contributors bajo licencia ODbL. También se reemplazó el `System.err.println` del fallback de OSRM por un `log.warn`.
+
+**Alternativas:** dejar la atribución solo en el README (descartada: la guía pide que figure también en la documentación de la API).
+
+**Consecuencias:** Verificado: `/v3/api-docs` de Recursos lista 16 rutas y trae la atribución. Obras y Operaciones no consumen OSRM y no la necesitan.
+
 ## Escenario de demo del job diario (paso 11): datos de Obras y zona horaria
 
 - **Datos en Obras** (`ms-obras` V5): mueve las fases del tramo 1 a fechas relativas a hoy (fase 1 terminada ayer, fase 2 desde hoy) y agrega el tramo 2 lejano (Río Cuarto, unos 200 km de la cuadrilla Alfa) con la fase 3, BASE y sin fase anterior. En una base limpia quedan los ids 2 y 3 que espera `V4__seed_demo_orders.sql` de ms-operaciones. Las fechas se calculan con la hora de Argentina, igual que ese seed.
