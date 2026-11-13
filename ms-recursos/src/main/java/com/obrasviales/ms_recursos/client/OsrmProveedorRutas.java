@@ -1,5 +1,6 @@
 package com.obrasviales.ms_recursos.client;
 
+import com.obrasviales.commons.dto.Coordenada;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import org.slf4j.Logger;
@@ -51,10 +52,13 @@ public class OsrmProveedorRutas implements ProveedorRutas {
     @CircuitBreaker(name = "osrmBreaker", fallbackMethod = "fallbackCalcularRuta")
     @RateLimiter(name = "osrmLimiter", fallbackMethod = "fallbackCalcularRuta")
     public ResultadoRuta calcularRuta(double origenLat, double origenLon, double destinoLat, double destinoLon) {
-        String url = osrmBaseUrl + "/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false";
+        // Coordenada (obras-commons) valida los rangos y arma el par en el orden que espera OSRM: longitud,latitud
+        Coordenada origen = new Coordenada(origenLat, origenLon);
+        Coordenada destino = new Coordenada(destinoLat, destinoLon);
+        String url = osrmBaseUrl + "/route/v1/driving/{origen};{destino}?overview=false";
 
         OsrmResponse response = restTemplate.getForObject(
-                url, OsrmResponse.class, origenLon, origenLat, destinoLon, destinoLat
+                url, OsrmResponse.class, origen.toOsrmString(), destino.toOsrmString()
         );
 
         if (response != null && "Ok".equals(response.code())

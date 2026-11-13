@@ -121,11 +121,12 @@ Conviene usar `clean` al cambiar de rama: si no, Maven puede arrastrar archivos 
 
 ## Dónde está la documentación
 
+- [`docs/guia-de-estudio.md`](docs/guia-de-estudio.md): por dónde empezar. Explica el sistema completo (arquitectura, proceso central, reglas, integraciones, seguridad, datos y decisiones) con referencias a los archivos y preguntas para practicar la defensa.
 - [`docs/c2-contenedores.md`](docs/c2-contenedores.md): diagrama de contenedores de lo que levanta el compose, con quién se habla con quién y qué queda expuesto.
 - [`docs/DECISIONES.md`](docs/DECISIONES.md): la bitácora de decisiones, con las alternativas que evaluamos y sus consecuencias.
 - [`docs/matriz-permisos.md`](docs/matriz-permisos.md): qué rol puede hacer qué.
 - [`docs/CONSIDERACIONES.md`](docs/CONSIDERACIONES.md): guía para el equipo con lo que conviene saber antes de tocar cada área.
-- [`docs/trazabilidad-ms-obras.md`](docs/trazabilidad-ms-obras.md) y [`docs/trazabilidad-ms-operaciones.md`](docs/trazabilidad-ms-operaciones.md): de cada requisito, dónde se implementa y qué evidencia lo respalda (tests, requests).
+- [`docs/trazabilidad-ms-obras.md`](docs/trazabilidad-ms-obras.md), [`docs/trazabilidad-ms-recursos.md`](docs/trazabilidad-ms-recursos.md) y [`docs/trazabilidad-ms-operaciones.md`](docs/trazabilidad-ms-operaciones.md): de cada requisito, dónde se implementa y qué evidencia lo respalda (tests, requests).
 - [`docs/ms-obras-api.md`](docs/ms-obras-api.md): guía de la API de Obras.
 - [`docs/arquitectura.md`](docs/arquitectura.md): diagrama de contexto (C1), modelo de datos de las tres bases (ER) y secuencia de la habilitación diaria.
 - [`docs/matriz-requisitos.md`](docs/matriz-requisitos.md): requisito, implementación y evidencia de cada funcionalidad y escenario comprometido.

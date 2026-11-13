@@ -81,12 +81,12 @@ class OrdenTrabajoServiceHabilitacionTest {
     }
 
     private void climaBueno() {
-        when(climaService.obtenerCondicionesClimaticas(-31.245, -64.456)).thenReturn(
+        when(climaService.obtenerCondicionesClimaticas(eq(-31.245), eq(-64.456), any(LocalDate.class))).thenReturn(
                 DatosClimaDTO.builder().humedadSuelo(0.20).probabilidadLluvia(5.0).temperatura(18.0).build());
     }
 
     private void climaMalo() {
-        when(climaService.obtenerCondicionesClimaticas(-31.245, -64.456)).thenReturn(
+        when(climaService.obtenerCondicionesClimaticas(eq(-31.245), eq(-64.456), any(LocalDate.class))).thenReturn(
                 DatosClimaDTO.builder().humedadSuelo(0.20).probabilidadLluvia(90.0).temperatura(18.0).build());
     }
 
@@ -160,7 +160,7 @@ class OrdenTrabajoServiceHabilitacionTest {
 
         assertEquals("RN-07", ex.getCodigoRegla());
         assertEquals(EstadoOrden.PROGRAMADA, orden.getEstado());
-        verify(climaService, never()).obtenerCondicionesClimaticas(any(), any());
+        verify(climaService, never()).obtenerCondicionesClimaticas(any(), any(), any());
         verify(ordenRepository, never()).save(any());
     }
 
@@ -170,7 +170,7 @@ class OrdenTrabajoServiceHabilitacionTest {
         when(obrasClient.obtenerContextoFase(FASE_ID)).thenReturn(contexto(true, "BASE"));
         when(umbralRepository.findByTipoTrabajo(TipoTrabajo.BASE)).thenReturn(Optional.of(umbralBase()));
         when(recursosClient.proponerYReservar(any(), any(), any(), any(), any())).thenReturn(reserva("PROVISORIA"));
-        when(climaService.obtenerCondicionesClimaticas(-31.245, -64.456)).thenThrow(new RuntimeException("timeout"));
+        when(climaService.obtenerCondicionesClimaticas(eq(-31.245), eq(-64.456), any(LocalDate.class))).thenThrow(new RuntimeException("timeout"));
         when(ordenRepository.save(any(OrdenTrabajo.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertEquals(EstadoOrden.PENDIENTE_CONFIRMACION_CLIMATICA, service.habilitarOrden(ORDEN_ID).getEstado());
@@ -228,7 +228,7 @@ class OrdenTrabajoServiceHabilitacionTest {
         assertEquals("RN-09", ex.getCodigoRegla());
         assertEquals(EstadoOrden.PROGRAMADA, orden.getEstado());
         verify(recursosClient, never()).proponerYReservar(any(), any(), any(), any(), any());
-        verify(climaService, never()).obtenerCondicionesClimaticas(any(), any());
+        verify(climaService, never()).obtenerCondicionesClimaticas(any(), any(), any());
     }
 
     @Test

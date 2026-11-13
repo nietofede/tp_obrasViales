@@ -46,7 +46,7 @@ Las rutas son las del gateway (prefijo `/api/<servicio>`). Las carpetas citadas 
 | Manejador global de errores en formato estándar | `GlobalExceptionHandler` | tests de commons (Rama 1): 404, 405, JSON ilegible y 401/403 en formato estándar | ✔ |
 | Filtro de correlation-id | `CorrelationIdFilter` en commons y en el gateway; el patrón de log de los cuatro servicios incluye el id | `CorrelationIdEnLogsTests` (gateway) | ≈ el gateway ignora el `X-Correlation-Id` del cliente y genera el suyo; el id aparece en las líneas que cada servicio emite (por ejemplo, el rechazo de una orden en Operaciones), no en todos los logs de un mismo pedido |
 | Cliente HTTP con token de servicio | `SistemaRequestInterceptor`, `SistemaTokenService` (con timeout y reintento) y el `sistemaRestClient` | `SistemaTokenServiceTest`, `ObrasHttpClientTest`, `RecursosHttpClientTest` | ✔ |
-| Value Object `Coordenada` | `obras-commons/.../dto/Coordenada.java` | verificar si los servicios la usan; las requests validan los rangos con Bean Validation | ≈ |
+| Value Object `Coordenada` | `obras-commons/.../dto/Coordenada.java`, usada por `OsrmProveedorRutas` (Recursos, URL de OSRM en orden longitud,latitud) y `OpenMeteoService` (Operaciones, valida el tramo) | `CoordenadaTest`; las requests además validan los rangos con Bean Validation | ✔ |
 | Despliegue con Docker Compose | `docker-compose.yml`, un `Dockerfile` por módulo, healthchecks, `.env.example` | README, «Levantarlo desde cero» | ✔ |
 | Datos iniciales con Flyway | `V*.sql` de cada servicio; el seed de demo siembra tres órdenes con fechas relativas a hoy en hora de Argentina | `docs/arquitectura.md`, sección 2; colección: 03-Flujo-Principal | ✔ |
 | Colección ejecutable | `coleccion/` (Postman) | corrida con Newman sobre el stack desde cero: 111 requests y 125 aserciones en verde | ✔ falta la corrida final entre los tres |
@@ -60,6 +60,14 @@ Las rutas son las del gateway (prefijo `/api/<servicio>`). Las carpetas citadas 
 - **Nombres de carpetas de la colección:** se siguen los del cuestionario (`00-Auth` a `05-Fallas-y-Resiliencia`).
 - **Variable `correlation_id` en la colección:** el cuestionario prevé un UUID generado por request con el encabezado `X-Correlation-Id`; la colección lo envía en cada request (variable `correlation_id`).
 - **RN-07 sin recursos:** el cuestionario dice que la orden queda `SIN_RECURSOS`; la implementación deja la orden en su estado anterior y devuelve el motivo.
+- **RN-05:** el conflicto de horario responde 422 con `codigoRegla` RN-05; el cuestionario dice 409.
+- **OSRM `/table`:** se usa solo `/route` (una llamada por cuadrilla y otra para la planta), con caché y 1 pedido por segundo.
+- **Ruta estimada:** con OSRM caído la reserva usa la estimación marcada `ESTIMADA`; no se pide confirmación del CAPATAZ cuando el margen de la mezcla es ajustado.
+- **WireMock:** las APIs externas se simulan con `MockRestServiceServer` (tests sin red, sin servidor aparte).
+- **Horas de máquina:** el cierre las guarda en Operaciones; no actualizan `maquinas.horas_uso` en Recursos (el mantenimiento preventivo está fuera del alcance).
+- **Nombre de la interfaz del clima:** `InterfazClimaService` cumple el papel de `ProveedorClima`.
+- **Seed:** la fase 2 sembrada es BASE; el cuestionario la describe como Carpeta Asfáltica.
+- **Resueltas el 2026-11-13:** el clima se evalúa sobre la ventana de ejecución de la fecha de la orden (peor valor de 08:00 a 13:00, configurable); OSRM limitado a 1 pedido por segundo y caché de rutas con vencimiento de 6 h; `Coordenada` de commons en uso. Detalle en `docs/DECISIONES.md`.
 
 ## 5. Pendiente
 

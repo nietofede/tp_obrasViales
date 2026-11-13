@@ -53,7 +53,7 @@ Tests que cubren el rechazo completo: `rechazo_informaLaReglaDeLaCuadrillaQueLle
 | Confirmación y liberación de reservas (habilitación y saga de suspensión) | PATCH confirmacion y liberacion, idempotentes, con guardas de estado | ReservaServiceEstadosTest | ✔ |
 | Check-in de ubicación del CAPATAZ | POST /cuadrillas/{id}/ubicaciones | CuadrillaServiceTest | ✔ |
 | Asignaciones del operario | GET /operarios/me/asignaciones | CatalogoServiceTest | ✔ |
-| Integración OSRM con respaldo | `ProveedorRutas`, circuit breaker, estimación en línea recta marcada `ESTIMADA` | OsrmProveedorRutasIntegrationTest | ≈ la caché no vence por TTL |
+| Integración OSRM con respaldo | `ProveedorRutas`, circuit breaker, estimación en línea recta marcada `ESTIMADA` | OsrmProveedorRutasIntegrationTest | ✔ caché de rutas vaciada cada 6 h (`VencimientoCacheRutas`) y 1 pedido por segundo |
 
 ## 4. Cómo se verificó
 
@@ -62,7 +62,7 @@ Tests que cubren el rechazo completo: `rechazo_informaLaReglaDeLaCuadrillaQueLle
 
 ## 5. Pendiente (no bloquea)
 
-- Caché de rutas con TTL (hoy `@Cacheable("rutas")` sin vencimiento; requiere Caffeine).
+- Vencimiento por entrada de la caché de rutas (hoy se vacía entera cada 6 h; una caché como Caffeine lo haría por par origen-destino).
 - `GET /operarios` sin la disponibilidad del día.
 - TTL de la reserva (30 min) y hora de inicio de jornada (08:00) fijos en el código.
 - Carrera entre dos propuestas simultáneas de la misma cuadrilla (sin bloqueo a nivel de base).

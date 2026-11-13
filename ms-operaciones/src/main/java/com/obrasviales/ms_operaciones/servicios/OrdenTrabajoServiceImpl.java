@@ -142,7 +142,7 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
         String detalleClima;
         try {
             // pedimos los datos
-            DatosClimaDTO datosClima = climaService.obtenerCondicionesClimaticas(latitud, longitud);
+            DatosClimaDTO datosClima = climaService.obtenerCondicionesClimaticas(latitud, longitud, orden.getFechaProgramada());
 
             if (datosClima == null) {
                 throw new IllegalStateException("El servicio de clima devolvió datos vacíos.");
