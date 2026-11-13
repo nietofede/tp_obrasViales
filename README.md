@@ -137,7 +137,7 @@ Conviene usar `clean` al cambiar de rama: si no, Maven puede arrastrar archivos 
 
 Está resuelto el despliegue completo con Docker Compose, la seguridad de punta a punta (gateway, servicios y roles), los tres servicios con sus reglas de negocio y el job diario de habilitación con el escenario sembrado de tres órdenes.
 
-Lo que se está cerrando en paralelo: los endpoints de catálogos, personal y configuración de Recursos y el vencimiento automático de reservas; los permisos finales y la resiliencia de Operaciones; y la colección de Postman completa. La colección, los diagramas y el guion de la demo ya están en el repositorio (ver abajo). Cuando se terminen las ramas pendientes, este apartado se actualiza.
+Los catálogos y la configuración de Recursos, el vencimiento automático de reservas, los permisos finales y la resiliencia de Operaciones, y la colección de Postman (111 requests, corrida completa sobre el stack) están implementados. La colección, los diagramas y el guion de la demo están en el repositorio (ver abajo). Lo que queda es la verificación final desde cero entre los tres integrantes y el ensayo de la demo.
 
 Una limitación a tener en cuenta: con Docker, el Swagger de cada servicio no es accesible desde afuera, justamente porque los servicios no se publican. Es una decisión consciente, explicada en `docs/DECISIONES.md`.
 

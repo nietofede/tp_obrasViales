@@ -1694,6 +1694,276 @@
               ]
             }
           ]
+        },
+        {
+          "name": "Operaciones",
+          "description": "",
+          "item": [
+            {
+              "name": "OPERARIO lee órdenes -> 403",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenOperario}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes",
+                "description": "Esperado: 403. Solo PLANIFICADOR, CAPATAZ y AUDITOR leen órdenes."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "ADMIN lee órdenes -> 403",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes",
+                "description": "Esperado: 403. El gateway deja pasar al ADMIN en GET /api/operaciones (lee umbrales), pero el servicio le niega las órdenes."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "OPERARIO lee las evaluaciones climáticas -> 403",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenOperario}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/1/evaluaciones-climaticas",
+                "description": "Esperado: 403."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "AUDITOR lee órdenes -> 200",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAuditor}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes",
+                "description": "Esperado: 200 (solo lectura)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "CAPATAZ lee órdenes -> 200",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes",
+                "description": "Esperado: 200."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "ADMIN crea una orden con cuerpo inválido -> 403 (no 400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Esperado: 403: solo el PLANIFICADOR crea órdenes, y el gateway corta antes de que el servicio valide el cuerpo (con un cuerpo vacío, sin las reglas del gateway daría 400)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "CAPATAZ crea una orden -> 403",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"faseId\": 2,\n  \"tramoId\": 1,\n  \"fechaProgramada\": \"2027-01-01\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Esperado: 403."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PATCH /ordenes/{id}/estado ya no existe -> 404",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/1/estado?nuevoEstado=EN_EJECUCION",
+                "description": "Esperado: 404 en formato estándar. El endpoint se quitó porque dejaba pasar una orden a EN_EJECUCION sin reserva ni clima; las transiciones van por habilitación, inicio, rechazo, cierre, cancelación y reprogramación."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Interno con CAPATAZ por el gateway -> 403",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 1,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"2027-01-01\",\n  \"tramoLat\": -31.2,\n  \"tramoLon\": -64.4\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Esperado: 403. Las rutas /internos/ solo las abre el gateway al rol SISTEMA."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -1701,6 +1971,119 @@
       "name": "03-Flujo-Principal",
       "description": "Camino feliz: habilitación diaria, inicio, avance y cierre de la orden 1.",
       "item": [
+        {
+          "name": "Filtrar órdenes por estado PROGRAMADA",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenPlanificador}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/ordenes?estado=PROGRAMADA",
+            "description": "Esperado: 200 con las 3 órdenes sembradas (V4 de ms-operaciones)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"3 órdenes\", () => pm.expect(pm.response.json()).to.have.lengthOf(3));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar órdenes por obra",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenPlanificador}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/ordenes?obraId=1",
+            "description": "Esperado: 200 con las 3 órdenes: la obra se resuelve a través de los tramos de Obras."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"3 órdenes\", () => pm.expect(pm.response.json()).to.have.lengthOf(3));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar órdenes por una obra inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenPlanificador}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/ordenes?obraId=999",
+            "description": "Esperado: 404: la obra no existe en ms-obras."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar órdenes por la fecha de mañana",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenPlanificador}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/ordenes?fecha={{manana}}",
+            "description": "Esperado: 200 con 1 orden (la orden 2)."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(Date.now() - 3 * 3600 * 1000 + 1 * 86400000);",
+                  "pm.collectionVariables.set(\"manana\", d.toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"1 orden\", () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "Habilitación diaria (hoy)",
           "request": {
@@ -1797,6 +2180,212 @@
                   "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
                 ]
               }
+            }
+          ]
+        },
+        {
+          "name": "Escenarios 1 y 3 del compromiso (las otras dos órdenes del seed)",
+          "description": "",
+          "item": [
+            {
+              "name": "ADMIN baja los umbrales de BASE (fuerza la suspensión)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"humedadSueloMaxima\": 0,\n  \"probPrecipitacionMaxima\": 0,\n  \"temperaturaMinima\": 100\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Truco de demo: con estos umbrales ningún clima real cumple. Esperado: 200."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Habilitación de mañana: la orden 2 se suspende por clima (escenario 1)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/habilitaciones-diarias",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fecha\": \"{{manana}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Esperado: 200 con la orden 2 en REPROGRAMADA: Recursos libera la reserva, Obras reprograma la fase y se crea una orden nueva (la 4) con el contador de suspensiones en 0."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 1 * 86400000);",
+                      "pm.collectionVariables.set(\"manana\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"orden 2 REPROGRAMADA\", () => pm.expect(pm.response.json()[0].estado).to.eql(\"REPROGRAMADA\"));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Ver la suspensión registrada",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAuditor}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/suspensiones",
+                "description": "Esperado: 200 con una suspensión de motivo CLIMA de la orden 2 y el detalle de los valores medidos contra los umbrales."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "ADMIN restaura los umbrales de BASE",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"humedadSueloMaxima\": 0.4,\n  \"probPrecipitacionMaxima\": 20,\n  \"temperaturaMinima\": 5\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Esperado: 200. Valores del seed para BASE."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Habilitación de pasado mañana: la orden 3 se rechaza por distancia (escenario 3)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/habilitaciones-diarias",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fecha\": \"{{pasado}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Esperado: 200 con la orden 3 todavía PROGRAMADA y el motivo: la cuadrilla Alfa está a unos 215 min del tramo de Río Cuarto y el máximo es 90 (RN-07)."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 2 * 86400000);",
+                      "pm.collectionVariables.set(\"pasado\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"orden 3 sigue PROGRAMADA\", () => pm.expect(pm.response.json()[0].estado).to.eql(\"PROGRAMADA\"));",
+                      "pm.test(\"el motivo cita RN-07\", () => pm.expect(pm.response.json()[0].motivo).to.include(\"RN-07\"));"
+                    ]
+                  }
+                }
+              ]
             }
           ]
         },
@@ -2789,14 +3378,14 @@
                 "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"humedadSueloMaxima\": 0.4,\n  \"probPrecipitacionMaxima\": 40,\n  \"temperaturaMinima\": 5\n}",
+                  "raw": "{\n  \"humedadSueloMaxima\": 0.4,\n  \"probPrecipitacionMaxima\": 20,\n  \"temperaturaMinima\": 5\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
                 },
-                "description": "Esperado: 200. Ajustar a los valores del seed de Operaciones (V2) si difieren."
+                "description": "Esperado: 200. Restaura los valores del seed para BASE (humedad 0.4, lluvia 20, temperatura mínima 5)."
               },
               "event": [
                 {
@@ -3383,6 +3972,14 @@
     },
     {
       "key": "reservaId",
+      "value": ""
+    },
+    {
+      "key": "manana",
+      "value": ""
+    },
+    {
+      "key": "pasado",
       "value": ""
     },
     {

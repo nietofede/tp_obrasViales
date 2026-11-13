@@ -2,7 +2,7 @@
 
 Para ensayar con reloj. Los tiempos son una estimación de partida: ajustarlos después del primer ensayo. Los requests están en la colección de Postman (`coleccion/`); las carpetas se nombran como allí (`00-Auth` a `05-Fallas-y-Resiliencia`).
 
-> Estado: este guion se escribió con la Rama 1 ya mergeada y sin la Rama 2, y no se ensayó. Los pasos marcados con **[Rama 2]** dependen de ella; hasta entonces se hacen con la alternativa indicada.
+> Estado: este guion se escribió con las Ramas 1 y 2 ya mergeadas en esta rama, y los pasos se comprobaron uno por uno sobre el stack. No se ensayó con reloj ni con el equipo.
 
 ## 1. Antes de la demo (checklist)
 
@@ -78,15 +78,14 @@ Si el clima real de ese día no cumple los umbrales, la orden se suspende en vez
 
 ### 3.5 Escenario 1: suspensión por clima y replanificación (4 min)
 
-Condición: orden de mañana (orden 2) en `PROGRAMADA` y umbrales configurados por encima de lo permitido.
+Condición: una orden PROGRAMADA y umbrales por encima de lo que el clima real cumple. Está en `03-Flujo-Principal > Escenarios 1 y 3`; todo corre antes de iniciar la orden 1.
 
-1. ADMIN: `RN-09 > ADMIN baja umbrales de BASE (fuerza suspensión)`.
-2. Habilitación diaria con la fecha de mañana (en el request, cambiar `{{hoy}}` por la fecha de mañana).
-3. Esperado: la orden 2 pasa a `SUSPENDIDA`, Recursos libera la reserva y Obras reprograma la fase; se crea una orden nueva.
-4. Mostrar `GET /api/operaciones/suspensiones` y el cronograma de la obra con la fecha corrida.
-5. Restaurar los umbrales con `ADMIN restaura umbrales de BASE`.
+1. ADMIN: `ADMIN baja los umbrales de BASE` (humedad 0, lluvia 0, temperatura mínima 100).
+2. SISTEMA: `Habilitación de mañana`. Esperado: la orden 2 queda `REPROGRAMADA`: Recursos libera la reserva, Obras corre la fase 2 y se crea una orden nueva (la 4) con el contador de suspensiones en 0.
+3. `GET /api/operaciones/suspensiones`: una suspensión de motivo `CLIMA`, con el detalle de lo medido contra los umbrales. `GET /api/obras/1/cronograma` muestra la fase 2 con la fecha corrida.
+4. ADMIN: `ADMIN restaura los umbrales de BASE` (humedad 0.4, lluvia 20, temperatura 5).
 
-Para mostrar RN-12: `ADMIN fija límite de suspensiones = 1` antes de suspender; la fase queda en riesgo y aparece en `GET /fases-en-riesgo`. Restaurar el límite a 3 después.
+Para mostrar RN-12: con `ADMIN fija límite de suspensiones = 1` (carpeta RN-12), la primera suspensión deja la fase en riesgo y aparece en `GET /fases-en-riesgo`. Restaurar el límite a 3 después.
 
 ### 3.6 Escenario 2: Open-Meteo no disponible (3 min)
 
@@ -97,14 +96,14 @@ Condición: la API de clima no responde y no hay caché reciente.
 3. Esperado (verificado): tarda unos 7 segundos por los tres reintentos y responde 200 con la orden en `PENDIENTE_CONFIRMACION_CLIMATICA`, con su `reservaId` conservada. El CAPATAZ decide con `PATCH /ordenes/{id}/resolucion-climatica` (`HABILITAR` o `SUSPENDER`).
 4. Restaurar: quitar la variable y repetir `docker compose up -d ms-operaciones`.
 
-**[Rama 2]** La caché con TTL del último pronóstico cambia este escenario: sin dato reciente en caché es igual; con caché reciente la orden se habilita sola. Ensayarlo con la versión final.
+La Rama 2 agregó una caché en memoria del último pronóstico (15 minutos por defecto, `app.open-meteo.cache-ttl`): si Open-Meteo falla y hay un pronóstico reciente de esas coordenadas, la orden se habilita igual. Al reiniciar `ms-operaciones` con la URL inválida la caché queda vacía, que es justo lo que muestra este escenario (verificado en un stack limpio: unos 5 segundos y `PENDIENTE_CONFIRMACION_CLIMATICA`).
 
 ### 3.7 Escenario 3: rechazo de recursos por distancia (3 min)
 
 Condición: un tramo cuya distancia supera la jornada o el viaje máximo.
 
-- **[Rama 2]** La orden 3 del seed (fase 3, tramo 2, lejano): habilitación diaria con la fecha de pasado mañana. Esperado: Recursos rechaza con 422 y `RN-07`; la orden sigue `PROGRAMADA` y la respuesta informa el motivo.
-- Hasta entonces: `04-Reglas-Negocio > RN-07 > Tramo lejano (Buenos Aires)`. Esperado: 422 con el motivo.
+- La orden 3 del seed (fase 3, tramo 2 en Río Cuarto): `Habilitación de pasado mañana` en `03-Flujo-Principal > Escenarios 1 y 3`. Esperado: 200 con la orden 3 todavía `PROGRAMADA` y el motivo de Recursos: la cuadrilla Alfa está a unos 215 minutos y el máximo es 90 (RN-07). Verificado.
+- Además, directo contra Recursos: `04-Reglas-Negocio > RN-07 > Tramo lejano (Buenos Aires)` (422).
 
 Para mostrar OSRM caído: agregar `APP_OSRM_URL: http://osrm-inexistente.invalid` bajo `ms-recursos` > `environment`, `docker compose up -d ms-recursos` y repetir una reserva; devuelve 201 con `fuenteRuta: ESTIMADA`.
 
@@ -124,13 +123,14 @@ El job de Recursos (`ExpiracionReservasJob`) corre cada 60 segundos y pasa a EXP
 
 ### 3.9 Trazabilidad con correlationId (2 min)
 
-**[Rama 2]** Hacer un pedido por el gateway y buscar el mismo identificador en los logs de los cuatro servicios:
+Hacer un pedido por el gateway y mostrar su id en los logs:
 
 ```powershell
-docker compose logs --tail 50 api-gateway ms-operaciones ms-obras ms-recursos | Select-String "<correlationId>"
+curl.exe -s -D - -o NUL -X POST http://localhost:8081/api/operaciones/habilitaciones-diarias -H "Authorization: Bearer $token" -H "Content-Type: application/json" -d '{"fecha":"<fecha de la orden 3>"}'
+docker compose logs ms-operaciones | Select-String "<id del encabezado X-Correlation-Id>"
 ```
 
-Hoy el gateway genera el `X-Correlation-Id` y los servicios lo reutilizan, pero todavía no aparece en el patrón de log.
+El gateway genera el `X-Correlation-Id` (viene en la respuesta; ignora el que mande el cliente) y lo reenvía; el patrón de log de los cuatro servicios lo muestra entre corchetes. Verificado: el id aparece en las líneas que emite cada servicio, por ejemplo el rechazo de la orden 3 en `ms-operaciones`. Obras y Recursos no escriben líneas por cada pedido, así que en un pedido normal el id no se ve en todos los logs a la vez; para eso hace falta un pedido que genere un log en cada uno.
 
 ### 3.10 Cierre (2 min)
 

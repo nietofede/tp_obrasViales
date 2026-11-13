@@ -17,7 +17,7 @@ Las rutas son las del gateway (prefijo `/api/<servicio>`). Las carpetas citadas 
 | F-05 | Registrar ubicación de la cuadrilla (check-in) | `POST /api/recursos/cuadrillas/{id}/ubicaciones` (CAPATAZ de esa cuadrilla) | `CuadrillaServiceTest`; colección: check-in propio (200) y de una cuadrilla ajena (403) | ✔ |
 | F-06 | Proponer y reservar recursos | `POST /api/recursos/internos/reservas` (SISTEMA); RN-04 a RN-08 | `ReservaServiceReglasTest`, `ReservaControllerContratoTest`, `OsrmProveedorRutasIntegrationTest`, `RecursosHttpClientTest`; colección: RN-05, RN-07 | ✔ |
 | F-07 | Confirmar o liberar reservas | `PATCH /internos/reservas/{id}/confirmacion` y `/liberacion` | `ReservaServiceEstadosTest`, `ReservaControllerEstadosTest`; colección: RN-05 (liberación) | ✔ |
-| F-08 | Programar órdenes diarias | `POST /api/operaciones/ordenes` | `OrdenTrabajoServiceCrearOrdenTest`; el seed `V4__seed_demo_orders.sql` crea tres | ≈ hoy también lo puede el ADMIN (Rama 2 lo restringe) |
+| F-08 | Programar órdenes diarias | `POST /api/operaciones/ordenes` (solo PLANIFICADOR) | `OrdenTrabajoServiceCrearOrdenTest`, `SeguridadEndpointsTest`; el seed `V4__seed_demo_orders.sql` crea tres; colección: 02-Seguridad > Operaciones | ✔ |
 | F-09 | Configurar umbrales climáticos | `PUT/GET /umbrales-climaticos/{tipoTrabajo}` (ADMIN) | `OrdenTrabajoServiceHabilitacionTest`, `SeguridadEndpointsTest`; colección: RN-09 | ✔ |
 | F-10 | Evaluar la habilitación diaria | `POST /habilitaciones-diarias`, `POST /ordenes/{id}/habilitacion`; job diario | `HabilitacionDiariaServiceTest`, `JobHabilitacionDiariaTest`, `OrdenTrabajoServiceHabilitacionTest`, `OpenMeteoServiceTest`; colección: 03-Flujo-Principal | ✔ |
 | F-11 | Confirmar orden y resolver clima incierto | `PATCH /ordenes/{id}/inicio`, `/rechazo`, `/resolucion-climatica` (CAPATAZ) | `EjecucionServiceTest`; colección: 03-Flujo-Principal, RN-10 | ✔ |
@@ -25,16 +25,16 @@ Las rutas son las del gateway (prefijo `/api/<servicio>`). Las carpetas citadas 
 | F-13 | Registrar la ejecución | `PATCH /ordenes/{id}/inicio`, `POST /avances`, `PATCH /cierre` | `EjecucionServiceTest`, `FaseServiceAvanceTest`; colección: 03-Flujo-Principal | ✔ |
 | F-14 | Gestionar fase en riesgo | `GET /fases-en-riesgo`, `POST /fases-en-riesgo/{faseId}/decisiones` | `FaseEnRiesgoServiceTest` (7); colección: RN-12 | ✔ |
 | F-15 | Consultar asignaciones del día (OPERARIO) | `GET /api/recursos/operarios/me/asignaciones?fecha=` | `CatalogoServiceTest`; colección: 01-Setup-Datos > Recursos | ✔ |
-| F-16 | Consultar historial y evaluaciones (AUDITOR) | `GET /ordenes`, `GET /ordenes/{id}/evaluaciones-climaticas`, `GET /suspensiones` | `OrdenTrabajoServiceHabilitacionTest` | ≈ hoy lo lee cualquier autenticado, incluso el OPERARIO (Rama 2 lo restringe) |
-| F-17 | Autenticar y autorizar | Keycloak, gateway con validación de JWT, `@PreAuthorize` en cada servicio; 401 y 403 en formato estándar (commons) | `SeguridadGatewayTests`, `SeguridadEndpointsTest`, `ReservaControllerSeguridadTest`, `CatalogoControllerSeguridadTest`, `ProblemDetailSeguridadTest`; colección: 02-Seguridad | ≈ con un cuerpo inválido un rol sin permiso recibe 400 y no 403 (Spring valida el cuerpo antes de `@PreAuthorize`); las reglas del gateway de la Rama 2 lo corrigen |
+| F-16 | Consultar historial y evaluaciones (AUDITOR) | `GET /ordenes` (con filtros por estado, fecha y obra), `GET /ordenes/{id}/evaluaciones-climaticas`, `GET /suspensiones` | `OrdenTrabajoServiceListadoTest`, `SeguridadEndpointsTest`; colección: 02-Seguridad > Operaciones y 03-Flujo-Principal | ✔ lo leen PLANIFICADOR, CAPATAZ y AUDITOR |
+| F-17 | Autenticar y autorizar | Keycloak, gateway con reglas por ruta, método y rol, `@PreAuthorize` en cada servicio; 401 y 403 en formato estándar (commons) | `SeguridadGatewayTests`, `ReglasPorRolGatewayTests`, `SeguridadEndpointsTest`, `ReservaControllerSeguridadTest`, `CatalogoControllerSeguridadTest`, `ProblemDetailSeguridadTest`; colección: 02-Seguridad | ✔ |
 
 ## 2. Escenarios del compromiso (sección 11)
 
 | # | Escenario | Cómo se prueba | Evidencia | Estado |
 |---|---|---|---|---|
-| 1 | Suspensión por clima y replanificación (RN-02, RN-09) | El ADMIN baja los umbrales y se corre la habilitación; la orden pasa a SUSPENDIDA, Recursos libera y Obras reprograma | `SuspensionServiceTest`; colección: RN-09 y 03-Flujo-Principal | ≈ falta documentar el truco en el README (Rama 2) |
-| 2 | Open-Meteo no disponible (RN-10) | Apagar el acceso al clima y habilitar: la orden queda PENDIENTE_CONFIRMACION_CLIMATICA | `OpenMeteoServiceTest`, `OrdenTrabajoServiceHabilitacionTest`; colección: 05-Fallas-y-Resiliencia | ≈ falta caché con TTL del pronóstico (Rama 2) |
-| 3 | Rechazo de recursos por certificación o distancia (RN-04, RN-07, RN-08) | Cuadrilla sin certificación (RN-04), reserva sobre un tramo lejano (RN-07) y mezcla fuera de la ventana (RN-08): Recursos rechaza con 422, el código de la regla y el motivo | `ReservaServiceReglasTest`; colección: RN-04, RN-07 y RN-08 | ≈ la orden 3 del seed necesita la migración V5 de Obras (Rama 2) para mostrarlo por la habilitación diaria |
+| 1 | Suspensión por clima y replanificación (RN-02, RN-09) | El ADMIN baja los umbrales de BASE y se corre la habilitación de mañana: la orden 2 pasa a REPROGRAMADA, Recursos libera la reserva, Obras reprograma la fase y se crea una orden nueva | `SuspensionServiceTest`; colección: 03-Flujo-Principal > Escenarios 1 y 3 | ✔ verificado sobre el stack |
+| 2 | Open-Meteo no disponible (RN-10) | Apuntar `APP_OPEN_METEO_URL` a un host inexistente y habilitar: la orden queda PENDIENTE_CONFIRMACION_CLIMATICA | `OpenMeteoServiceTest`, `OpenMeteoServiceCacheTest`, `OrdenTrabajoServiceHabilitacionTest`; colección: 05-Fallas-y-Resiliencia | ✔ verificado con la caché vacía (unos 5 s); con un pronóstico reciente en caché (TTL 15 min) la orden se habilita sola |
+| 3 | Rechazo de recursos por certificación o distancia (RN-04, RN-07, RN-08) | La orden 3 del seed (tramo lejano de Río Cuarto) se rechaza por RN-07 (215 min contra un máximo de 90) y queda PROGRAMADA con el motivo; RN-04 y RN-08 por los endpoints de Recursos | `ReservaServiceReglasTest`; colección: 03-Flujo-Principal > Escenarios 1 y 3, RN-04, RN-07 y RN-08 | ✔ |
 | 4 | Control de acceso por rol (OPERARIO → 403) | Token de OPERARIO intenta crear una obra | `SeguridadEndpointsTest`; colección: 02-Seguridad > OPERARIO crea obra | ✔ |
 | 5 | Vencimiento de reservas provisorias | Job de Recursos (`ExpiracionReservasJob`, cada 60 s) pasa a EXPIRADA las reservas vencidas y libera la cuadrilla | `ExpiracionReservasTest`; verificado a mano: con el vencimiento adelantado en la base, la reserva pasa de PROVISORIA a EXPIRADA en menos de un minuto (colección: 05-Fallas-y-Resiliencia) | ✔ el TTL (30 min) está fijo en el código |
 
@@ -44,12 +44,12 @@ Las rutas son las del gateway (prefijo `/api/<servicio>`). Las carpetas citadas 
 |---|---|---|---|
 | `obras-commons` con conversor de roles y resource server | `obras-commons` | usado por los tres servicios y el gateway | ✔ |
 | Manejador global de errores en formato estándar | `GlobalExceptionHandler` | tests de commons (Rama 1): 404, 405, JSON ilegible y 401/403 en formato estándar | ✔ |
-| Filtro de correlation-id | `CorrelationIdFilter` en commons y en el gateway | falta verificarlo en los logs de los cuatro servicios | ≈ Rama 2 |
-| Cliente HTTP con token de servicio | `SistemaRequestInterceptor` y el `sistemaRestClient` | `ObrasHttpClientTest`, `RecursosHttpClientTest`; sin timeout todavía | ≈ Rama 2 |
+| Filtro de correlation-id | `CorrelationIdFilter` en commons y en el gateway; el patrón de log de los cuatro servicios incluye el id | `CorrelationIdEnLogsTests` (gateway) | ≈ el gateway ignora el `X-Correlation-Id` del cliente y genera el suyo; el id aparece en las líneas que cada servicio emite (por ejemplo, el rechazo de una orden en Operaciones), no en todos los logs de un mismo pedido |
+| Cliente HTTP con token de servicio | `SistemaRequestInterceptor`, `SistemaTokenService` (con timeout y reintento) y el `sistemaRestClient` | `SistemaTokenServiceTest`, `ObrasHttpClientTest`, `RecursosHttpClientTest` | ✔ |
 | Value Object `Coordenada` | `obras-commons/.../dto/Coordenada.java` | verificar si los servicios la usan; las requests validan los rangos con Bean Validation | ≈ |
 | Despliegue con Docker Compose | `docker-compose.yml`, un `Dockerfile` por módulo, healthchecks, `.env.example` | README, «Levantarlo desde cero» | ✔ |
-| Datos iniciales con Flyway | `V*.sql` de cada servicio | `docs/arquitectura.md`, sección 2 | ≈ seed de las 3 órdenes en curso (Rama 2) |
-| Colección ejecutable | `coleccion/` (Postman) | `coleccion/README.md` | ≈ segunda pasada y corrida completa pendientes |
+| Datos iniciales con Flyway | `V*.sql` de cada servicio; el seed de demo siembra tres órdenes con fechas relativas a hoy en hora de Argentina | `docs/arquitectura.md`, sección 2; colección: 03-Flujo-Principal | ✔ |
+| Colección ejecutable | `coleccion/` (Postman) | corrida con Newman sobre el stack desde cero: 111 requests y 125 aserciones en verde | ✔ falta la corrida final entre los tres |
 
 ## 4. Diferencias entre el cuestionario y lo implementado
 
@@ -61,6 +61,7 @@ Las rutas son las del gateway (prefijo `/api/<servicio>`). Las carpetas citadas 
 - **Variable `correlation_id` en la colección:** el cuestionario prevé un UUID generado por request con el encabezado `X-Correlation-Id`; la colección lo envía en cada request (variable `correlation_id`).
 - **RN-07 sin recursos:** el cuestionario dice que la orden queda `SIN_RECURSOS`; la implementación deja la orden en su estado anterior y devuelve el motivo.
 
-## 5. Se completa en la segunda pasada
+## 5. Pendiente
 
-Los estados ✘ y ≈ que dependen de las Ramas 1 y 2 se vuelven a evaluar cuando se mergeen, con la colección corrida sobre el stack desde cero.
+- La verificación final desde cero entre los tres integrantes, con la colección completa.
+- Las dos diferencias con el cuestionario (RN-11 y RN-07) quedan a decisión del equipo.
