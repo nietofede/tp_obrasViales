@@ -1,0 +1,12 @@
+# Compilados y carpetas locales: no hacen falta para construir la imagen
+**/target
+.git
+.idea
+.vscode
+# Secretos: nunca deben quedar dentro de una imagen
+.env
+# Documentacion y PDFs
+referencias
+docs
+*.pdf
+*.md
