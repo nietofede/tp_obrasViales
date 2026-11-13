@@ -251,6 +251,17 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - La obra no guarda `estado` ni `fecha_inicio`; se derivan o no existen.
 - RN-03: el cuestionario pide rechazar un tipo de trabajo sin rendimiento definido; acá devuelve una lista vacía (RELEVAMIENTO no consume material).
 
+## Tarea 11: Job diario de habilitación (ms-operaciones)
+
+- **Qué hace:** `JobHabilitacionDiaria` corre con `@Scheduled` a las 06:00 (configurable con `app.jobs.habilitacion.cron`) y llama a `HabilitacionDiariaService.habilitarDelDia(hoy)`, el mismo proceso que expone `POST /api/operaciones/habilitaciones-diarias`. No reimplementa la habilitación: Obras (RN-01), umbral (RN-09), reserva en Recursos, clima y saga de suspensión viven en `OrdenTrabajoServiceImpl.habilitarOrden`.
+- **Por qué no llama al endpoint por HTTP:** el job corre dentro de ms-operaciones; llamar al servicio es la misma lógica sin pedir un token ni hacer una llamada de red a sí mismo. Las llamadas a Obras y Recursos sí usan el `sistemaRestClient` (cuenta SISTEMA).
+- **Alternativa descartada:** la primera versión del job tenía su propio flujo (llamadas HTTP crudas y compensación propia). Duplicaba la lógica y podía contradecir la saga de `SuspensionService`.
+- **Idempotencia:** solo toma órdenes PROGRAMADA o RECURSOS_ASIGNADOS de la fecha; las que ya cambiaron de estado no se reprocesan. Una orden que falla no frena a las demás, y un fallo general queda en el log sin tirar el scheduler.
+- **Datos de demostración:** `V4__seed_demo_orders.sql` (V3 y V5 son de ms-operaciones) carga 3 órdenes PROGRAMADA, cada una en su propia fecha. Comparten fase y tramo, y en el seed de Recursos solo la cuadrilla Alfa puede trabajar, así que dos órdenes el mismo día chocan por RN-05. Las fechas se calculan con la hora de Argentina, porque `CURRENT_DATE` usa la zona de la sesión (UTC en Docker) y después de las 21 h daría el día siguiente.
+  1. Hoy, fase 2 del tramo 1: HABILITADA si el clima está dentro de los umbrales.
+  2. Mañana, fase 2 del tramo 1: pensada para mostrar la suspensión por clima. **Pendiente de decisión del equipo:** con el clima real no se puede forzar. Las opciones son un umbral de demostración en una migración (registrado acá) o dejar esa prueba solo en los tests con clima simulado (`SuspensionServiceTest`).
+  3. Pasado mañana, fase 3 del tramo 2: un tramo lejano que Recursos rechaza por distancia; la orden queda PROGRAMADA con el motivo. **Pendiente:** ese tramo y esa fase (sin fase anterior) no existen en ms-obras; hace falta una migración nueva ahí, a coordinar con el autor de Obras. Sin ella, Obras responde 404 y la orden también queda PROGRAMADA.
+
 ## Ajustes previos de ms-operaciones antes de integrar con Obras
 
 **Problema:** antes de conectar ms-operaciones con ms-obras había tres desalineaciones. Las rutas estaban bajo `/api/v1/...`, pero el gateway solo enruta `/api/operaciones/**` y no recorta el prefijo (ver «Rutas del gateway sin StripPrefix»). Los tipos de trabajo no coincidían con los `TipoFase` de Obras (`SUB_BASE` y `LOSA` frente a `SUBBASE` y `LOSA_HORMIGON`, y faltaba `RELEVAMIENTO`), así que `valueOf` sobre lo que manda Obras fallaría. Y varias excepciones (`OrdenNoEncontrada`, `TransicionInvalida`, `IllegalArgumentException`, `IllegalStateException`, `RuntimeException`) no las conoce el manejador global de commons y salían como 500.

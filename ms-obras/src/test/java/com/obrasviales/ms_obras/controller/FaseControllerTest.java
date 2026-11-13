@@ -2,7 +2,6 @@ package com.obrasviales.ms_obras.controller;
 
 import com.obrasviales.commons.exception.GlobalExceptionHandler;
 import com.obrasviales.commons.exception.ConflictoEstadoException;
-import com.obrasviales.commons.exception.ReglaNegocioException;
 import com.obrasviales.commons.security.BaseResourceServerConfig;
 import com.obrasviales.ms_obras.domain.EstadoFase;
 import com.obrasviales.ms_obras.domain.Fase;

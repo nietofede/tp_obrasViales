@@ -6,7 +6,6 @@ import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
 import com.obrasviales.ms_operaciones.dtos.ReprogramacionOrdenRequest;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
 import com.obrasviales.ms_operaciones.servicios.OTServiceInterfaz;
-import com.obrasviales.ms_operaciones.modelo.EvaluacionClimatica;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
