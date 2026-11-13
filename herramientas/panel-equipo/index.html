@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel del equipo GOVP</title>
+<style>
+  :root {
+    --fondo: #f6f7f9; --panel: #ffffff; --borde: #dfe3e8; --texto: #1d2329; --suave: #5f6b77;
+    --acento: #2457c5; --ok: #1f7a3d; --mal: #b3261e; --aviso: #8a5a00; --codigo: #f0f2f5;
+    --get: #1f7a3d; --post: #2457c5; --put: #8a5a00; --patch: #7a3d9e; --delete: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo: #15181c; --panel: #1d2126; --borde: #313840; --texto: #e6e9ec; --suave: #9aa5b1;
+      --acento: #7aa2ff; --ok: #5cc584; --mal: #ff8a80; --aviso: #e6b450; --codigo: #262b31;
+      --get: #5cc584; --post: #7aa2ff; --put: #e6b450; --patch: #c792ea; --delete: #ff8a80;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--fondo); color: var(--texto); }
+  header { padding: 14px 20px; border-bottom: 1px solid var(--borde); background: var(--panel); display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; }
+  header .nota { color: var(--suave); font-size: 12.5px; }
+  .estado { margin-left: auto; font-size: 12.5px; color: var(--suave); }
+  main { display: grid; grid-template-columns: 300px 1fr; gap: 16px; padding: 16px 20px; max-width: 1500px; margin: 0 auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  section.caja { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 14px; }
+  h2 { font-size: 14px; margin: 0 0 10px; }
+  .sesion { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; padding: 8px 0; border-top: 1px solid var(--borde); align-items: center; }
+  .sesion:first-of-type { border-top: 0; }
+  .sesion .rol { font-weight: 600; }
+  .sesion .vence { font-size: 12px; color: var(--suave); grid-column: 1 / -1; }
+  button { font: inherit; border: 1px solid var(--borde); background: var(--panel); color: var(--texto); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  button:hover { border-color: var(--acento); }
+  button.primario { background: var(--acento); color: #fff; border-color: var(--acento); }
+  input, select, textarea { font: inherit; color: var(--texto); background: var(--fondo); border: 1px solid var(--borde); border-radius: 6px; padding: 5px 8px; }
+  textarea { width: 100%; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; min-height: 110px; }
+  .pestanas { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+  .pestanas button.activa { background: var(--acento); color: #fff; border-color: var(--acento); }
+  .lista { max-height: 420px; overflow: auto; border: 1px solid var(--borde); border-radius: 6px; }
+  .ep { display: grid; grid-template-columns: 62px 1fr; gap: 8px; padding: 6px 8px; border-top: 1px solid var(--borde); cursor: pointer; }
+  .ep:first-child { border-top: 0; }
+  .ep:hover, .ep.sel { background: var(--codigo); }
+  .ep .desc { color: var(--suave); font-size: 12px; }
+  .grupo { padding: 6px 8px; font-weight: 600; background: var(--codigo); position: sticky; top: 0; }
+  .met { font-family: ui-monospace, Consolas, monospace; font-weight: 700; font-size: 12px; }
+  .GET { color: var(--get); } .POST { color: var(--post); } .PUT { color: var(--put); } .PATCH { color: var(--patch); } .DELETE { color: var(--delete); }
+  .fila { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+  .fila input.ruta { flex: 1; min-width: 260px; font-family: ui-monospace, Consolas, monospace; }
+  pre { background: var(--codigo); border-radius: 6px; padding: 10px; overflow: auto; max-height: 460px; margin: 0; font-size: 12.5px; white-space: pre-wrap; word-break: break-word; }
+  .codigo { font-weight: 700; }
+  .c2 { color: var(--ok); } .c4 { color: var(--aviso); } .c5, .c0 { color: var(--mal); }
+  .roles { font-size: 12px; color: var(--suave); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { border-top: 1px solid var(--borde); padding: 6px 8px; text-align: left; vertical-align: top; }
+  .bien { color: var(--ok); font-weight: 600; } .malo { color: var(--mal); font-weight: 600; }
+  .aviso { color: var(--aviso); font-size: 12.5px; }
+  .paso { border-top: 1px solid var(--borde); padding: 10px 0; }
+  .paso:first-child { border-top: 0; }
+  .paso .titulo { font-weight: 600; }
+  .oculto { display: none; }
+  .meta { color: var(--suave); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Panel del equipo GOVP</h1>
+  <span class="nota">Herramienta interna para probar el backend. No es parte de la entrega.</span>
+  <span class="estado" id="estado">Comprobando el stack…</span>
+</header>
+
+<main>
+  <aside>
+    <section class="caja">
+      <h2>Sesiones (tokens de Keycloak)</h2>
+      <div id="sesiones"></div>
+      <div class="fila">
+        <button class="primario" id="todos">Pedir todos</button>
+        <span class="meta">Duran 5 minutos.</span>
+      </div>
+      <details>
+        <summary class="meta">Secreto de la cuenta SISTEMA</summary>
+        <input id="secreto" value="sistema_secret_demo" style="width:100%;margin-top:6px">
+        <div class="meta">Valor de demo de <code>.env.example</code>.</div>
+      </details>
+    </section>
+  </aside>
+
+  <div>
+    <section class="caja">
+      <div class="pestanas">
+        <button data-p="explorador" class="activa">Explorador de la API</button>
+        <button data-p="proceso">Proceso central</button>
+        <button data-p="permisos">Probar permisos</button>
+      </div>
+
+      <div id="p-explorador">
+        <div class="fila">
+          <input id="filtro" placeholder="Filtrar (ruta, descripción o servicio)" style="flex:1">
+        </div>
+        <div class="lista" id="lista"></div>
+      </div>
+
+      <div id="p-proceso" class="oculto">
+        <p class="meta">Recorrido del proceso central con los datos sembrados (necesita una base limpia: <code>docker compose down -v</code> y volver a levantar). Cada paso carga el pedido en el editor de abajo; podés revisarlo antes de enviarlo.</p>
+        <div id="pasos"></div>
+      </div>
+
+      <div id="p-permisos" class="oculto">
+        <p class="meta">Elegí un endpoint en el Explorador y volvé acá. Se manda el mismo pedido sin token y con cada rol, y se compara con los roles permitidos: sin token tiene que dar 401, un rol no permitido 403 y un rol permitido cualquier otra cosa (2xx, o 404/422 si el dato no existe: lo importante es que pasó la seguridad).</p>
+        <div class="fila"><button class="primario" id="probar">Probar con los seis roles</button><span id="aviso-permisos" class="aviso"></span></div>
+        <div id="tabla-permisos"></div>
+      </div>
+    </section>
+
+    <section class="caja" style="margin-top:16px">
+      <h2 id="titulo-editor">Pedido</h2>
+      <div class="roles" id="roles-ep"></div>
+      <div class="fila">
+        <select id="metodo"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
+        <input id="ruta" class="ruta" value="/api/obras">
+        <select id="rol"></select>
+        <button class="primario" id="enviar">Enviar</button>
+      </div>
+      <textarea id="cuerpo" placeholder="Cuerpo JSON (vacío si no lleva)"></textarea>
+      <div class="fila meta" id="info-respuesta"></div>
+      <pre id="respuesta">Todavía no se envió nada.</pre>
+    </section>
+  </div>
+</main>
+
+<script>
+// ---------- Datos ----------
+const ROLES = [
+  { id: "A", nombre: "ADMIN", usuario: "admin" },
+  { id: "P", nombre: "PLANIFICADOR", usuario: "planificador" },
+  { id: "C", nombre: "CAPATAZ", usuario: "capataz" },
+  { id: "O", nombre: "OPERARIO", usuario: "operario" },
+  { id: "U", nombre: "AUDITOR", usuario: "auditor" },
+  { id: "S", nombre: "SISTEMA", usuario: null }
+];
+
+const d = n => { const f = new Date(); f.setDate(f.getDate() + n); return f.toLocaleDateString("sv-SE"); };
+const HOY = d(0), MANANA = d(1), PASADO = d(2), LEJOS = d(30);
+const J = o => JSON.stringify(o, null, 2);
+
+// [servicio, método, ruta, roles permitidos, descripción, cuerpo]
+// Los internos (/internos/) son solo para la cuenta SISTEMA: el gateway rechaza cualquier otro rol con 403.
+const ENDPOINTS = [
+  ["Obras", "POST", "/api/obras", "P", "Registrar una obra", { nombre: "Obra de prueba", descripcion: "Creada desde el panel" }],
+  ["Obras", "GET", "/api/obras", "PCU", "Listar obras con estado y avance"],
+  ["Obras", "GET", "/api/obras/1", "PCU", "Una obra con sus tramos y fases"],
+  ["Obras", "PUT", "/api/obras/1", "P", "Modificar una obra", { nombre: "Ruta Provincial 34", descripcion: "Editada desde el panel" }],
+  ["Obras", "POST", "/api/obras/1/tramos", "P", "Agregar un tramo", { nombre: "Tramo panel", superficieM2: 1000, latitud: -31.40, longitud: -64.20 }],
+  ["Obras", "GET", "/api/obras/1/tramos", "PCU", "Tramos de una obra (extra)"],
+  ["Obras", "GET", "/api/obras/1/cronograma", "PCU", "Cronograma con dependencias (RN-02)"],
+  ["Obras", "GET", "/api/obras/tramos/1", "PCU", "Un tramo con ubicación y superficie"],
+  ["Obras", "PUT", "/api/obras/tramos/1", "P", "Modificar un tramo y recalcular materiales (RN-03)", { nombre: "Tramo 1", superficieM2: 5000, latitud: -31.245, longitud: -64.456 }],
+  ["Obras", "POST", "/api/obras/tramos/1/fases", "P", "Definir una fase", { tipo: "SUBBASE", fechaInicioPlanificada: LEJOS, fechaFinPlanificada: d(35) }],
+  ["Obras", "GET", "/api/obras/tramos/1/fases", "PCU", "Fases de un tramo (extra)"],
+  ["Obras", "GET", "/api/obras/fases/2", "PCU", "Una fase con estado y fechas"],
+  ["Obras", "GET", "/api/obras/fases/2/materiales", "PC", "Materiales por superficie (RN-03)"],
+  ["Obras", "PATCH", "/api/obras/fases/2/programacion", "PS", "Reprogramar una fase en cascada (RN-02)", { nuevaFechaInicio: d(20) }],
+  ["Obras", "GET", "/api/obras/internos/fases/2/contexto-ejecucion", "S", "Interno: contexto de la fase para Operaciones"],
+
+  ["Recursos", "POST", "/api/recursos/maquinas", "A", "Registrar una máquina", { codigo: "EXC-" + Date.now() % 10000, tipo: "EXCAVADORA", horasUso: 0 }],
+  ["Recursos", "GET", "/api/recursos/maquinas?fecha=" + HOY, "APCU", "Máquinas y mantenimiento en una fecha"],
+  ["Recursos", "PUT", "/api/recursos/maquinas/1", "A", "Modificar una máquina", { codigo: "PAV-01", tipo: "PAVIMENTADORA", estado: "DISPONIBLE" }],
+  ["Recursos", "POST", "/api/recursos/operarios", "A", "Registrar un operario", { nombre: "Operario del panel", rolOperativo: "PEON" }],
+  ["Recursos", "GET", "/api/recursos/operarios", "APCU", "Operarios con sus certificaciones"],
+  ["Recursos", "POST", "/api/recursos/operarios/3/certificaciones", "A", "Otorgar una certificación (RN-04)", { tipoMaquina: "RODILLO_COMPACTADOR", vencimiento: d(365) }],
+  ["Recursos", "GET", "/api/recursos/operarios/me/asignaciones", "O", "Mis asignaciones (usuario del token)"],
+  ["Recursos", "POST", "/api/recursos/plantas", "A", "Registrar una planta de mezcla", { nombre: "Planta del panel", latitud: -31.35, longitud: -64.15 }],
+  ["Recursos", "GET", "/api/recursos/plantas", "AP", "Plantas de mezcla"],
+  ["Recursos", "POST", "/api/recursos/cuadrillas", "P", "Armar una cuadrilla (valida RN-04)", { nombre: "Cuadrilla panel " + Date.now() % 1000, latitudBase: -31.40, longitudBase: -64.20, operarioIds: [], maquinaIds: [] }],
+  ["Recursos", "GET", "/api/recursos/cuadrillas", "APCU", "Cuadrillas con su ubicación"],
+  ["Recursos", "GET", "/api/recursos/cuadrillas/1", "APCU", "Una cuadrilla (extra)"],
+  ["Recursos", "PUT", "/api/recursos/cuadrillas/1", "P", "Modificar una cuadrilla", { nombre: "Cuadrilla Alfa", latitudBase: -31.38, longitudBase: -64.22, operarioIds: [1, 2, 3], maquinaIds: [1, 2] }],
+  ["Recursos", "POST", "/api/recursos/cuadrillas/1/ubicaciones", "C", "Check-in del capataz de su cuadrilla", { latitud: -31.39, longitud: -64.21 }],
+  ["Recursos", "GET", "/api/recursos/tipos-trabajo/composicion-minima", "APCU", "Composición mínima por tipo (extra)"],
+  ["Recursos", "PUT", "/api/recursos/tipos-trabajo/BASE/composicion-minima", "A", "Definir la composición mínima (RN-06)", { minOperarios: 2, tipoMaquinaRequerida: "RODILLO_COMPACTADOR", cantidadMaquinas: 1, requiereMezcla: false }],
+  ["Recursos", "GET", "/api/recursos/configuracion/desplazamiento", "AP", "Viaje máximo, ventana de mezcla y margen"],
+  ["Recursos", "PUT", "/api/recursos/configuracion/desplazamiento", "A", "Cambiar la configuración (RN-07, RN-08)", { viajeMaximoCuadrillaMin: 90, duracionJornadaMin: 480, ventanaTransporteMezclaMin: 60, margenCamionMin: 15 }],
+  ["Recursos", "GET", "/api/recursos/reservas/1", "PCUS", "Una reserva con hora de salida del camión"],
+  ["Recursos", "POST", "/api/recursos/internos/reservas", "S", "Interno: proponer y reservar (RN-04 a RN-08)", { ordenTrabajoId: 999, tipoTrabajo: "BASE", fecha: LEJOS, tramoLat: -31.4, tramoLon: -64.2 }],
+
+  ["Operaciones", "POST", "/api/operaciones/ordenes", "P", "Programar una orden", { faseId: 2, tramoId: 1, fechaProgramada: d(4) }],
+  ["Operaciones", "GET", "/api/operaciones/ordenes", "PCU", "Listar órdenes (filtros fecha, estado, obraId)"],
+  ["Operaciones", "GET", "/api/operaciones/ordenes?fecha=" + HOY, "PCU", "Órdenes de hoy"],
+  ["Operaciones", "GET", "/api/operaciones/ordenes/1", "PCU", "Una orden con su estado"],
+  ["Operaciones", "POST", "/api/operaciones/habilitaciones-diarias", "PS", "Habilitar las órdenes de una fecha (proceso central)", { fecha: HOY }],
+  ["Operaciones", "POST", "/api/operaciones/ordenes/1/habilitacion", "PS", "Habilitar una orden"],
+  ["Operaciones", "GET", "/api/operaciones/ordenes/1/evaluaciones-climaticas", "PCU", "Evaluaciones climáticas (RN-09)"],
+  ["Operaciones", "PATCH", "/api/operaciones/ordenes/1/resolucion-climatica", "C", "Resolver clima incierto (RN-10)", { decision: "HABILITAR", motivo: "Se revisó el pronóstico en el lugar" }],
+  ["Operaciones", "PATCH", "/api/operaciones/ordenes/1/inicio", "C", "Iniciar la orden habilitada"],
+  ["Operaciones", "PATCH", "/api/operaciones/ordenes/1/rechazo", "C", "Rechazar la orden (dispara la saga)", { motivo: "Falta personal" }],
+  ["Operaciones", "POST", "/api/operaciones/ordenes/1/avances", "C", "Registrar avance", { porcentaje: 60 }],
+  ["Operaciones", "PATCH", "/api/operaciones/ordenes/1/cierre", "C", "Cerrar con consumo real y horas de máquina", { horasMaquina: 6, materiales: [] }],
+  ["Operaciones", "PATCH", "/api/operaciones/ordenes/1/reprogramacion", "P", "Mover una orden a otra fecha", { fecha: d(5) }],
+  ["Operaciones", "PATCH", "/api/operaciones/ordenes/1/cancelacion", "P", "Cancelar una orden y liberar su reserva"],
+  ["Operaciones", "GET", "/api/operaciones/suspensiones", "PU", "Historial de suspensiones"],
+  ["Operaciones", "GET", "/api/operaciones/umbrales-climaticos", "APCU", "Umbrales climáticos vigentes"],
+  ["Operaciones", "PUT", "/api/operaciones/umbrales-climaticos/BASE", "A", "Definir umbrales de un tipo (RN-09)", { humedadSueloMaxima: 0.4, probPrecipitacionMaxima: 20, temperaturaMinima: 5 }],
+  ["Operaciones", "PUT", "/api/operaciones/configuracion/limite-suspensiones", "A", "Límite de suspensiones (RN-12)", { limite: 3 }],
+  ["Operaciones", "GET", "/api/operaciones/fases-en-riesgo", "PU", "Fases en riesgo (RN-12)"],
+  ["Operaciones", "POST", "/api/operaciones/fases-en-riesgo/2/decisiones", "P", "Decidir sobre una fase en riesgo", { decision: "REPROGRAMAR", nuevaFechaInicio: d(10) }]
+].map(([servicio, metodo, ruta, roles, desc, cuerpo], i) => ({ i, servicio, metodo, ruta, roles, desc, cuerpo }));
+
+const PASOS = [
+  ["1. Ver las órdenes sembradas", "Tres órdenes: hoy (tramo 1), mañana (tramo 1) y pasado mañana (tramo de Río Cuarto, lejos de la cuadrilla).", "GET", "/api/operaciones/ordenes", "P"],
+  ["2. Habilitar las órdenes de hoy", "Operaciones pide el contexto a Obras, la reserva a Recursos y el clima a Open-Meteo. Si hoy llueve en la ventana de 08:00 a 13:00, la orden se suspende: es el clima real. Para la demo del camino feliz podés subir antes los umbrales de BASE (paso 2b).", "POST", "/api/operaciones/habilitaciones-diarias", "P", { fecha: HOY }],
+  ["2b. (Opcional) Umbrales de BASE permisivos", "Fuerza la habilitación sin importar el clima. Volvé a los valores normales con el paso 6.", "PUT", "/api/operaciones/umbrales-climaticos/BASE", "A", { humedadSueloMaxima: 1.0, probPrecipitacionMaxima: 100, temperaturaMinima: -50 }],
+  ["3. Ver la orden 1", "Esperado: HABILITADA, con reservaId y horaSalidaCamion (si el clima acompañó).", "GET", "/api/operaciones/ordenes/1", "P"],
+  ["3b. Ver la evaluación climática", "El peor valor de la ventana de 08:00 a 13:00 de la fecha de la orden, y si cumplió los umbrales.", "GET", "/api/operaciones/ordenes/1/evaluaciones-climaticas", "U"],
+  ["3c. Ver la reserva en Recursos", "CONFIRMADA, con hora de llegada de la cuadrilla y fuente de la ruta (OSRM o ESTIMADA).", "GET", "/api/recursos/reservas/1", "P"],
+  ["4. El CAPATAZ inicia, avanza y cierra", "Iniciar (EN_EJECUCION). Después cargá en el editor el avance (POST /avances con 100) y el cierre (PATCH /cierre).", "PATCH", "/api/operaciones/ordenes/1/inicio", "C"],
+  ["5. Forzar una suspensión por clima (orden de mañana)", "Bajá los umbrales de BASE a valores imposibles y habilitá mañana: la orden 2 se suspende, Recursos libera la reserva, Obras corre la fase y se crea una orden nueva.", "PUT", "/api/operaciones/umbrales-climaticos/BASE", "A", { humedadSueloMaxima: 0.0, probPrecipitacionMaxima: 0, temperaturaMinima: 60 }],
+  ["5b. Habilitar mañana", "Esperado: la orden 2 queda REPROGRAMADA y aparece en suspensiones.", "POST", "/api/operaciones/habilitaciones-diarias", "P", { fecha: MANANA }],
+  ["6. Restaurar los umbrales de BASE", "Valores normales: humedad 0,40 m³/m³, lluvia 20 %, temperatura mínima 5 °C.", "PUT", "/api/operaciones/umbrales-climaticos/BASE", "A", { humedadSueloMaxima: 0.4, probPrecipitacionMaxima: 20, temperaturaMinima: 5 }],
+  ["7. Rechazo por distancia (orden de pasado mañana)", "El tramo de Río Cuarto queda lejos de la cuadrilla Alfa: Recursos responde RN-07 y la orden sigue PROGRAMADA con el motivo.", "POST", "/api/operaciones/habilitaciones-diarias", "P", { fecha: PASADO }],
+  ["8. Historial de suspensiones", "Lo que ve el AUDITOR.", "GET", "/api/operaciones/suspensiones", "U"]
+];
+
+// ---------- Sesiones ----------
+const sesiones = {};
+const $ = id => document.getElementById(id);
+
+function dibujarSesiones() {
+  $("sesiones").innerHTML = ROLES.map(r => {
+    const s = sesiones[r.id];
+    const restante = s ? Math.max(0, Math.round((s.exp - Date.now()) / 1000)) : 0;
+    const txt = !s ? "sin token" : restante > 0 ? `vence en ${restante} s` : "vencido";
+    return `<div class="sesion"><span class="rol">${r.nombre}</span>
+      <button data-rol="${r.id}">${s ? "Renovar" : "Pedir"}</button>
+      <span class="vence">${r.usuario ? r.usuario + " · " : "client credentials · "}${txt}</span></div>`;
+  }).join("");
+  document.querySelectorAll("#sesiones button").forEach(b => b.onclick = () => pedirToken(b.dataset.rol));
+}
+
+async function pedirToken(id) {
+  const r = ROLES.find(x => x.id === id);
+  const datos = r.usuario
+    ? { grant_type: "password", client_id: "obras-public-client", username: r.usuario, password: r.usuario + "123" }
+    : { grant_type: "client_credentials", client_id: "servicio-sistema", client_secret: $("secreto").value };
+  try {
+    const res = await fetch("/kc/realms/obras-viales/protocol/openid-connect/token",
+      { method: "POST", body: new URLSearchParams(datos) });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error_description || j.error || res.status);
+    sesiones[id] = { token: j.access_token, exp: Date.now() + j.expires_in * 1000 };
+  } catch (e) {
+    alert(`No se pudo pedir el token de ${r.nombre}: ${e.message}`);
+  }
+  dibujarSesiones();
+}
+
+async function tokenVigente(id) {
+  if (!id) return null;
+  const s = sesiones[id];
+  if (!s || s.exp - Date.now() < 15000) await pedirToken(id);
+  return sesiones[id] ? sesiones[id].token : null;
+}
+
+// ---------- Envío ----------
+async function enviar(metodo, ruta, rolId, cuerpo) {
+  const headers = {};
+  const token = await tokenVigente(rolId);
+  if (token) headers.Authorization = "Bearer " + token;
+  if (cuerpo) headers["Content-Type"] = "application/json";
+  const t0 = performance.now();
+  try {
+    const res = await fetch("/gw" + ruta, { method: metodo, headers, body: cuerpo || undefined });
+    const texto = await res.text();
+    return { status: res.status, ms: Math.round(performance.now() - t0), cid: res.headers.get("X-Correlation-Id"), texto };
+  } catch (e) {
+    return { status: 0, ms: 0, cid: null, texto: String(e) };
+  }
+}
+
+function bonito(texto) {
+  try { return JSON.stringify(JSON.parse(texto), null, 2); } catch { return texto || "(sin cuerpo)"; }
+}
+
+let seleccionado = null;
+
+function cargar(ep, rolPreferido) {
+  seleccionado = ep;
+  $("metodo").value = ep.metodo;
+  $("ruta").value = ep.ruta;
+  $("cuerpo").value = ep.cuerpo ? J(ep.cuerpo) : "";
+  $("titulo-editor").textContent = ep.desc;
+  $("roles-ep").textContent = ep.roles
+    ? "Roles permitidos: " + ep.roles.split("").map(c => ROLES.find(r => r.id === c).nombre).join(", ")
+    : "";
+  const rol = rolPreferido || (ep.roles ? ep.roles[0] : "P");
+  $("rol").value = rol;
+  document.querySelectorAll(".ep").forEach(e => e.classList.toggle("sel", Number(e.dataset.i) === ep.i));
+}
+
+$("enviar").onclick = async () => {
+  $("respuesta").textContent = "Enviando…";
+  const r = await enviar($("metodo").value, $("ruta").value.trim(), $("rol").value, $("cuerpo").value.trim());
+  const clase = "c" + String(r.status)[0];
+  $("info-respuesta").innerHTML = `<span class="codigo ${clase}">${r.status || "sin respuesta"}</span>
+    <span>${r.ms} ms</span>${r.cid ? `<span>X-Correlation-Id: ${r.cid}</span>` : ""}`;
+  $("respuesta").textContent = bonito(r.texto);
+};
+
+// ---------- Explorador ----------
+function dibujarLista() {
+  const f = $("filtro").value.toLowerCase();
+  let html = "", grupo = "";
+  ENDPOINTS.filter(e => !f || (e.servicio + e.ruta + e.desc + e.metodo).toLowerCase().includes(f)).forEach(e => {
+    if (e.servicio !== grupo) { grupo = e.servicio; html += `<div class="grupo">${grupo}</div>`; }
+    html += `<div class="ep" data-i="${e.i}"><span class="met ${e.metodo}">${e.metodo}</span>
+      <div><div>${e.ruta}</div><div class="desc">${e.desc} · ${e.roles || "interno"}</div></div></div>`;
+  });
+  $("lista").innerHTML = html;
+  document.querySelectorAll(".ep").forEach(el => el.onclick = () => cargar(ENDPOINTS[Number(el.dataset.i)]));
+}
+$("filtro").oninput = dibujarLista;
+
+// ---------- Proceso central ----------
+$("pasos").innerHTML = PASOS.map(([titulo, texto, metodo, ruta, rol], i) => `
+  <div class="paso"><div class="titulo">${titulo}</div><div class="meta">${texto}</div>
+  <div class="fila"><span class="met ${metodo}">${metodo}</span><code>${ruta}</code>
+  <span class="meta">como ${ROLES.find(r => r.id === rol).nombre}</span>
+  <button data-paso="${i}">Cargar</button><button data-paso="${i}" data-ya="1">Cargar y enviar</button></div></div>`).join("");
+document.querySelectorAll("#pasos button").forEach(b => b.onclick = () => {
+  const [titulo, , metodo, ruta, rol, cuerpo] = PASOS[Number(b.dataset.paso)];
+  cargar({ i: -1, metodo, ruta, roles: "", desc: titulo, cuerpo }, rol);
+  $("roles-ep").textContent = "";
+  if (b.dataset.ya) $("enviar").click();
+});
+
+// ---------- Permisos ----------
+$("probar").onclick = async () => {
+  if (!seleccionado || seleccionado.i < 0) { $("aviso-permisos").textContent = "Elegí primero un endpoint en el Explorador."; return; }
+  const ep = seleccionado;
+  $("aviso-permisos").textContent = ep.metodo !== "GET"
+    ? "Ojo: este pedido crea o modifica datos y se manda varias veces." : "";
+  const metodo = $("metodo").value, ruta = $("ruta").value.trim(), cuerpo = $("cuerpo").value.trim();
+  const filas = [];
+  const sin = await enviar(metodo, ruta, null, cuerpo);
+  filas.push(["sin token", "401", sin.status, sin.status === 401]);
+  for (const r of ROLES) {
+    const permitido = ep.roles.includes(r.id);
+    const res = await enviar(metodo, ruta, r.id, cuerpo);
+    const ok = permitido ? (res.status !== 401 && res.status !== 403 && res.status !== 0) : res.status === 403;
+    filas.push([r.nombre, permitido ? "pasa la seguridad" : "403", res.status, ok]);
+  }
+  $("tabla-permisos").innerHTML = `<table><tr><th>Quién</th><th>Esperado</th><th>Obtenido</th><th></th></tr>
+    ${filas.map(([q, e, o, ok]) => `<tr><td>${q}</td><td>${e}</td><td class="codigo c${String(o)[0]}">${o}</td>
+    <td class="${ok ? "bien" : "malo"}">${ok ? "✔" : "✘"}</td></tr>`).join("")}</table>`;
+};
+
+// ---------- Pestañas, roles y arranque ----------
+document.querySelectorAll(".pestanas button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".pestanas button").forEach(x => x.classList.toggle("activa", x === b));
+  ["explorador", "proceso", "permisos"].forEach(p => $("p-" + p).classList.toggle("oculto", p !== b.dataset.p));
+});
+$("rol").innerHTML = `<option value="">sin token</option>` + ROLES.map(r => `<option value="${r.id}">${r.nombre}</option>`).join("");
+$("todos").onclick = async () => { for (const r of ROLES) await pedirToken(r.id); };
+
+async function comprobarStack() {
+  try {
+    const cfg = await (await fetch("/config")).json();
+    const salud = await fetch("/gw/actuator/health");
+    $("estado").innerHTML = salud.ok
+      ? `Gateway ${cfg.gateway} ✔ · Keycloak ${cfg.keycloak}`
+      : `<span class="malo">Gateway ${cfg.gateway} no responde: ¿está levantado el stack?</span>`;
+  } catch {
+    $("estado").innerHTML = `<span class="malo">No responde el panel</span>`;
+  }
+}
+
+dibujarSesiones();
+dibujarLista();
+cargar(ENDPOINTS[1]);
+comprobarStack();
+setInterval(dibujarSesiones, 5000);
+</script>
+</body>
+</html>
