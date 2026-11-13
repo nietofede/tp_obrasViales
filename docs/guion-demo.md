@@ -2,7 +2,7 @@
 
 Para ensayar con reloj. Los tiempos son una estimación de partida: ajustarlos después del primer ensayo. Los requests están en la colección de Postman (`coleccion/`); las carpetas se nombran como allí (`00-Auth` a `05-Fallas-y-Resiliencia`).
 
-> Estado: este guion se escribió antes de mergear las Ramas 1 y 2 y no se ensayó. Los pasos marcados con **[Rama 1]** o **[Rama 2]** dependen de ellas; hasta entonces se hacen con la alternativa indicada.
+> Estado: este guion se escribió con la Rama 1 ya mergeada y sin la Rama 2, y no se ensayó. Los pasos marcados con **[Rama 2]** dependen de ella; hasta entonces se hacen con la alternativa indicada.
 
 ## 1. Antes de la demo (checklist)
 
@@ -108,7 +108,7 @@ Condición: un tramo cuya distancia supera la jornada o el viaje máximo.
 
 Para mostrar OSRM caído: agregar `APP_OSRM_URL: http://osrm-inexistente.invalid` bajo `ms-recursos` > `environment`, `docker compose up -d ms-recursos` y repetir una reserva; devuelve 201 con `fuenteRuta: ESTIMADA`.
 
-Para RN-04 (operario sin certificación vigente) y RN-08, usar los requests que se agregan en la segunda pasada **[Rama 1]**.
+Para RN-04 (cuadrilla con un operario sin certificación vigente: 422) y RN-08 (mezcla fuera de la ventana de transporte: 422), usar `04-Reglas-Negocio > RN-04` y `RN-08`; cada una explica el resultado esperado.
 
 ### 3.8 Escenario 5: vencimiento de reservas (3 min)
 
@@ -120,7 +120,7 @@ Condición: reserva provisoria emitida y el orquestador cae antes de confirmar.
 4. Esperado: el job de Recursos pasa la reserva a `EXPIRADA` y la cuadrilla queda libre.
 5. `docker compose start ms-operaciones`.
 
-**[Rama 1]** Este escenario necesita el job que invoca `expirarReservasVencidas`; hoy ese método existe en el repositorio pero nadie lo llama. Sin la Rama 1, mostrarlo como pendiente en lugar de intentarlo.
+El job de Recursos (`ExpiracionReservasJob`) corre cada 60 segundos y pasa a EXPIRADA las reservas vencidas. Verificado: tras adelantar el vencimiento en la base, la reserva pasa de PROVISORIA a EXPIRADA en menos de un minuto. La orden de los pasos es: crear la reserva, adelantar `fecha_vencimiento_ttl` con el `psql` del paso 3, esperar hasta un minuto y consultar `GET /api/recursos/reservas/{id}`.
 
 ### 3.9 Trazabilidad con correlationId (2 min)
 
@@ -164,7 +164,7 @@ La red privada de Docker. Solo el gateway y Keycloak se publican. Aun así, cada
 - Obras caído: la orden no cambia de estado.
 - Open-Meteo caído: `PENDIENTE_CONFIRMACION_CLIMATICA`, con la reserva conservada, y decide el CAPATAZ.
 - OSRM caído: se estima en línea recta con un factor de desvío y la reserva queda con `fuenteRuta: ESTIMADA`.
-- Operaciones cae a mitad de una saga: las reservas provisorias vencen por TTL **[Rama 1: job de expiración]**.
+- Operaciones cae a mitad de una saga: las reservas provisorias vencen por TTL y un job de Recursos las pasa a EXPIRADA.
 
 **¿Cómo se evita que una saga a medias deje recursos bloqueados?**
 La reserva es provisoria con vencimiento (30 minutos): si no se confirma, expira. Si Recursos no responde al liberar, la suspensión sigue y la reserva vence sola.

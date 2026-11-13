@@ -13,8 +13,8 @@ Las rutas son las del gateway (prefijo `/api/<servicio>`). Las carpetas citadas 
 | F-01 | Gestionar obras, tramos y fases | `ObraController`, `TramoController` (alta y edición de obras, tramos y fases) | `ObraControllerTest`, `ObraServiceTest`, `TramoControllerTest`, `TramoControllerEdicionTest`; colección: 01-Setup-Datos | ✔ |
 | F-02 | Armar cronograma y dependencias | `GET /obras/{id}/cronograma`, `PATCH /fases/{id}/programacion` (cascada, RN-02) | `CronogramaServiceTest`, `FaseServiceTest`, `ObraControllerConsultasTest`; colección: 01-Setup-Datos y RN-02 | ✔ |
 | F-03 | Calcular materiales | `GET /fases/{id}/materiales` (RN-03) | `MaterialServiceTest`, `FaseControllerLecturaTest`; colección: 04-Reglas-Negocio > RN-03 | ✔ |
-| F-04 | Gestionar catálogo de recursos | Hoy solo existen los datos de `V2__datos_demo.sql`; faltan los endpoints de altas | — | ✘ Rama 1 |
-| F-05 | Registrar ubicación de la cuadrilla (check-in) | Falta `POST /cuadrillas/{id}/ubicaciones` | — | ✘ Rama 1 |
+| F-04 | Gestionar catálogo de recursos | `CatalogoController`, `CuadrillaController`: máquinas, operarios, certificaciones, plantas y cuadrillas | `CatalogoServiceTest`, `CuadrillaServiceTest`, `CatalogoControllerValidacionTest`, `CatalogoControllerSeguridadTest`; colección: 01-Setup-Datos > Recursos | ✔ |
+| F-05 | Registrar ubicación de la cuadrilla (check-in) | `POST /api/recursos/cuadrillas/{id}/ubicaciones` (CAPATAZ de esa cuadrilla) | `CuadrillaServiceTest`; colección: check-in propio (200) y de una cuadrilla ajena (403) | ✔ |
 | F-06 | Proponer y reservar recursos | `POST /api/recursos/internos/reservas` (SISTEMA); RN-04 a RN-08 | `ReservaServiceReglasTest`, `ReservaControllerContratoTest`, `OsrmProveedorRutasIntegrationTest`, `RecursosHttpClientTest`; colección: RN-05, RN-07 | ✔ |
 | F-07 | Confirmar o liberar reservas | `PATCH /internos/reservas/{id}/confirmacion` y `/liberacion` | `ReservaServiceEstadosTest`, `ReservaControllerEstadosTest`; colección: RN-05 (liberación) | ✔ |
 | F-08 | Programar órdenes diarias | `POST /api/operaciones/ordenes` | `OrdenTrabajoServiceCrearOrdenTest`; el seed `V4__seed_demo_orders.sql` crea tres | ≈ hoy también lo puede el ADMIN (Rama 2 lo restringe) |
@@ -24,9 +24,9 @@ Las rutas son las del gateway (prefijo `/api/<servicio>`). Las carpetas citadas 
 | F-12 | Suspender y reprogramar | Saga en `SuspensionService`: libera reserva, reprograma en Obras, crea orden nueva | `SuspensionServiceTest` (7), `ObrasHttpClientTest`, `OrdenTrabajoServiceCancelacionTest`; colección: RN-12 | ✔ |
 | F-13 | Registrar la ejecución | `PATCH /ordenes/{id}/inicio`, `POST /avances`, `PATCH /cierre` | `EjecucionServiceTest`, `FaseServiceAvanceTest`; colección: 03-Flujo-Principal | ✔ |
 | F-14 | Gestionar fase en riesgo | `GET /fases-en-riesgo`, `POST /fases-en-riesgo/{faseId}/decisiones` | `FaseEnRiesgoServiceTest` (7); colección: RN-12 | ✔ |
-| F-15 | Consultar asignaciones del día (OPERARIO) | Falta `GET /operarios/me/asignaciones` | — | ✘ Rama 1 |
+| F-15 | Consultar asignaciones del día (OPERARIO) | `GET /api/recursos/operarios/me/asignaciones?fecha=` | `CatalogoServiceTest`; colección: 01-Setup-Datos > Recursos | ✔ |
 | F-16 | Consultar historial y evaluaciones (AUDITOR) | `GET /ordenes`, `GET /ordenes/{id}/evaluaciones-climaticas`, `GET /suspensiones` | `OrdenTrabajoServiceHabilitacionTest` | ≈ hoy lo lee cualquier autenticado, incluso el OPERARIO (Rama 2 lo restringe) |
-| F-17 | Autenticar y autorizar | Keycloak, gateway con validación de JWT, `@PreAuthorize` en cada servicio | `SeguridadGatewayTests`, `SeguridadEndpointsTest`, `ReservaControllerSeguridadTest`; colección: 02-Seguridad | ≈ 401/403 sin formato estándar hasta la Rama 1 |
+| F-17 | Autenticar y autorizar | Keycloak, gateway con validación de JWT, `@PreAuthorize` en cada servicio; 401 y 403 en formato estándar (commons) | `SeguridadGatewayTests`, `SeguridadEndpointsTest`, `ReservaControllerSeguridadTest`, `CatalogoControllerSeguridadTest`, `ProblemDetailSeguridadTest`; colección: 02-Seguridad | ≈ con un cuerpo inválido un rol sin permiso recibe 400 y no 403 (Spring valida el cuerpo antes de `@PreAuthorize`); las reglas del gateway de la Rama 2 lo corrigen |
 
 ## 2. Escenarios del compromiso (sección 11)
 
@@ -34,16 +34,16 @@ Las rutas son las del gateway (prefijo `/api/<servicio>`). Las carpetas citadas 
 |---|---|---|---|---|
 | 1 | Suspensión por clima y replanificación (RN-02, RN-09) | El ADMIN baja los umbrales y se corre la habilitación; la orden pasa a SUSPENDIDA, Recursos libera y Obras reprograma | `SuspensionServiceTest`; colección: RN-09 y 03-Flujo-Principal | ≈ falta documentar el truco en el README (Rama 2) |
 | 2 | Open-Meteo no disponible (RN-10) | Apagar el acceso al clima y habilitar: la orden queda PENDIENTE_CONFIRMACION_CLIMATICA | `OpenMeteoServiceTest`, `OrdenTrabajoServiceHabilitacionTest`; colección: 05-Fallas-y-Resiliencia | ≈ falta caché con TTL del pronóstico (Rama 2) |
-| 3 | Rechazo de recursos por certificación o distancia (RN-04, RN-07, RN-08) | Reserva sobre un tramo lejano: Recursos rechaza con el motivo y la orden queda en su estado | `ReservaServiceReglasTest`; colección: RN-07 | ≈ la orden 3 del seed necesita la migración V5 de Obras (Rama 2); RN-04 y RN-08 en la segunda pasada |
+| 3 | Rechazo de recursos por certificación o distancia (RN-04, RN-07, RN-08) | Cuadrilla sin certificación (RN-04), reserva sobre un tramo lejano (RN-07) y mezcla fuera de la ventana (RN-08): Recursos rechaza con 422, el código de la regla y el motivo | `ReservaServiceReglasTest`; colección: RN-04, RN-07 y RN-08 | ≈ la orden 3 del seed necesita la migración V5 de Obras (Rama 2) para mostrarlo por la habilitación diaria |
 | 4 | Control de acceso por rol (OPERARIO → 403) | Token de OPERARIO intenta crear una obra | `SeguridadEndpointsTest`; colección: 02-Seguridad > OPERARIO crea obra | ✔ |
-| 5 | Vencimiento de reservas provisorias | Detener Operaciones tras reservar; la reserva debe expirar por TTL | El TTL (30 min) y `expirarReservasVencidas` existen en el repositorio, pero ningún job lo invoca | ✘ Rama 1 |
+| 5 | Vencimiento de reservas provisorias | Job de Recursos (`ExpiracionReservasJob`, cada 60 s) pasa a EXPIRADA las reservas vencidas y libera la cuadrilla | `ExpiracionReservasTest`; verificado a mano: con el vencimiento adelantado en la base, la reserva pasa de PROVISORIA a EXPIRADA en menos de un minuto (colección: 05-Fallas-y-Resiliencia) | ✔ el TTL (30 min) está fijo en el código |
 
 ## 3. Librería común, seguridad y despliegue (secciones 09 y 10)
 
 | Requisito | Implementación | Evidencia | Estado |
 |---|---|---|---|
 | `obras-commons` con conversor de roles y resource server | `obras-commons` | usado por los tres servicios y el gateway | ✔ |
-| Manejador global de errores en formato estándar | `GlobalExceptionHandler` | tests de cada servicio; 404, 405, 400 y 401/403 en formato estándar pendientes | ≈ Rama 1 |
+| Manejador global de errores en formato estándar | `GlobalExceptionHandler` | tests de commons (Rama 1): 404, 405, JSON ilegible y 401/403 en formato estándar | ✔ |
 | Filtro de correlation-id | `CorrelationIdFilter` en commons y en el gateway | falta verificarlo en los logs de los cuatro servicios | ≈ Rama 2 |
 | Cliente HTTP con token de servicio | `SistemaRequestInterceptor` y el `sistemaRestClient` | `ObrasHttpClientTest`, `RecursosHttpClientTest`; sin timeout todavía | ≈ Rama 2 |
 | Value Object `Coordenada` | `obras-commons/.../dto/Coordenada.java` | verificar si los servicios la usan; las requests validan los rangos con Bean Validation | ≈ |
