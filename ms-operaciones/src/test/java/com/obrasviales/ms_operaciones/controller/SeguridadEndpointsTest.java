@@ -9,6 +9,7 @@ import com.obrasviales.ms_operaciones.servicios.OTServiceInterfaz;
 import com.obrasviales.ms_operaciones.servicios.SuspensionService;
 import com.obrasviales.ms_operaciones.servicios.UmbralClimaticoService;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,12 +62,11 @@ class SeguridadEndpointsTest {
 
     static Stream<Caso> casos() {
         return Stream.of(
-                new Caso("POST", ORDENES, "{\"faseId\":1,\"tramoId\":1,\"fechaProgramada\":\"2099-01-01\"}", "CAPATAZ", "PLANIFICADOR", 201),
-                new Caso("GET", ORDENES + "/1", null, null, "AUDITOR", 200),
-                new Caso("GET", ORDENES, null, null, "AUDITOR", 200),
-                new Caso("PATCH", ORDENES + "/1/estado?nuevoEstado=HABILITADA", null, "AUDITOR", "CAPATAZ", 200),
+                new Caso("POST", ORDENES, "{\"faseId\":1,\"tramoId\":1,\"fechaProgramada\":\"2099-01-01\"}", "ADMIN", "PLANIFICADOR", 201),
+                new Caso("GET", ORDENES + "/1", null, "OPERARIO", "AUDITOR", 200),
+                new Caso("GET", ORDENES, null, "OPERARIO", "AUDITOR", 200),
                 new Caso("POST", ORDENES + "/1/habilitacion", null, "CAPATAZ", "PLANIFICADOR", 200),
-                new Caso("GET", ORDENES + "/1/evaluaciones-climaticas", null, null, "AUDITOR", 200),
+                new Caso("GET", ORDENES + "/1/evaluaciones-climaticas", null, "OPERARIO", "CAPATAZ", 200),
                 new Caso("PATCH", ORDENES + "/1/cancelacion", null, "CAPATAZ", "PLANIFICADOR", 200),
                 new Caso("PATCH", ORDENES + "/1/reprogramacion", "{\"fecha\":\"2099-01-01\"}", "CAPATAZ", "PLANIFICADOR", 200),
                 new Caso("PATCH", ORDENES + "/1/resolucion-climatica", "{\"decision\":\"HABILITAR\"}", "PLANIFICADOR", "CAPATAZ", 200),
@@ -94,6 +94,18 @@ class SeguridadEndpointsTest {
             request.contentType(MediaType.APPLICATION_JSON).content(caso.cuerpo());
         }
         return request;
+    }
+
+    // el cambio de estado libre se quito: dejaba pasar una orden a EN_EJECUCION sin reserva ni clima.
+    // cada transicion tiene su endpoint (habilitacion, inicio, rechazo, cierre, cancelacion, reprogramacion).
+    // la ruta ya no existe: 404 en el formato estandar de commons.
+    @Test
+    void elCambioDeEstadoLibreYaNoExiste() throws Exception {
+        for (String rolUsuario : new String[] {"PLANIFICADOR", "CAPATAZ"}) {
+            mockMvc.perform(MockMvcRequestBuilders.patch(ORDENES + "/1/estado?nuevoEstado=EN_EJECUCION")
+                            .with(jwt().authorities(rol(rolUsuario))))
+                    .andExpect(status().isNotFound());
+        }
     }
 
     @ParameterizedTest(name = "{0}")

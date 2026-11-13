@@ -454,6 +454,32 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 **Consecuencias:** Verificado: `/v3/api-docs` de Recursos lista 16 rutas y trae la atribución. Obras y Operaciones no consumen OSRM y no la necesitan.
 
+## Escenario de demo del job diario (paso 11): datos de Obras y zona horaria
+
+- **Datos en Obras** (`ms-obras` V5): mueve las fases del tramo 1 a fechas relativas a hoy (fase 1 terminada ayer, fase 2 desde hoy) y agrega el tramo 2 lejano (Río Cuarto, unos 200 km de la cuadrilla Alfa) con la fase 3, BASE y sin fase anterior. En una base limpia quedan los ids 2 y 3 que espera `V4__seed_demo_orders.sql` de ms-operaciones. Las fechas se calculan con la hora de Argentina, igual que ese seed.
+- **Por qué mover las fechas:** con las fases en diciembre y las órdenes en noviembre, una suspensión reprogramaba la fase 2 a una fecha anterior al fin de la fase 1 y Obras la rechazaba por RN-02, así que la saga fallaba.
+- **Por qué BASE en el tramo lejano:** la cuadrilla Alfa cumple operarios, máquina y certificación para BASE, así que lo único que falla es el viaje (RN-07, más de 90 min).
+- **Zona horaria:** `TZ=America/Argentina/Buenos_Aires` en el servicio ms-operaciones del compose. El job usa la fecha de la JVM y en UTC, después de las 21 h de Argentina, procesaba las órdenes del día siguiente.
+- **Suspensión por clima en la demo:** con el clima real no se puede forzar. El ADMIN sube el umbral de BASE antes de habilitar la orden de mañana y lo restaura después:
+  - `PUT /api/operaciones/umbrales-climaticos/BASE` con `{"humedadSueloMaxima":0.40,"probPrecipitacionMaxima":20.0,"temperaturaMinima":60.0}` → cualquier clima queda fuera del umbral.
+  - `POST /api/operaciones/habilitaciones-diarias` con la fecha de mañana → la orden queda REPROGRAMADA y se crea una orden nueva para pasado mañana.
+  - Restaurar con `{"humedadSueloMaxima":0.40,"probPrecipitacionMaxima":20.0,"temperaturaMinima":5.0}` (los valores de V2).
+  - La lógica de la suspensión sin trucos queda cubierta por `SuspensionServiceTest`, con clima simulado.
+- **Guion de las 3 órdenes:** habilitar hoy (orden 1 → HABILITADA), mañana con el umbral alto (orden 2 → suspendida y reprogramada) y pasado mañana (orden 3 → queda PROGRAMADA con motivo RN-07).
+- **Cuidado en el día 3:** la orden que crea la saga cae el mismo día que la orden 3 y usa la misma cuadrilla. La orden 3 (id 3) se crea antes, pero el proceso diario no garantiza el orden: si la nueva se habilita primero, la orden 3 muestra RN-05 (cuadrilla ya reservada) en vez de RN-07. Para mostrar el rechazo por distancia sin ese ruido, habilitar el día 3 antes de suspender la orden 2, o hacer la suspensión en otra corrida de la demo.
+- **Bases anteriores:** si la base ya estaba levantada, hay que recrearla (`docker compose down -v`) para que los ids y las fechas coincidan.
+
+## Seguridad, contrato y resiliencia de ms-operaciones (rama 2)
+
+- **Sin cambio de estado libre:** se quitó `PATCH /ordenes/{id}/estado`. Dejaba a un PLANIFICADOR o CAPATAZ llevar una orden a EN_EJECUCION sin reserva ni clima. Cada transición ya tiene su endpoint (habilitación, inicio, rechazo, cierre, cancelación, reprogramación).
+- **Permisos de órdenes:** leer órdenes y evaluaciones climáticas queda para PLANIFICADOR, CAPATAZ y AUDITOR; crear órdenes, solo PLANIFICADOR.
+- **Filtro por obra en `GET /ordenes`:** la orden solo guarda el tramo y la obra es un dato de Obras, así que se piden los tramos de la obra (`GET /api/obras/{obraId}/tramos`) y se filtra por ellos. Ese endpoint no admite SISTEMA, por eso se reenvía el token del usuario: los roles que pueden listar órdenes son los mismos que pueden ver los tramos. **Alternativa descartada:** copiar `obraId` en la orden (dato duplicado que se puede desalinear y una migración más).
+- **Fecha de la saga:** la fase se reprograma a la mayor fecha entre el día siguiente a la orden y el fin de la fase anterior; antes de eso Obras la rechaza por RN-02. Para saber esa fecha, el contexto interno de Obras suma `fechaFinFaseAnterior` (campo nuevo al final, compatible con los clientes actuales).
+- **Token de SISTEMA:** timeouts (3 s de conexión, 5 s de lectura) y hasta 3 intentos con espera creciente; un 4xx no se reintenta. El primer arranque del job fallaba si Keycloak todavía no estaba listo.
+- **Caché de Open-Meteo:** se guarda el último pronóstico completo por coordenada (unos 100 m) durante `app.open-meteo.cache-ttl` (15 min por defecto). Una respuesta incompleta no se guarda y un pronóstico vencido no se usa si Open-Meteo falla (RN-10).
+- **Gateway:** reglas gruesas por servicio y método con la unión de los roles que algún endpoint acepta; el permiso fino sigue en cada servicio. Las rutas `/internos/**` solo pasan con el rol SISTEMA (la colección las usa para probar RN-05 a RN-08). Recursos tiene sus reglas desde que se completaron sus endpoints (GET para todos los roles, POST para ADMIN, PLANIFICADOR y CAPATAZ, PUT para ADMIN y PLANIFICADOR). **Limitación:** si un rol tiene algún endpoint con ese método en el servicio, un cuerpo inválido en otro endpoint sigue dando 400 en vez de 403.
+- **Keycloak:** `servicio-sistema` ya no tiene el flujo de contraseña; solo usa client credentials.
+
 ## Colección de Postman, matrices y guion de demo
 
 **Decisión:** la colección ejecutable se entrega en Postman (carpeta `coleccion/`, con las seis carpetas numeradas del cuestionario, un token por rol y por SISTEMA, el entorno de ejemplo y el resultado esperado en cada request). El guion de demo y las matrices viven en `docs/`, dentro del repositorio, para que viajen con la entrega y se revisen en los PR. La colección se corrió con Newman sobre el stack levantado desde cero (56 requests, 59 aserciones).

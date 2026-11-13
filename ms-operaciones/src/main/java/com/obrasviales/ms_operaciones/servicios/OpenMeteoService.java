@@ -13,26 +13,45 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
 public class OpenMeteoService implements InterfazClimaService {
 
+    private static final Duration TTL_POR_DEFECTO = Duration.ofMinutes(15);
+
     private final RestClient restClient;
     private final String url;
+    private final Duration ttl;
+    private final Clock reloj;
+
+    // ultimo pronostico valido por coordenada: el job consulta varias ordenes del mismo tramo seguidas
+    private final Map<String, PronosticoGuardado> cache = new ConcurrentHashMap<>();
 
     // La URL sale de app.open-meteo.url, tiene timeout
     @Autowired
-    public OpenMeteoService(@Value("${app.open-meteo.url}") String url) {
-        this(construirRestClient(), url);
+    public OpenMeteoService(@Value("${app.open-meteo.url}") String url,
+                            @Value("${app.open-meteo.cache-ttl:PT15M}") Duration ttl) {
+        this(construirRestClient(), url, ttl, Clock.systemDefaultZone());
     }
 
     // Para los tests (RestClient simulado).
     OpenMeteoService(RestClient restClient, String url) {
+        this(restClient, url, TTL_POR_DEFECTO, Clock.systemDefaultZone());
+    }
+
+    OpenMeteoService(RestClient restClient, String url, Duration ttl, Clock reloj) {
         this.restClient = restClient;
         this.url = url;
+        this.ttl = ttl;
+        this.reloj = reloj;
     }
 
     private static RestClient construirRestClient() {
@@ -46,6 +65,29 @@ public class OpenMeteoService implements InterfazClimaService {
     @Retry(name = "openMeteoRetry")
     @CircuitBreaker(name = "openMeteoCircuitBreaker", fallbackMethod = "obtenerCondicionesFallback")
     public DatosClimaDTO obtenerCondicionesClimaticas(Double latitud, Double longitud) {
+        String clave = claveDe(latitud, longitud);
+        Instant ahora = reloj.instant();
+        PronosticoGuardado guardado = cache.get(clave);
+        if (guardado != null && ahora.isBefore(guardado.obtenido().plus(ttl))) {
+            log.info("Pronóstico de Open-Meteo en caché para lat: {}, long: {}", latitud, longitud);
+            return guardado.datos();
+        }
+
+        DatosClimaDTO datos = consultarOpenMeteo(latitud, longitud);
+        // solo se guarda una respuesta completa: si falta un dato se lanza error antes y no se inventa nada (RN-10)
+        cache.put(clave, new PronosticoGuardado(datos, ahora));
+        return datos;
+    }
+
+    // ~100 m de precision: dos ordenes del mismo tramo comparten el pronostico
+    private static String claveDe(Double latitud, Double longitud) {
+        return String.format(Locale.ROOT, "%.3f,%.3f", latitud, longitud);
+    }
+
+    private record PronosticoGuardado(DatosClimaDTO datos, Instant obtenido) {
+    }
+
+    private DatosClimaDTO consultarOpenMeteo(Double latitud, Double longitud) {
         log.info("Consultando Open-Meteo para lat: {}, long: {}", latitud, longitud);
 
         URI uri = UriComponentsBuilder.fromUriString(url)

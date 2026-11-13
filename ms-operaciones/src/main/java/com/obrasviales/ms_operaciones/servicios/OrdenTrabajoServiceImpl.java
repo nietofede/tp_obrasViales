@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -72,29 +73,24 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrdenTrabajoDTO> listarPorFechaYEstado(LocalDate fecha, EstadoOrden estado) {
-        List<OrdenTrabajo> ordenes = (estado != null)
-                ? ordenTrabajoRepository.findByFechaProgramadaAndEstado(fecha, estado)
-                : ordenTrabajoRepository.findAll();
-        return ordenes.stream().map(this::mapearADto).toList();
-    }
-
-    @Override
-    @Transactional
-    public OrdenTrabajoDTO cambiarEstado(Long id, EstadoOrden nuevoEstado) {
-        OrdenTrabajo orden = ordenTrabajoRepository.findById(id)
-                .orElseThrow(() -> new OrdenNoEncontrada(id));
-
-        if (!orden.getEstado().puedeTransicionarHacia(nuevoEstado)) {
-            throw new TransicionInvalida(
-                    String.format("Transición no permitida desde %s hacia %s para la orden ID: %d",
-                            orden.getEstado(), nuevoEstado, id)
-            );
+    public List<OrdenTrabajoDTO> listar(LocalDate fecha, EstadoOrden estado, Long obraId) {
+        List<OrdenTrabajo> ordenes;
+        if (fecha != null && estado != null) {
+            ordenes = ordenTrabajoRepository.findByFechaProgramadaAndEstado(fecha, estado);
+        } else if (fecha != null) {
+            ordenes = ordenTrabajoRepository.findByFechaProgramada(fecha);
+        } else if (estado != null) {
+            ordenes = ordenTrabajoRepository.findByEstado(estado);
+        } else {
+            ordenes = ordenTrabajoRepository.findAll();
         }
 
-        orden.setEstado(nuevoEstado);
-        OrdenTrabajo actualizada = ordenTrabajoRepository.save(orden);
-        return mapearADto(actualizada);
+        // la orden solo guarda el tramo: la obra se resuelve en ms-obras (dueño de ese dato)
+        if (obraId != null) {
+            Set<Long> tramos = obrasClient.tramosDeObra(obraId);
+            ordenes = ordenes.stream().filter(o -> tramos.contains(o.getTramoId())).toList();
+        }
+        return ordenes.stream().map(this::mapearADto).toList();
     }
 
     @Override

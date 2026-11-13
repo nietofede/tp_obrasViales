@@ -12,8 +12,7 @@ import java.util.List;
 public interface OTServiceInterfaz {
     OrdenTrabajoDTO crearOrden(CrearOrdenRequest request);
     OrdenTrabajoDTO obtenerPorId(Long id);
-    List<OrdenTrabajoDTO> listarPorFechaYEstado(LocalDate fecha, EstadoOrden estado);
-    OrdenTrabajoDTO cambiarEstado(Long id, EstadoOrden nuevoEstado);
+    List<OrdenTrabajoDTO> listar(LocalDate fecha, EstadoOrden estado, Long obraId);
     OrdenTrabajoDTO habilitarOrden(Long ordenId);
     List<EvaluacionClimatica> obtenerHistorialClimatico(Long ordenId);
 

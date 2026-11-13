@@ -47,6 +47,7 @@ public class OperacionService {
                 tramo.getSuperficieM2(),
                 tramo.getLatitud(),
                 tramo.getLongitud(),
-                materiales);
+                materiales,
+                anterior == null ? null : anterior.getFechaFinPlanificada());
     }
 }

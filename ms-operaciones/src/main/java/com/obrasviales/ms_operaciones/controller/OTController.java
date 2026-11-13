@@ -29,7 +29,7 @@ public class OTController {
     private final OTServiceInterfaz otService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('" + Roles.PLANIFICADOR + "', '" + Roles.ADMIN + "')") 
+    @PreAuthorize("hasRole('" + Roles.PLANIFICADOR + "')")
     @Operation(summary = "Crear una nueva orden de trabajo en estado PROGRAMADA (PLANIFICADOR)")
     public ResponseEntity<OrdenTrabajoDTO> crearOrden(
             @Valid @RequestBody CrearOrdenRequest request) {
@@ -39,7 +39,7 @@ public class OTController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()") // Cualquier usuario logueado puede consultar
+    @PreAuthorize("hasAnyRole('" + Roles.PLANIFICADOR + "', '" + Roles.CAPATAZ + "', '" + Roles.AUDITOR + "')")
     @Operation(summary = "Obtener una orden de trabajo por su ID")
     public ResponseEntity<OrdenTrabajoDTO> obtenerPorId(@PathVariable Long id) {
         OrdenTrabajoDTO dto = otService.obtenerPorId(id);
@@ -47,25 +47,15 @@ public class OTController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Listar órdenes de trabajo filtrando por fecha y/o estado")
+    @PreAuthorize("hasAnyRole('" + Roles.PLANIFICADOR + "', '" + Roles.CAPATAZ + "', '" + Roles.AUDITOR + "')")
+    @Operation(summary = "Listar órdenes de trabajo; los filtros fecha, estado y obraId son opcionales y se combinan")
     public ResponseEntity<List<OrdenTrabajoDTO>> listar(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
-            @RequestParam(required = false) EstadoOrden estado) {
-        
-        List<OrdenTrabajoDTO> lista = otService.listarPorFechaYEstado(fecha, estado);
-        return ResponseEntity.ok(lista);
-    }
+            @RequestParam(required = false) EstadoOrden estado,
+            @RequestParam(required = false) Long obraId) {
 
-    @PatchMapping("/{id}/estado")
-    @PreAuthorize("hasAnyRole('" + Roles.CAPATAZ + "', '" + Roles.PLANIFICADOR + "')") 
-    @Operation(summary = "Cambiar el estado de una orden aplicando las validaciones de la RN-11")
-    public ResponseEntity<OrdenTrabajoDTO> cambiarEstado(
-            @PathVariable Long id,
-            @RequestParam EstadoOrden nuevoEstado) {
-        
-        OrdenTrabajoDTO actualizada = otService.cambiarEstado(id, nuevoEstado);
-        return ResponseEntity.ok(actualizada);
+        List<OrdenTrabajoDTO> lista = otService.listar(fecha, estado, obraId);
+        return ResponseEntity.ok(lista);
     }
 
     @PostMapping("/{id}/habilitacion")
@@ -76,7 +66,7 @@ public class OTController {
     }
 
     @GetMapping("/{id}/evaluaciones-climaticas")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('" + Roles.PLANIFICADOR + "', '" + Roles.CAPATAZ + "', '" + Roles.AUDITOR + "')")
     @Operation(summary = "Obtener el historial de evaluaciones climáticas de una orden")
     public ResponseEntity<List<EvaluacionClimaticaResponseDTO>> obtenerHistorialClimatico(@PathVariable Long id) {
         List<EvaluacionClimaticaResponseDTO> historial = otService.obtenerHistorialClimatico(id)

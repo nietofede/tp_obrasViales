@@ -3,6 +3,7 @@ package com.obrasviales.ms_operaciones.servicios;
 import com.obrasviales.commons.exception.ReglaNegocioException;
 import com.obrasviales.ms_operaciones.clientes.ObrasClient;
 import com.obrasviales.ms_operaciones.clientes.RecursosClient;
+import com.obrasviales.ms_operaciones.dtos.ContextoFaseDTO;
 import com.obrasviales.ms_operaciones.dtos.FaseDTO;
 import com.obrasviales.ms_operaciones.excepciones.ServicioNoDisponibleException;
 import com.obrasviales.ms_operaciones.modelo.ConfiguracionSuspensiones;
@@ -24,6 +25,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -75,10 +77,44 @@ class SuspensionServiceTest {
         return new FaseDTO(FASE_ID, 1L, "BASE", "PENDIENTE", inicio, inicio.plusDays(5), null, null);
     }
 
+    private void finFaseAnterior(LocalDate fin) {
+        when(obrasClient.obtenerContextoFase(FASE_ID)).thenReturn(new ContextoFaseDTO(FASE_ID, "BASE", "PENDIENTE", true,
+                1L, "Tramo 1", null, -31.245, -64.456, List.of(), fin));
+    }
+
+    @Test
+    void siLaFaseAnteriorTerminaDespuesReprogramaAlFinDeEsaFase() {
+        limite(3);
+        when(suspensionRepository.countByFaseIdAndVigenteTrue(FASE_ID)).thenReturn(1L);
+        LocalDate finAnterior = FECHA.plusDays(4);
+        finFaseAnterior(finAnterior);
+        when(obrasClient.reprogramarFase(FASE_ID, finAnterior)).thenReturn(faseReprogramada(finAnterior));
+
+        service.suspender(orden, MotivoSuspension.CLIMA, "lluvia");
+
+        ArgumentCaptor<OrdenTrabajo> nueva = ArgumentCaptor.forClass(OrdenTrabajo.class);
+        verify(ordenRepository).save(nueva.capture());
+        assertEquals(finAnterior, nueva.getValue().getFechaProgramada());
+        assertEquals(EstadoOrden.REPROGRAMADA, orden.getEstado());
+    }
+
+    @Test
+    void siLaFaseAnteriorTerminaAntesReprogramaAlDiaSiguiente() {
+        limite(3);
+        when(suspensionRepository.countByFaseIdAndVigenteTrue(FASE_ID)).thenReturn(1L);
+        finFaseAnterior(FECHA.minusDays(3));
+        when(obrasClient.reprogramarFase(FASE_ID, FECHA.plusDays(1))).thenReturn(faseReprogramada(FECHA.plusDays(1)));
+
+        service.suspender(orden, MotivoSuspension.CLIMA, "lluvia");
+
+        verify(obrasClient).reprogramarFase(FASE_ID, FECHA.plusDays(1));
+    }
+
     @Test
     void debajoDelLimiteLiberaReprogramaLaFaseYCreaLaOrdenNueva() {
         limite(3);
         when(suspensionRepository.countByFaseIdAndVigenteTrue(FASE_ID)).thenReturn(1L);
+        finFaseAnterior(null);
         when(obrasClient.reprogramarFase(FASE_ID, FECHA.plusDays(1))).thenReturn(faseReprogramada(FECHA.plusDays(1)));
 
         service.suspender(orden, MotivoSuspension.CLIMA, "lluvia");
@@ -147,6 +183,7 @@ class SuspensionServiceTest {
         limite(3);
         when(suspensionRepository.countByFaseIdAndVigenteTrue(FASE_ID)).thenReturn(1L);
         when(recursosClient.liberar(7L)).thenThrow(new ServicioNoDisponibleException("No se pudo consultar a ms-recursos."));
+        finFaseAnterior(null);
         when(obrasClient.reprogramarFase(FASE_ID, FECHA.plusDays(1))).thenReturn(faseReprogramada(FECHA.plusDays(1)));
 
         service.suspender(orden, MotivoSuspension.CLIMA, "lluvia");
@@ -159,6 +196,7 @@ class SuspensionServiceTest {
     void siObrasRechazaLaReprogramacionSePropagaElErrorYNoSeCreaLaOrdenNueva() {
         limite(3);
         when(suspensionRepository.countByFaseIdAndVigenteTrue(FASE_ID)).thenReturn(1L);
+        finFaseAnterior(null);
         when(obrasClient.reprogramarFase(FASE_ID, FECHA.plusDays(1)))
                 .thenThrow(new ReglaNegocioException("La nueva fecha es anterior al fin de la fase previa.", "RN-02"));
 
