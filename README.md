@@ -130,6 +130,7 @@ Conviene usar `clean` al cambiar de rama: si no, Maven puede arrastrar archivos 
 - [`docs/arquitectura.md`](docs/arquitectura.md): diagrama de contexto (C1), modelo de datos de las tres bases (ER) y secuencia de la habilitación diaria.
 - [`docs/matriz-requisitos.md`](docs/matriz-requisitos.md): requisito, implementación y evidencia de cada funcionalidad y escenario comprometido.
 - [`docs/trazabilidad-reglas.md`](docs/trazabilidad-reglas.md): las reglas RN-01 a RN-12, con su test y su request.
+- [`docs/guion-demo.md`](docs/guion-demo.md): orden de la demo, comandos con su resultado esperado, quién explica qué y preguntas de defensa.
 - [`coleccion/`](coleccion/README.md): colección de Postman y entorno de ejemplo.
 
 ## Estado actual (13/11/2026)
