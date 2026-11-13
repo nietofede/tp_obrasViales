@@ -39,8 +39,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health/**").permitAll()
 
-                // los endpoints internos se llaman entre servicios, sin pasar por el gateway
-                .requestMatchers("/api/*/internos/**").denyAll()
+                // los endpoints internos son para la cuenta SISTEMA (los servicios los llaman directo; la coleccion
+                // los usa por el gateway para probar RN-05 a RN-08). Ningun otro rol pasa.
+                .requestMatchers("/api/*/internos/**").hasRole(SISTEMA)
 
                 // ms-obras
                 .requestMatchers(HttpMethod.GET, "/api/obras/**").hasAnyRole(PLANIFICADOR, CAPATAZ, AUDITOR)

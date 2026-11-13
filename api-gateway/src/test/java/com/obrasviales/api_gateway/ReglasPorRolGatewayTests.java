@@ -85,12 +85,12 @@ class ReglasPorRolGatewayTests {
             "PLANIFICADOR, PUT,   /api/operaciones/configuracion/limite-suspensiones",
             "AUDITOR,      PUT,   /api/obras/1",
             "CAPATAZ,      PATCH, /api/obras/fases/1/programacion",
-            "SISTEMA,      GET,   /api/obras/internos/fases/1/contexto-ejecucion",
+            "PLANIFICADOR, GET,   /api/obras/internos/fases/1/contexto-ejecucion",
             "PLANIFICADOR, DELETE, /api/operaciones/ordenes/1",
             "OPERARIO,     POST,  /api/recursos/maquinas",
             "AUDITOR,      PUT,   /api/recursos/configuracion/desplazamiento",
             "PLANIFICADOR, PATCH, /api/recursos/reservas/1",
-            "SISTEMA,      PATCH, /api/recursos/internos/reservas/1/confirmacion"
+            "CAPATAZ,      PATCH, /api/recursos/internos/reservas/1/confirmacion"
     })
     void rechazaLosRolesQueNoTienenNadaQueHacerAhi(String rol, String metodo, String ruta) throws Exception {
         assertEquals(403, pedir(metodo, ruta, rol));
@@ -109,7 +109,10 @@ class ReglasPorRolGatewayTests {
             "SISTEMA,      GET,   /api/recursos/reservas/1",
             "ADMIN,        POST,  /api/recursos/maquinas",
             "CAPATAZ,      POST,  /api/recursos/cuadrillas/1/ubicaciones",
-            "PLANIFICADOR, PUT,   /api/recursos/cuadrillas/1"
+            "PLANIFICADOR, PUT,   /api/recursos/cuadrillas/1",
+            "SISTEMA,      GET,   /api/obras/internos/fases/1/contexto-ejecucion",
+            "SISTEMA,      PATCH, /api/recursos/internos/reservas/1/confirmacion",
+            "SISTEMA,      POST,  /api/recursos/internos/reservas"
     })
     void dejaPasarLosRolesQueAlgunEndpointAcepta(String rol, String metodo, String ruta) throws Exception {
         int estado = pedir(metodo, ruta, rol);
