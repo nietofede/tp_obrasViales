@@ -45,6 +45,9 @@ public class BaseResourceServerConfig {
             
             // Configura el servidor como un Resource Server que valida tokens JWT firmados por Keycloak
             .oauth2ResourceServer(oauth2 -> oauth2
+                // 401 y 403 del filtro de seguridad en el mismo formato que el resto de los errores
+                .authenticationEntryPoint(new ProblemDetailAuthenticationEntryPoint())
+                .accessDeniedHandler(new ProblemDetailAccessDeniedHandler())
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
             );
 
