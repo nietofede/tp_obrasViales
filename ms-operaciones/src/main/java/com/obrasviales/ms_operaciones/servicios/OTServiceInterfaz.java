@@ -13,7 +13,6 @@ public interface OTServiceInterfaz {
     OrdenTrabajoDTO crearOrden(CrearOrdenRequest request);
     OrdenTrabajoDTO obtenerPorId(Long id);
     List<OrdenTrabajoDTO> listarPorFechaYEstado(LocalDate fecha, EstadoOrden estado);
-    OrdenTrabajoDTO cambiarEstado(Long id, EstadoOrden nuevoEstado);
     OrdenTrabajoDTO habilitarOrden(Long ordenId);
     List<EvaluacionClimatica> obtenerHistorialClimatico(Long ordenId);
 

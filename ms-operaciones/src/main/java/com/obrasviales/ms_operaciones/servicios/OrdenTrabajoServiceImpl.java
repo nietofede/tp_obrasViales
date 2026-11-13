@@ -81,24 +81,6 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
 
     @Override
     @Transactional
-    public OrdenTrabajoDTO cambiarEstado(Long id, EstadoOrden nuevoEstado) {
-        OrdenTrabajo orden = ordenTrabajoRepository.findById(id)
-                .orElseThrow(() -> new OrdenNoEncontrada(id));
-
-        if (!orden.getEstado().puedeTransicionarHacia(nuevoEstado)) {
-            throw new TransicionInvalida(
-                    String.format("Transición no permitida desde %s hacia %s para la orden ID: %d",
-                            orden.getEstado(), nuevoEstado, id)
-            );
-        }
-
-        orden.setEstado(nuevoEstado);
-        OrdenTrabajo actualizada = ordenTrabajoRepository.save(orden);
-        return mapearADto(actualizada);
-    }
-
-    @Override
-    @Transactional
     public OrdenTrabajoDTO habilitarOrden(Long ordenId) {
         OrdenTrabajo orden = ordenTrabajoRepository.findById(ordenId)
                 .orElseThrow(() -> new OrdenNoEncontrada(ordenId));

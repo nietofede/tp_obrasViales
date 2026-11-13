@@ -57,17 +57,6 @@ public class OTController {
         return ResponseEntity.ok(lista);
     }
 
-    @PatchMapping("/{id}/estado")
-    @PreAuthorize("hasAnyRole('" + Roles.CAPATAZ + "', '" + Roles.PLANIFICADOR + "')") 
-    @Operation(summary = "Cambiar el estado de una orden aplicando las validaciones de la RN-11")
-    public ResponseEntity<OrdenTrabajoDTO> cambiarEstado(
-            @PathVariable Long id,
-            @RequestParam EstadoOrden nuevoEstado) {
-        
-        OrdenTrabajoDTO actualizada = otService.cambiarEstado(id, nuevoEstado);
-        return ResponseEntity.ok(actualizada);
-    }
-
     @PostMapping("/{id}/habilitacion")
     @PreAuthorize("hasAnyRole('" + Roles.PLANIFICADOR + "', '" + Roles.SISTEMA + "')")
     @Operation(summary = "Evalúa la habilitación de una orden: consulta la fase a Obras (RN-01) y decide por clima (HABILITADA, SUSPENDIDA o PENDIENTE_CONFIRMACION_CLIMATICA)")
