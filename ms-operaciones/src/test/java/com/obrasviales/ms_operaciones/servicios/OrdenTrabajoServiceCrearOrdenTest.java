@@ -50,7 +50,7 @@ class OrdenTrabajoServiceCrearOrdenTest {
 
     private ContextoFaseDTO contexto(Long faseId, Long tramoId) {
         return new ContextoFaseDTO(faseId, "BASE", "PENDIENTE", true, tramoId, "Tramo 1",
-                new BigDecimal("5000.00"), -31.245, -64.456, List.of());
+                new BigDecimal("5000.00"), -31.245, -64.456, List.of(), null);
     }
 
     @Test

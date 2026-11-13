@@ -127,10 +127,17 @@ Conviene usar `clean` al cambiar de rama: si no, Maven puede arrastrar archivos 
 - [`docs/CONSIDERACIONES.md`](docs/CONSIDERACIONES.md): guía para el equipo con lo que conviene saber antes de tocar cada área.
 - [`docs/trazabilidad-ms-obras.md`](docs/trazabilidad-ms-obras.md) y [`docs/trazabilidad-ms-operaciones.md`](docs/trazabilidad-ms-operaciones.md): de cada requisito, dónde se implementa y qué evidencia lo respalda (tests, requests).
 - [`docs/ms-obras-api.md`](docs/ms-obras-api.md): guía de la API de Obras.
+- [`docs/arquitectura.md`](docs/arquitectura.md): diagrama de contexto (C1), modelo de datos de las tres bases (ER) y secuencia de la habilitación diaria.
+- [`docs/matriz-requisitos.md`](docs/matriz-requisitos.md): requisito, implementación y evidencia de cada funcionalidad y escenario comprometido.
+- [`docs/trazabilidad-reglas.md`](docs/trazabilidad-reglas.md): las reglas RN-01 a RN-12, con su test y su request.
+- [`docs/guion-demo.md`](docs/guion-demo.md): orden de la demo, comandos con su resultado esperado, quién explica qué y preguntas de defensa.
+- [`coleccion/`](coleccion/README.md): colección de Postman y entorno de ejemplo.
 
 ## Estado actual (13/11/2026)
 
-Está resuelto el despliegue completo con Docker Compose, la seguridad de punta a punta (gateway, servicios y roles) y los tres servicios con sus reglas de negocio. Lo que todavía estamos terminando: el job diario con el escenario sembrado de tres órdenes (una habilitada, una suspendida por clima y una rechazada por distancia), la colección de requests para Bruno o Postman, y los diagramas de arquitectura. Cuando se terminen, este apartado se actualiza.
+Está resuelto el despliegue completo con Docker Compose, la seguridad de punta a punta (gateway, servicios y roles), los tres servicios con sus reglas de negocio y el job diario de habilitación con el escenario sembrado de tres órdenes.
+
+Los catálogos y la configuración de Recursos, el vencimiento automático de reservas, los permisos finales y la resiliencia de Operaciones, y la colección de Postman (111 requests, corrida completa sobre el stack) están implementados. La colección, los diagramas y el guion de la demo están en el repositorio (ver abajo). Lo que queda es la verificación final desde cero entre los tres integrantes y el ensayo de la demo.
 
 Una limitación a tener en cuenta: con Docker, el Swagger de cada servicio no es accesible desde afuera, justamente porque los servicios no se publican. Es una decisión consciente, explicada en `docs/DECISIONES.md`.
 

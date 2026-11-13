@@ -12,4 +12,6 @@ import java.util.List;
 public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, Long> {
     List<OrdenTrabajo> findByFechaProgramadaAndEstado(LocalDate fecha, EstadoOrden estado);
     List<OrdenTrabajo> findByFaseId(Long faseId);
+    List<OrdenTrabajo> findByFechaProgramada(LocalDate fecha);
+    List<OrdenTrabajo> findByEstado(EstadoOrden estado);
 }

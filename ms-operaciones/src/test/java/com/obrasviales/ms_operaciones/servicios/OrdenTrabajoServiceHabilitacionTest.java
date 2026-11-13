@@ -72,7 +72,7 @@ class OrdenTrabajoServiceHabilitacionTest {
 
     private ContextoFaseDTO contexto(boolean faseAnteriorCompletada, String tipoTrabajo) {
         return new ContextoFaseDTO(FASE_ID, tipoTrabajo, "PENDIENTE", faseAnteriorCompletada, 1L, "Tramo 1",
-                new BigDecimal("5000.00"), -31.245, -64.456, List.of());
+                new BigDecimal("5000.00"), -31.245, -64.456, List.of(), null);
     }
 
     private ReservaDTO reserva(String estado) {

@@ -2,7 +2,7 @@
 
 Guía práctica del día a día: qué hay que saber del proyecto y qué cosas pueden romper algo. Las decisiones con sus alternativas y su justificación van en `docs/DECISIONES.md`; este archivo es lo que conviene tener presente mientras se programa. Si descubrís algo parecido, sumalo acá (con el síntoma, la causa y qué hacer).
 
-Estado al 2026-11-10. Si pasó tiempo, mirá `git log` y el README para ver qué cambió.
+Estado al 2026-11-13. Si pasó tiempo, mirá `git log` y el README para ver qué cambió.
 
 este proyecto usa **Spring Boot 4.1.2, Spring Framework 7 y Java 25**
 
@@ -38,14 +38,14 @@ Estados de una orden: `PROGRAMADA → RECURSOS_ASIGNADOS → EVALUACION_CLIMATIC
 
 **Convenciones:** validar entradas con Bean Validation; errores en formato estándar vía el handler global de commons; OpenAPI/Swagger (springdoc) en cada servicio; un test por regla de negocio (normal, límite y rechazo); una rama por tarea, un commit por paso, PR a `main` revisado por otra persona (no se pushea directo a `main`).
 
-**Estado:** terminados la base de datos por servicio, los usuarios del realm, los secretos fuera del código, las versiones, `obras-commons` , Flyway + springdoc y la seguridad del gateway. Sigue ms-obras (paso 8).
+**Estado:** terminados la base de datos por servicio, los usuarios del realm, los secretos fuera del código, las versiones, `obras-commons` , Flyway + springdoc y la seguridad del gateway. También están los tres servicios con sus reglas de negocio, el Docker Compose completo y la seguridad de punta a punta. Lo que falta está en el «Estado actual» del README.
 
 ---
 
 ## 2. Lo que hay que tener a mano para trabajar
 
 - **Variables de entorno por servicio** (los valores demo están en `.env.example`; el `.env` real **no** se sube nunca): `ms-obras` → `OBRAS_DB_PASSWORD`; `ms-recursos` → `RECURSOS_DB_PASSWORD`; `ms-operaciones` → `OPERACIONES_DB_PASSWORD` y `SERVICIO_SISTEMA_SECRET`.
-- **Infra:** `docker compose up -d` levanta Postgres y Keycloak (los servicios todavía no están en el compose).
+- **Infra:** `docker compose up -d` levanta Postgres, Keycloak, el gateway y los tres servicios (seis contenedores); para desarrollar un servicio solo, conviene levantar únicamente `postgres keycloak` (ver el README).
 - **Compilar todo:** `mvn clean package -DskipTests` desde la raíz.
 - **Correr un servicio solo** (primera vez): `mvn -pl obras-commons -am install -DskipTests` desde la raíz, y después, dentro de la carpeta del módulo, definir la variable y `./mvnw spring-boot:run` (en PowerShell: `$env:OBRAS_DB_PASSWORD="obras_pass"`).
 - **Tokens para probar** (PowerShell; las cuentas demo tienen contraseña `<rol>123`, solo para local; el token dura 5 minutos):
@@ -84,7 +84,7 @@ Estados de una orden: `PROGRAMADA → RECURSOS_ASIGNADOS → EVALUACION_CLIMATIC
 - **Hay que registrar cada clase nueva de commons en `obras-commons/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.** El escaneo de componentes de cada servicio parte de su propio paquete (`com.obrasviales.ms_obras`, etc.) y commons (`com.obrasviales.commons`) no es un subpaquete, así que una `@Configuration`, `@Component` o `@RestControllerAdvice` nueva en commons **no se activa sola**. Sin ese archivo, ninguna clase de commons funcionaba **[P]**.
 - **No definas un bean de tipo `RestClient.Builder` en commons** **[C]**. Sería el único de ese tipo y cualquier componente que lo inyecte (por ejemplo el que llame a Open-Meteo u OSRM) lo recibiría con el interceptor que agrega el token SISTEMA: ese token saldría hacia un tercero. Por eso commons expone un `RestClient` ya armado con nombre propio: se usa con `@Qualifier("sistemaRestClient") RestClient` y **solo** para llamar a otros microservicios nuestros.
 - **No pongas en commons** entidades JPA, lógica de negocio ni DTOs de contrato entre servicios.
-- **`SistemaTokenService` nunca se probó contra Keycloak** **[P]**: ningún servicio lo llama todavía. La primera vez que `ms-operaciones` llame a otro servicio, probalo con atención (secreto, URL del token y expiración).
+- **`SistemaTokenService` lo usa `ms-operaciones` para llamar a Obras y Recursos** **[P]**: si esas llamadas dan 401, revisá el secreto (`SERVICIO_SISTEMA_SECRET`), la URL del token y su expiración (5 minutos).
 
 ### 3.4 Seguridad
 
@@ -151,7 +151,7 @@ Hoy solo `ms-obras` tiene migraciones:
 | `V1__init.sql` | Esquema: tablas `obras`, `tramos` y `fases` |
 | `V2__datos_demo.sql` | Datos de demo (1 obra, 1 tramo, 2 fases) |
 
-`ms-recursos` y `ms-operaciones` todavía no tienen ninguna: cada dueño crea su `V1` cuando tenga el esquema real. No se suben archivos vacíos (se explica abajo por qué). Mientras tanto arrancan con el aviso `No migrations found`, que es esperado **[P]**.
+Los tres servicios ya tienen sus migraciones (`V1` en adelante). Cuando un servicio no tiene ninguna, arranca con el aviso `No migrations found`, que es esperado **[P]**; no se suben archivos vacíos (se explica abajo por qué).
 
 ### Regla de oro: lo que ya está en `main` no se edita
 
@@ -202,7 +202,7 @@ Si no coinciden, el servicio no arranca y el error empieza con algo como `Schema
 |---|---|---|
 | El servicio no arranca y habla de **checksum** o de una migración que cambió | Alguien editó un `V` que ya estaba aplicado | Restaurar el archivo a lo que está en `main`. Si es una base local de desarrollo y no se puede, recrearla (abajo) |
 | `Schema-validation: wrong column type` o `missing column` | La entidad y la tabla no coinciden | Corregir el tipo en la entidad, o agregar una migración nueva. No editar `V1` ni `V2` |
-| `No migrations found` | El servicio todavía no tiene archivos en `db/migration` | Es esperado en `ms-recursos` y `ms-operaciones` hasta que tengan esquema |
+| `No migrations found` | El servicio no tiene archivos en `db/migration` (hoy los tres ya los tienen) | Es esperado solo en un servicio nuevo sin esquema; si aparece en uno existente, mirá `git status` y `mvn clean` |
 | Cambié de rama y aparece una migración que mi base no conoce | La base tiene aplicadas versiones que la rama no tiene (o al revés) | Recrear la base local |
 
 ### Volver a una base local limpia
