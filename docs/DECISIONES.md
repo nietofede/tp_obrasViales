@@ -365,3 +365,16 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 **Alternativas:** un `docker-compose.docs.yml` que publique los puertos en `127.0.0.1` (descartada: el documento de compromisos declara que los microservicios no se exponen al exterior y ningún documento pide ver Swagger en el despliegue); publicar los puertos en el compose base (descartada por lo mismo).
 
 **Consecuencias:** por el gateway, `/api/<servicio>/v3/api-docs` no existe (hoy responde 500 por la limitación de errores de commons) y el gateway no tiene Swagger propio. Verificado: con el compose arriba, los puertos 8082 a 8084 no responden desde la máquina.
+
+
+## Colección de Postman, matrices y guion de demo
+
+**Decisión:** la colección ejecutable se entrega en Postman (carpeta `coleccion/`, con las seis carpetas numeradas del cuestionario, un token por rol y por SISTEMA, el entorno de ejemplo y el resultado esperado en cada request). El guion de demo y las matrices viven en `docs/`, dentro del repositorio, para que viajen con la entrega y se revisen en los PR. La colección se corrió con Newman sobre el stack levantado desde cero (56 requests, 59 aserciones).
+
+**Alternativas:** Bruno (descartada: el equipo eligió Postman); guion y matrices en documentos aparte (descartada: se desactualizan respecto del código).
+
+**Consecuencias:**
+- Para repetir la corrida hace falta una base limpia, porque el flujo principal completa la orden 1.
+- Las carpetas de Fallas, con el stack sano, solo recorren el camino feliz; cada request documenta cómo provocar la falla (apagar un contenedor o definir `APP_OPEN_METEO_URL` o `APP_OSRM_URL`) y el resultado verificado.
+- El TTL de las reservas (30 min) está fijo en el código y ningún job invoca `expirarReservasVencidas`, así que el escenario 5 del compromiso queda pendiente de la Rama 1.
+- Diferencias con el cuestionario anotadas en `docs/matriz-requisitos.md`: RN-11 devuelve 422 (el cuestionario dice 409), RN-07 deja la orden en su estado anterior en lugar de `SIN_RECURSOS`, y los ids son `BIGSERIAL` en lugar de uuid.

@@ -11,7 +11,7 @@ Las rutas son las del gateway (prefijo `/api/<servicio>`). Las carpetas citadas 
 | ID | Funcionalidad | Implementación | Evidencia | Estado |
 |---|---|---|---|---|
 | F-01 | Gestionar obras, tramos y fases | `ObraController`, `TramoController` (alta y edición de obras, tramos y fases) | `ObraControllerTest`, `ObraServiceTest`, `TramoControllerTest`, `TramoControllerEdicionTest`; colección: 01-Setup-Datos | ✔ |
-| F-02 | Armar cronograma y dependencias | `GET /obras/{id}/cronograma`, `PATCH /fases/{id}/programacion` (cascada, RN-02) | `CronogramaServiceTest`, `FaseServiceTest`, `ObraControllerConsultasTest`; colección: 01-Setup-Datos | ✔ |
+| F-02 | Armar cronograma y dependencias | `GET /obras/{id}/cronograma`, `PATCH /fases/{id}/programacion` (cascada, RN-02) | `CronogramaServiceTest`, `FaseServiceTest`, `ObraControllerConsultasTest`; colección: 01-Setup-Datos y RN-02 | ✔ |
 | F-03 | Calcular materiales | `GET /fases/{id}/materiales` (RN-03) | `MaterialServiceTest`, `FaseControllerLecturaTest`; colección: 04-Reglas-Negocio > RN-03 | ✔ |
 | F-04 | Gestionar catálogo de recursos | Hoy solo existen los datos de `V2__datos_demo.sql`; faltan los endpoints de altas | — | ✘ Rama 1 |
 | F-05 | Registrar ubicación de la cuadrilla (check-in) | Falta `POST /cuadrillas/{id}/ubicaciones` | — | ✘ Rama 1 |
@@ -58,7 +58,7 @@ Las rutas son las del gateway (prefijo `/api/<servicio>`). Las carpetas citadas 
 - **Puerto del gateway:** el cuestionario dice 8080 para `baseUrl`; el gateway publica 8081 y Keycloak ocupa el 8080.
 - **Códigos de error:** el cuestionario indica 409 para RN-01 y para RN-11 (y en la sección 11 «400/422» para RN-11). La implementación da 409 en RN-01 y 422 en RN-11; a confirmar con la cátedra o alinear.
 - **Nombres de carpetas de la colección:** se siguen los del cuestionario (`00-Auth` a `05-Fallas-y-Resiliencia`).
-- **Variable `correlation_id` en la colección:** el cuestionario prevé un UUID generado por request con el encabezado `X-Correlation-Id`; la colección todavía no lo envía (lo agrega la segunda pasada).
+- **Variable `correlation_id` en la colección:** el cuestionario prevé un UUID generado por request con el encabezado `X-Correlation-Id`; la colección lo envía en cada request (variable `correlation_id`).
 - **RN-07 sin recursos:** el cuestionario dice que la orden queda `SIN_RECURSOS`; la implementación deja la orden en su estado anterior y devuelve el motivo.
 
 ## 5. Se completa en la segunda pasada
