@@ -6,7 +6,7 @@
   },
   "item": [
     {
-      "name": "1. Auth",
+      "name": "00-Auth",
       "description": "Un token por cada rol y uno para SISTEMA, en variables de colección.",
       "item": [
         {
@@ -272,7 +272,7 @@
       ]
     },
     {
-      "name": "2. Setup",
+      "name": "01-Setup-Datos",
       "description": "Crea una obra con tramo y dos fases encadenadas.",
       "item": [
         {
@@ -479,7 +479,7 @@
       ]
     },
     {
-      "name": "3. Seguridad",
+      "name": "02-Seguridad",
       "description": "401, 403 y rol correcto. Primera pasada; se completa con Recursos y los permisos finales.",
       "item": [
         {
@@ -580,6 +580,46 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "OPERARIO crea obra -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenOperario}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/obras"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Esperado: 403. Escenario 4 del compromiso: un OPERARIO intenta crear una obra."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
                 ]
               }
             }
@@ -803,7 +843,7 @@
       ]
     },
     {
-      "name": "4. Flujo principal",
+      "name": "03-Flujo-Principal",
       "description": "Camino feliz: habilitación diaria, inicio, avance y cierre de la orden 1.",
       "item": [
         {
@@ -1088,7 +1128,7 @@
       ]
     },
     {
-      "name": "5. Reglas",
+      "name": "04-Reglas-Negocio",
       "description": "Un request por regla de negocio. Ver docs/trazabilidad-reglas.md.",
       "item": [
         {
@@ -1768,7 +1808,7 @@
       ]
     },
     {
-      "name": "6. Fallas",
+      "name": "05-Fallas-y-Resiliencia",
       "description": "Fallas externas: apagar un contenedor o cambiar una variable; los pasos están en cada request.",
       "item": [
         {
