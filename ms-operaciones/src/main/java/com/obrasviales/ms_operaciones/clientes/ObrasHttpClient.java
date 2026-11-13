@@ -1,6 +1,7 @@
 package com.obrasviales.ms_operaciones.clientes;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.obrasviales.commons.filter.CorrelationIdFilter;
 import com.obrasviales.commons.exception.ConflictoEstadoException;
 import com.obrasviales.commons.exception.RecursoNoEncontradoException;
 import com.obrasviales.commons.exception.ReglaNegocioException;
@@ -8,16 +9,26 @@ import com.obrasviales.ms_operaciones.dtos.ContextoFaseDTO;
 import com.obrasviales.ms_operaciones.dtos.FaseDTO;
 import com.obrasviales.ms_operaciones.excepciones.ServicioNoDisponibleException;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 
 // Llama a ms-obras como SISTEMA. El RestClient viene de obras-commons
@@ -31,13 +42,69 @@ public class ObrasHttpClient implements ObrasClient {
     private static final String RUTA_RIESGO = "/api/obras/internos/fases/{id}/riesgo";
     private static final String RUTA_AVANCES = "/api/obras/internos/fases/{id}/avances";
 
+    private static final String RUTA_TRAMOS_OBRA = "/api/obras/{obraId}/tramos";
+
     private final RestClient restClient;
+    // sin el interceptor de SISTEMA, que pisa el Authorization: se usa para reenviar el token del usuario
+    private final RestClient restClientUsuario;
     private final String obrasUrl;
 
+    @Autowired
     public ObrasHttpClient(@Qualifier("sistemaRestClient") RestClient restClient,
                            @Value("${app.servicios.obras-url}") String obrasUrl) {
+        this(restClient, clienteConTimeouts(), obrasUrl);
+    }
+
+    ObrasHttpClient(RestClient restClient, RestClient restClientUsuario, String obrasUrl) {
         this.restClient = restClient;
+        this.restClientUsuario = restClientUsuario;
         this.obrasUrl = obrasUrl;
+    }
+
+    // mismos timeouts que el sistemaRestClient de commons
+    private static RestClient clienteConTimeouts() {
+        JdkClientHttpRequestFactory fabrica = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build());
+        fabrica.setReadTimeout(Duration.ofSeconds(10));
+        return RestClient.builder().requestFactory(fabrica).build();
+    }
+
+    @Override
+    public Set<Long> tramosDeObra(Long obraId) {
+        String token = tokenDelUsuario();
+        try {
+            TramoObras[] tramos = restClientUsuario.get()
+                    .uri(obrasUrl + RUTA_TRAMOS_OBRA, obraId)
+                    .headers(h -> {
+                        h.setBearerAuth(token);
+                        String correlationId = MDC.get(CorrelationIdFilter.CORRELATION_ID_MDC_KEY);
+                        if (correlationId != null) {
+                            h.add(CorrelationIdFilter.CORRELATION_ID_HEADER, correlationId);
+                        }
+                    })
+                    .retrieve()
+                    .body(TramoObras[].class);
+            Set<Long> ids = new HashSet<>();
+            if (tramos != null) {
+                for (TramoObras tramo : tramos) {
+                    ids.add(tramo.id());
+                }
+            }
+            return ids;
+        } catch (HttpClientErrorException.NotFound e) {
+            throw new RecursoNoEncontradoException("La obra " + obraId + " no existe en ms-obras.");
+        } catch (RestClientException e) {
+            log.error("Falló la consulta de tramos de la obra {} a ms-obras: {}", obraId, e.getMessage());
+            throw new ServicioNoDisponibleException("No se pudo consultar a ms-obras.");
+        }
+    }
+
+    private static String tokenDelUsuario() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth instanceof JwtAuthenticationToken jwt) {
+            return jwt.getToken().getTokenValue();
+        }
+        throw new IllegalStateException("No hay un usuario autenticado para consultar los tramos de la obra.");
     }
 
     @Override
@@ -128,5 +195,9 @@ public class ObrasHttpClient implements ObrasClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record ErrorObras(String detail, String codigoRegla) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record TramoObras(Long id) {
     }
 }

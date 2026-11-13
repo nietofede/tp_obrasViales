@@ -48,12 +48,13 @@ public class OTController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('" + Roles.PLANIFICADOR + "', '" + Roles.CAPATAZ + "', '" + Roles.AUDITOR + "')")
-    @Operation(summary = "Listar órdenes de trabajo filtrando por fecha y/o estado")
+    @Operation(summary = "Listar órdenes de trabajo; los filtros fecha, estado y obraId son opcionales y se combinan")
     public ResponseEntity<List<OrdenTrabajoDTO>> listar(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
-            @RequestParam(required = false) EstadoOrden estado) {
-        
-        List<OrdenTrabajoDTO> lista = otService.listarPorFechaYEstado(fecha, estado);
+            @RequestParam(required = false) EstadoOrden estado,
+            @RequestParam(required = false) Long obraId) {
+
+        List<OrdenTrabajoDTO> lista = otService.listar(fecha, estado, obraId);
         return ResponseEntity.ok(lista);
     }
 
