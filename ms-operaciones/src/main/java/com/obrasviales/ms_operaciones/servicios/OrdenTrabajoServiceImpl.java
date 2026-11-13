@@ -191,60 +191,6 @@ public class OrdenTrabajoServiceImpl implements OTServiceInterfaz {
         return mapearADto(ordenTrabajoRepository.save(orden));
     }
 
-    // Usado por JobHabilitacionDiaria: evalua solo el clima de una orden con recursos ya asignados
-    @Override
-    @Transactional
-    public OrdenTrabajoDTO evaluarYActualizarEstadoClimatico(Long ordenId, Double latitud, Double longitud, TipoTrabajo tipoTrabajo) {
-        OrdenTrabajo orden = ordenTrabajoRepository.findById(ordenId)
-                .orElseThrow(() -> new OrdenNoEncontrada(ordenId));
-
-        if (!orden.getEstado().puedeTransicionarHacia(EstadoOrden.EVALUACION_CLIMATICA)) {
-            throw new TransicionInvalida(
-                    "La orden debe tener recursos asignados antes de realizar la evaluación climática."
-            );
-        }
-
-        UmbralClimatico umbral = umbralClimaticoRepository.findByTipoTrabajo(tipoTrabajo)
-                .orElseThrow(() -> new ReglaNegocioException(
-                        "No existen umbrales climáticos configurados para el tipo de trabajo: " + tipoTrabajo, "RN-09"));
-
-        orden.setEstado(EstadoOrden.EVALUACION_CLIMATICA);
-
-        try {
-            DatosClimaDTO datosClima = climaService.obtenerCondicionesClimaticas(latitud, longitud);
-
-            if (datosClima == null) {
-                throw new IllegalStateException("El servicio de clima devolvió datos vacíos.");
-            }
-
-            boolean humedadOk = datosClima.getHumedadSuelo() <= umbral.getHumedadSueloMaxima();
-            boolean lluviaOk = datosClima.getProbabilidadLluvia() <= umbral.getProbPrecipitacionMaxima();
-            boolean temperaturaOk = datosClima.getTemperatura() >= umbral.getTemperaturaMinima();
-            boolean umbralesCumplidos = humedadOk && lluviaOk && temperaturaOk;
-
-            EvaluacionClimatica evaluacion = new EvaluacionClimatica();
-            evaluacion.setOrdenTrabajo(orden);
-            evaluacion.setHumedadSueloRegistrada(datosClima.getHumedadSuelo());
-            evaluacion.setProbPrecipitacionRegistrada(datosClima.getProbabilidadLluvia());
-            evaluacion.setTemperaturaRegistrada(datosClima.getTemperatura());
-            evaluacion.setUmbralesCumplidos(umbralesCumplidos);
-            evaluacionClimaticaRepository.save(evaluacion);
-
-            if (umbralesCumplidos) {
-                orden.setEstado(EstadoOrden.HABILITADA);
-            } else {
-                orden.setEstado(EstadoOrden.SUSPENDIDA);
-                int suspensionesActuales = (orden.getContadorSuspensiones() != null) ? orden.getContadorSuspensiones() : 0;
-                orden.setContadorSuspensiones(suspensionesActuales + 1);
-            }
-        } catch (Exception e) {
-            // Fallback: ante fallo de red, timeout o circuito abierto, pasa a revision manual
-            orden.setEstado(EstadoOrden.PENDIENTE_CONFIRMACION_CLIMATICA);
-        }
-
-        return mapearADto(ordenTrabajoRepository.save(orden));
-    }
-
     // obras manda el tipo de trabajo como texto, si pasa algo da error y no se habilita orden
     private TipoTrabajo tipoTrabajoDe(ContextoFaseDTO contexto) {
         try {

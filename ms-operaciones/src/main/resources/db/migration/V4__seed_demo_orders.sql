@@ -15,7 +15,7 @@ INSERT INTO ordenes_trabajo (
     2, 1, CURRENT_DATE, 'PROGRAMADA', 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );
 
--- 3. Orden destinada a ser CANCELADA / RECHAZADA POR DISTANCIA (Tramo lejano en V5 de ms-obras)
+-- 3. Orden que Recursos rechaza por distancia: queda PROGRAMADA con el motivo (necesita el tramo lejano en ms-obras)
 INSERT INTO ordenes_trabajo (
     fase_id, tramo_id, fecha_programada, estado, contador_suspensiones, version, creado, actualizado
 ) VALUES (

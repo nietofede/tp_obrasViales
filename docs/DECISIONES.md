@@ -262,14 +262,16 @@ el 10 me parece que todavía falta hacer la revisión de quienes pueden usar los
 - La obra no guarda `estado` ni `fecha_inicio`; se derivan o no existen.
 - RN-03: el cuestionario pide rechazar un tipo de trabajo sin rendimiento definido; acá devuelve una lista vacía (RELEVAMIENTO no consume material).
 
-## Tarea 11: Job Diario de Habilitación e Idempotencia (ms-operaciones)
+## Tarea 11: Job diario de habilitación (ms-operaciones)
 
-- **Ejecución y Autenticación:** Se implementó `JobHabilitacionDiaria` con `@Scheduled` programado a las 06:00 AM. Para operar de forma autónoma sin intervención de usuarios humanos, interactúa con Keycloak mediante el flujo **OAuth2 Client Credentials** (`servicio-sistema`), obteniendo un token JWT con rol `SISTEMA`.
-- **Estrategia de Idempotencia:** El procesamiento filtra únicamente órdenes en estado `EVALUACION_CLIMATICA` con `fecha_programada = CURRENT_DATE`. Al ejecutarse, las órdenes transicionan a estados terminales/intermedios (`HABILITADA`, `SUSPENDIDA`, `CANCELADA`), evitando reprocesamientos si el job se dispara múltiples veces en el mismo día.
-- **Datos de Demostración (Seed):** Se creó la migración `V4__seed_demo_orders.sql` con 3 órdenes en fecha actual para evidenciar los 3 casos de negocio:
-  1. Tramo 1: Habilitada (condiciones climáticas y de distancia válidas).
-  2. Tramo 2: Suspendida (exceso de umbrales climáticos).
-  3. Tramo 3: Cancelada / Rechazada (distancia mayor a la permitida).
+- **Qué hace:** `JobHabilitacionDiaria` corre con `@Scheduled` a las 06:00 (configurable con `app.jobs.habilitacion.cron`) y llama a `HabilitacionDiariaService.habilitarDelDia(hoy)`, el mismo proceso que expone `POST /api/operaciones/habilitaciones-diarias`. No reimplementa la habilitación: Obras (RN-01), umbral (RN-09), reserva en Recursos, clima y saga de suspensión viven en `OrdenTrabajoServiceImpl.habilitarOrden`.
+- **Por qué no llama al endpoint por HTTP:** el job corre dentro de ms-operaciones; llamar al servicio es la misma lógica sin pedir un token ni hacer una llamada de red a sí mismo. Las llamadas a Obras y Recursos sí usan el `sistemaRestClient` (cuenta SISTEMA).
+- **Alternativa descartada:** la primera versión del job tenía su propio flujo (llamadas HTTP crudas y compensación propia). Duplicaba la lógica y podía contradecir la saga de `SuspensionService`.
+- **Idempotencia:** solo toma órdenes PROGRAMADA o RECURSOS_ASIGNADOS de la fecha; las que ya cambiaron de estado no se reprocesan. Una orden que falla no frena a las demás, y un fallo general queda en el log sin tirar el scheduler.
+- **Datos de demostración:** `V4__seed_demo_orders.sql` (V3 y V5 son de ms-operaciones) carga 3 órdenes PROGRAMADA para el día:
+  1. Fase 2 del tramo 1: HABILITADA o SUSPENDIDA según el clima real.
+  2. Fase 2 del tramo 1: mismo lugar y fecha que la anterior, así que el clima da el mismo resultado.
+  3. Fase 3 del tramo 2: pensada para que Recursos la rechace por distancia; queda PROGRAMADA con el motivo. Necesita el tramo lejano en ms-obras (pendiente de coordinar); sin él, Obras responde 404 y también queda PROGRAMADA.
 
 ## Ajustes previos de ms-operaciones antes de integrar con Obras
 
