@@ -50,7 +50,8 @@ class OperacionControllerTest {
                 new BigDecimal("1000.00"),
                 -34.6,
                 -58.4,
-                List.of(new MaterialCalculado("Piedra triturada", new BigDecimal("250.00"), "m3")));
+                List.of(new MaterialCalculado("Piedra triturada", new BigDecimal("250.00"), "m3")),
+                null);
     }
 
     // SEG-01: sin token, el servicio responde 401

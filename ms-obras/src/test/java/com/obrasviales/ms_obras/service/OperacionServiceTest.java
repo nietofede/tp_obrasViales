@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -103,6 +104,32 @@ class OperacionServiceTest {
         DatosOperacionResponse resultado = operacionService.obtenerDatosOperacion(2L);
 
         assertThat(resultado.faseAnteriorCompletada()).isTrue();
+    }
+
+    // Informa el fin planificado de la fase anterior, para que la saga de Operaciones no reprograme antes (RN-02)
+    @Test
+    void informaElFinDeLaFaseAnterior() {
+        Fase anterior = fase(1L, TipoFase.BASE, EstadoFase.COMPLETADA, null);
+        anterior.setFechaFinPlanificada(LocalDate.of(2026, 12, 5));
+        Fase fase = fase(2L, TipoFase.SUBBASE, EstadoFase.PENDIENTE, anterior);
+        when(faseRepository.findById(2L)).thenReturn(Optional.of(fase));
+        when(materialService.calcularMateriales(TipoFase.SUBBASE, new BigDecimal("1000.00")))
+                .thenReturn(List.of());
+
+        DatosOperacionResponse resultado = operacionService.obtenerDatosOperacion(2L);
+
+        assertThat(resultado.fechaFinFaseAnterior()).isEqualTo(LocalDate.of(2026, 12, 5));
+    }
+
+    // Sin fase anterior no hay fecha que respetar
+    @Test
+    void sinFaseAnteriorNoInformaFechaDeFin() {
+        Fase fase = fase(1L, TipoFase.RELEVAMIENTO, EstadoFase.PENDIENTE, null);
+        when(faseRepository.findById(1L)).thenReturn(Optional.of(fase));
+        when(materialService.calcularMateriales(TipoFase.RELEVAMIENTO, new BigDecimal("1000.00")))
+                .thenReturn(List.of());
+
+        assertThat(operacionService.obtenerDatosOperacion(1L).fechaFinFaseAnterior()).isNull();
     }
 
     // La fase anterior NO está completada: lo informa en vez de rechazar

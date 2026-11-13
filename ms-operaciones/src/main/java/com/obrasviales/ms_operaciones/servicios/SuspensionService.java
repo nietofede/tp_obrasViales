@@ -104,9 +104,15 @@ public class SuspensionService {
         orden.setHoraSalidaCamion(null);
     }
 
-    // Debajo del limite: se corre la fase un dia (Obras la corre en cascada con sus dependientes) y se crea la orden nueva.
+    // Debajo del limite: se corre la fase (Obras la corre en cascada con sus dependientes) y se crea la orden nueva.
+    // La fecha nueva es la mayor entre el dia siguiente a la orden y el fin de la fase anterior: antes de eso
+    // Obras la rechaza por RN-02 y la saga fallaria.
     private void reprogramar(OrdenTrabajo orden) {
         LocalDate nuevaFecha = orden.getFechaProgramada().plusDays(1);
+        LocalDate finAnterior = obrasClient.obtenerContextoFase(orden.getFaseId()).fechaFinFaseAnterior();
+        if (finAnterior != null && finAnterior.isAfter(nuevaFecha)) {
+            nuevaFecha = finAnterior;
+        }
         FaseDTO fase = obrasClient.reprogramarFase(orden.getFaseId(), nuevaFecha);
 
         OrdenTrabajo nueva = new OrdenTrabajo();

@@ -4,6 +4,7 @@ import com.obrasviales.ms_obras.domain.EstadoFase;
 import com.obrasviales.ms_obras.domain.TipoFase;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 public record DatosOperacionResponse(
@@ -16,5 +17,7 @@ public record DatosOperacionResponse(
         BigDecimal superficieM2,
         Double latitud,
         Double longitud,
-        List<MaterialCalculado> materiales) {
+        List<MaterialCalculado> materiales,
+        // fin planificado de la fase anterior (null si no tiene): la saga de Operaciones no reprograma antes de esa fecha (RN-02)
+        LocalDate fechaFinFaseAnterior) {
 }
