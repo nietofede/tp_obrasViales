@@ -86,7 +86,11 @@ class ReglasPorRolGatewayTests {
             "AUDITOR,      PUT,   /api/obras/1",
             "CAPATAZ,      PATCH, /api/obras/fases/1/programacion",
             "SISTEMA,      GET,   /api/obras/internos/fases/1/contexto-ejecucion",
-            "PLANIFICADOR, DELETE, /api/operaciones/ordenes/1"
+            "PLANIFICADOR, DELETE, /api/operaciones/ordenes/1",
+            "OPERARIO,     POST,  /api/recursos/maquinas",
+            "AUDITOR,      PUT,   /api/recursos/configuracion/desplazamiento",
+            "PLANIFICADOR, PATCH, /api/recursos/reservas/1",
+            "SISTEMA,      PATCH, /api/recursos/internos/reservas/1/confirmacion"
     })
     void rechazaLosRolesQueNoTienenNadaQueHacerAhi(String rol, String metodo, String ruta) throws Exception {
         assertEquals(403, pedir(metodo, ruta, rol));
@@ -101,7 +105,11 @@ class ReglasPorRolGatewayTests {
             "CAPATAZ,      PATCH, /api/operaciones/ordenes/1/inicio",
             "CAPATAZ,      POST,  /api/obras/fases/1/iniciar",
             "PLANIFICADOR, PATCH, /api/obras/fases/1/programacion",
-            "OPERARIO,     GET,   /api/recursos/reservas/1"
+            "OPERARIO,     GET,   /api/recursos/operarios/me/asignaciones",
+            "SISTEMA,      GET,   /api/recursos/reservas/1",
+            "ADMIN,        POST,  /api/recursos/maquinas",
+            "CAPATAZ,      POST,  /api/recursos/cuadrillas/1/ubicaciones",
+            "PLANIFICADOR, PUT,   /api/recursos/cuadrillas/1"
     })
     void dejaPasarLosRolesQueAlgunEndpointAcepta(String rol, String metodo, String ruta) throws Exception {
         int estado = pedir(metodo, ruta, rol);

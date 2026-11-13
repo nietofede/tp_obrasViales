@@ -29,6 +29,7 @@ public class SecurityConfig {
     private static final String AUDITOR = "AUDITOR";
     private static final String ADMIN = "ADMIN";
     private static final String SISTEMA = "SISTEMA";
+    private static final String OPERARIO = "OPERARIO";
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -53,8 +54,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/operaciones/**").hasRole(ADMIN)
                 .requestMatchers(HttpMethod.PATCH, "/api/operaciones/**").hasAnyRole(PLANIFICADOR, CAPATAZ)
 
-                // ms-recursos: sus endpoints se estan completando (rama de Recursos); por ahora solo autenticacion
-                .requestMatchers("/api/recursos/**").authenticated()
+                // ms-recursos (el OPERARIO lee sus asignaciones y SISTEMA consulta reservas)
+                .requestMatchers(HttpMethod.GET, "/api/recursos/**")
+                        .hasAnyRole(ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR, OPERARIO, SISTEMA)
+                .requestMatchers(HttpMethod.POST, "/api/recursos/**").hasAnyRole(ADMIN, PLANIFICADOR, CAPATAZ)
+                .requestMatchers(HttpMethod.PUT, "/api/recursos/**").hasAnyRole(ADMIN, PLANIFICADOR)
 
                 // cualquier otra combinacion de ruta y metodo no la expone ningun servicio
                 .requestMatchers("/api/**").denyAll()
