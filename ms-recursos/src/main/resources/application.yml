@@ -25,6 +25,8 @@ app:
   osrm:
     url: https://router.project-osrm.org
     factor-correccion: 1.3
+    # cada cuanto se vacia la cache de rutas: ninguna ruta guardada es mas vieja que esto
+    cache-ttl: PT6H
 
 resilience4j:
   circuitbreaker:
@@ -37,9 +39,11 @@ resilience4j:
   ratelimiter:
     instances:
       osrmLimiter:
-        limit-for-period: 10
+        # politica del servidor publico de OSRM: como maximo 1 pedido por segundo
+        limit-for-period: 1
         limit-refresh-period: 1s
-        timeout-duration: 500ms
+        # si no hay permiso, se espera hasta 3 s antes de usar la estimacion en linea recta
+        timeout-duration: 3s
 
 # correlation-id del pedido (lo pone el filtro de correlacion en el MDC) en cada linea de log
 logging:
