@@ -1,0 +1,13 @@
+# Perfil "docker": solo se activa con SPRING_PROFILES_ACTIVE=docker (lo pone el compose).
+# Dentro de la red de Docker "localhost" es el propio contenedor: Postgres y Keycloak se
+# llaman por su nombre. La contrasena de la base sigue viniendo de RECURSOS_DB_PASSWORD.
+# OSRM no se toca: sigue apuntando al servidor publico (app.osrm.url del application.yml).
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/ms_recursos
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # El issuer-uri del application.yml (localhost:8080) queda solo para comprobar el "iss".
+          jwk-set-uri: http://keycloak:8080/realms/obras-viales/protocol/openid-connect/certs

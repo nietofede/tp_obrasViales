@@ -23,7 +23,7 @@ services:
       RECURSOS_DB_PASSWORD: ${RECURSOS_DB_PASSWORD:? Falta RECURSOS_DB_PASSWORD en el .env}
       OPERACIONES_DB_PASSWORD: ${OPERACIONES_DB_PASSWORD:? Falta OPERACIONES_DB_PASSWORD en el .env}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init-db/01-init-schemas.sql:/docker-entrypoint-initdb.d/01-init-schemas.sql:ro
@@ -50,13 +50,147 @@ services:
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
       SERVICIO_SISTEMA_SECRET: ${SERVICIO_SISTEMA_SECRET:? Falta SERVICIO_SISTEMA_SECRET en el .env}
       KC_HEALTH_ENABLED: "true"
-      KC_HTTP_ENABLED: "true"
+      KC_HTTP_ENABLED:
+        "true"
+        # El claim "iss" de todos los tokens será siempre este, sin importar por dónde se pidan
+      KC_HOSTNAME_URL: http://localhost:8080
     ports:
       - "${KEYCLOAK_PORT}:8080"
     volumes:
       - ./docker/keycloak/realm-obras-viales.json:/opt/keycloak/data/import/realm-obras-viales.json:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -c 'exec 3<>/dev/tcp/localhost/8080 &&
+          printf "GET /health/ready HTTP/1.0\r\n\r\n" >&3 &&
+          grep -q UP <&3'
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 40s
     depends_on:
       postgres:
+        condition: service_healthy
+    networks:
+      - obras-network
+
+  # ms-obras: sin puertos publicados, solo se llega por el gateway
+  ms-obras:
+    build:
+      context: .
+      dockerfile: ms-obras/Dockerfile
+    container_name: obras-ms-obras
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      OBRAS_DB_PASSWORD: ${OBRAS_DB_PASSWORD:? Falta OBRAS_DB_PASSWORD en el .env}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -c 'exec 3<>/dev/tcp/localhost/8082 &&
+          printf "GET /actuator/health HTTP/1.0\r\n\r\n" >&3 &&
+          grep -q UP <&3'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - obras-network
+
+  # ms-recursos: sin puertos publicados, solo se llega por el gateway
+  ms-recursos:
+    build:
+      context: .
+      dockerfile: ms-recursos/Dockerfile
+    container_name: obras-ms-recursos
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      RECURSOS_DB_PASSWORD: ${RECURSOS_DB_PASSWORD:? Falta RECURSOS_DB_PASSWORD en el .env}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -c 'exec 3<>/dev/tcp/localhost/8083 &&
+          printf "GET /actuator/health HTTP/1.0\r\n\r\n" >&3 &&
+          grep -q UP <&3'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - obras-network
+
+  # ms-operaciones: sin puertos publicados, solo se llega por el gateway
+  ms-operaciones:
+    build:
+      context: .
+      dockerfile: ms-operaciones/Dockerfile
+    container_name: obras-ms-operaciones
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      OPERACIONES_DB_PASSWORD: ${OPERACIONES_DB_PASSWORD:? Falta OPERACIONES_DB_PASSWORD en el .env}
+      SERVICIO_SISTEMA_SECRET: ${SERVICIO_SISTEMA_SECRET:? Falta SERVICIO_SISTEMA_SECRET en el .env}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -c 'exec 3<>/dev/tcp/localhost/8084 &&
+          printf "GET /actuator/health HTTP/1.0\r\n\r\n" >&3 &&
+          grep -q UP <&3'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ms-obras:
+        condition: service_healthy
+      ms-recursos:
+        condition: service_healthy
+    networks:
+      - obras-network
+
+  # api-gateway: unico servicio de negocio expuesto al exterior
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: obras-gateway
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    ports:
+      - "${GATEWAY_PORT:-8081}:8081"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -c 'exec 3<>/dev/tcp/localhost/8081 &&
+          printf "GET /actuator/health HTTP/1.0\r\n\r\n" >&3 &&
+          grep -q UP <&3'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    depends_on:
+      ms-obras:
+        condition: service_healthy
+      ms-recursos:
+        condition: service_healthy
+      ms-operaciones:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     networks:
       - obras-network
