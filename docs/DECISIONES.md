@@ -14,21 +14,21 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 ## Usuarios keycloak
 
-**Decision:** Se crearon usuarios de demo en el realm (`admin`, `planificador`, `capataz`, `operario`, `auditor`), uno por rol. Todos con contraseña `<rol>123`. Solo para demo/local
+**Decision:** Se crearon usuarios de demo en el realm (`admin`, `planificador`, `capataz`, `operario`, `auditor`), uno por rol. Todos con contraseña `<rol>123`. Solo para demo/local 
 
 **Alternativa descartada:** Se descarto crearlos a mano ya que no sirve para el arranque desde cero
 
-**Consecuencias:** Permite arrancar desde cero sin pasos manuales.
+**Consecuencias:** Permite arrancar desde cero sin pasos manuales. 
+
 
 ## Secretos env
 
 **Problema:** las contraseñas de las bases estaban escritas en application.yml y en el SQL de init-db, y el secreto de `servicio-sistema` en el realm era `**********`. Con ese secreto, un client_credentials devolvía un token con rol SISTEMA.
 
-**Decision:**
-
-- Dejamos las cotnraseñas y secretos seteadas en el env.example, que es la plantilla con los valores de demo.
+**Decision:** 
+- Dejamos las cotnraseñas y secretos seteadas en el env.example, que es la plantilla con los valores de demo. 
 - 01-init-schemas.sql lee las pw desde el .env con \set de psql.
-- Compose usa ${VAR:?message} para las contraseñas que lee el init, si falta alguna, al hacer docker compose up, falla y devuelve un mensajke.
+- Compose usa ${VAR:?message} para las contraseñas que lee el init, si falta alguna, al hacer docker compose up, falla y devuelve un mensajke. 
 - Los `application.yml` usan `${VAR}` sin valor por defecto. Si falta la variable, Spring deja el texto `${VAR}` sin resolver y Postgres responde `password authentication failed`.
 - El realm usa `${SERVICIO_SISTEMA_SECRET}`
 
@@ -46,20 +46,18 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 **Problema:** Tres microservicios (`ms-obras`, `ms-recursos`, `ms-operaciones`) requieren lógica idéntica para validar tokens JWT, extraer roles de Keycloak, estructurar respuestas de error homogéneas, propagar identificadores de trazabilidad (Correlation ID) y comunicarse entre sí como clientes autenticados (`SISTEMA`). Duplicar este código en cada servicio viola DRY y dificulta el mantenimiento; compartir de más introduce acoplamiento indebido.
 
-**Decisión:**
-
+**Decisión:** 
 - **Qué entra:** Exclusivamente código transversal de infraestructura y soporte técnico:
   - Configuración base de Resource Server con conversión de roles de Keycloak.
   - Manejo global de excepciones bajo estándar RFC 7807 (`ProblemDetail`) y excepciones base de dominio.
   - Filtro HTTP de `Correlation-Id` y almacenamiento en el `MDC` para trazabilidad de logs.
-  - Servicio e interceptor de cliente HTTP (`RestClient`) para la cuenta `SISTEMA` vía OAuth2 _Client Credentials_.
+  - Servicio e interceptor de cliente HTTP (`RestClient`) para la cuenta `SISTEMA` vía OAuth2 *Client Credentials*.
   - DTO de valor puro reusable: `Coordenada`.
 - **Qué NO entra:** Entidades JPA de persistencia, lógica de negocio ni DTOs de contrato funcional entre microservicios. Cada microservicio es dueño de su modelo de datos y de sus contratos API.
 
 **Alternativas descartadas:**
-
-1. _Copiar y pegar código en cada microservicio:_ Alto riesgo de divergencias en seguridad y formatos de error.
-2. _Poner entidades y DTOs compartidos en `commons`:_ Acoplamiento fuerte entre microservicios. Cualquier cambio en un contrato obligaría a recompilar y desplegar toda la plataforma al unísono.
+1. *Copiar y pegar código en cada microservicio:* Alto riesgo de divergencias en seguridad y formatos de error.
+2. *Poner entidades y DTOs compartidos en `commons`:* Acoplamiento fuerte entre microservicios. Cualquier cambio en un contrato obligaría a recompilar y desplegar toda la plataforma al unísono.
 
 **Consecuencias:** Se garantiza consistencia en la seguridad, observabilidad y manejo de errores respetando la independencia de ciclo de vida y despliegue de cada microservicio.
 
@@ -77,13 +75,11 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 ## springdoc (Swagger)
 
-**Decisión:** springdoc 3.1.1, fijado en la propiedad `springdoc.version` del pom padre. Con Boot 4.1.2 probamos también 2.5.0: arrancaba y documentaba un controller con DTO validado, pero está fuera de la tabla de soporte (la documentación indica springdoc 3.x para Boot 4). 3.1.1
+**Decisión:** springdoc 3.1.1, fijado en la propiedad `springdoc.version` del pom padre. Con Boot 4.1.2 probamos también 2.5.0: arrancaba y documentaba un controller con DTO validado, pero está fuera de la tabla de soporte (la documentación indica springdoc 3.x para Boot 4). 3.1.1 
 
 **Alternativa descartada:** quedarnos con 2.5.0.
 
 **Consecuencias:** Quedan habilitados por defecto, abiertos sin token (ver “Swagger sin token”) y se apagan en producción con variables de entorno.
-
-el 10 me parece que todavía falta hacer la revisión de quienes pueden usar los endpoints, osea hacerl la verificacion por usuario. Gemini dijo que se podia hacer con un preathorize algo asi. Un endopoint no me anda, el de historial de evaluacioens climaticas, creo que es secundario pero me tira error 500
 
 ## Gateway: rutas, seguridad y correlation-id
 
@@ -93,16 +89,15 @@ el 10 me parece que todavía falta hacer la revisión de quienes pueden usar los
 
 **Consecuencias:** el 401 del gateway sale con cuerpo vacío (pendiente de unificar con el handler de commons). La respuesta del servicio trae el mismo header y el proxy lo copia, así que el filtro lo reemplaza para que salga uno solo. El `issuer-uri` apunta a `localhost`: hay que revisarlo al dockerizar. El id se guarda en el MDC, pero no aparece en los logs hasta que se configure un patrón con `%X{correlationId}`. Verificado con token real: sin token 401, token basura 401, token válido llega a los tres servicios, el id del cuerpo del servicio coincide con el header y `mvn test` del gateway pasa.
 
-## Swagger sin token
 
+## Swagger sin token
 **Decisión:** `/v3/api-docs/**`, `/swagger-ui/**` y `/swagger-ui.html` son `permitAll` en `BaseResourceServerConfig` (commons). En producción se apagan con `SPRINGDOC_API_DOCS_ENABLED=false` y `SPRINGDOC_SWAGGER_UI_ENABLED=false`.
 
 **Alternativas descartadas:** dejarlo protegido (el navegador no puede mandar el header `Authorization` al abrir la página, así que Swagger no se puede usar) y abrir solo la UI protegiendo el contrato (la UI pide el contrato sin token).
 
-**Consecuencias:** el contrato de cada servicio es público en su puerto. Los servicios no se exponen fuera de Docker y el gateway no enruta esas rutas.
+**Consecuencias:** el contrato de cada servicio es público en su puerto. Los servicios no se exponen fuera de Docker y el gateway no enruta esas rutas. 
 
 ## OpenApi
-
 **Decisión:** cada servicio tiene una clase `OpenApiConfig` con `@OpenAPIDefinition` y `@SecurityScheme` que declaran un esquema `bearerAuth` (HTTP bearer, JWT) como requisito global, y un título propio. Así Swagger UI muestra el botón Authorize.
 
 **Alternativas descartadas:** una sola clase en commons (commons no tiene springdoc y todos los servicios tendrían el mismo título) y un `@Bean OpenAPI` (equivale a las anotaciones pero es más largo).
@@ -110,7 +105,6 @@ el 10 me parece que todavía falta hacer la revisión de quienes pueden usar los
 **Consecuencias:** se repiten unas 20 líneas en tres servicios.
 
 ## Matriz de permisos
-
 **Decisión:** `docs/matriz-permisos.md` define qué rol puede cada capacidad. Las filas con fuente en el enunciado están fijas; las demás son propuesta del equipo.
 
 **Alternativas descartadas:** esperar a los controladores para escribirla (los controladores se escribirían sin un criterio común).
@@ -126,41 +120,37 @@ el 10 me parece que todavía falta hacer la revisión de quienes pueden usar los
 **Consecuencias:** el Swagger de cada servicio muestra las mismas rutas que usa el cliente. Verificado: el servicio respondió con `instance: /api/obras/x`. Si el equipo prefiere `StripPrefix`, hay que decidirlo antes del paso 8.
 
 ## Integración con Proveedor Externo de Rutas (OSRM)
-
-- **Contexto:** El microservicio necesita calcular distancias y duraciones estimadas de traslado entre depósitos, cuadrillas y obras viales para planificar las reservas.
-- **Decisión:** Se implementó una abstracción mediante la interfaz `ProveedorRutas` y su implementación concreta `OsrmProveedorRutas`, consumiendo la API pública de Project OSRM (`/route/v1/driving/...`) mediante `RestTemplate`.
-- **Consecuencias:**
-  - Se desacopla la lógica de negocio de la API concreta de mapas, permitiendo migrar a otro proveedor (Google Maps, Mapbox, etc.) sin modificar la capa de servicios.
-  - Se introduce una dependencia de red externa que requiere mecanismos de tolerancia a fallos.
+* **Contexto:** El microservicio necesita calcular distancias y duraciones estimadas de traslado entre depósitos, cuadrillas y obras viales para planificar las reservas.
+* **Decisión:** Se implementó una abstracción mediante la interfaz `ProveedorRutas` y su implementación concreta `OsrmProveedorRutas`, consumiendo la API pública de Project OSRM (`/route/v1/driving/...`) mediante `RestTemplate`.
+* **Consecuencias:** 
+  * Se desacopla la lógica de negocio de la API concreta de mapas, permitiendo migrar a otro proveedor (Google Maps, Mapbox, etc.) sin modificar la capa de servicios.
+  * Se introduce una dependencia de red externa que requiere mecanismos de tolerancia a fallos.
 
 ---
 
 ## Estrategia de Caché Local en Memoria (`@Cacheable`)
-
-- **Contexto:** Las consultas de cálculo de rutas entre coordenadas idénticas son recurrentes; consultar una API externa en cada petición genera latencia innecesaria y consumo de cuota de red.
-- **Decisión:** Se anotó el método `calcularRuta` con `@Cacheable(value = "rutas", key = "{#origenLat, #origenLon, #destinoLat, #destinoLon}")`, respaldado por `ConcurrentMapCacheManager`.
-- **Consecuencias:**
-  - Respuestas en tiempo constante ($O(1)$) para trayectos previamente calculados.
-  - Reducción significativa de peticiones salientes hacia la API externa de OSRM.
+* **Contexto:** Las consultas de cálculo de rutas entre coordenadas idénticas son recurrentes; consultar una API externa en cada petición genera latencia innecesaria y consumo de cuota de red.
+* **Decisión:** Se anotó el método `calcularRuta` con `@Cacheable(value = "rutas", key = "{#origenLat, #origenLon, #destinoLat, #destinoLon}")`, respaldado por `ConcurrentMapCacheManager`.
+* **Consecuencias:**
+  * Respuestas en tiempo constante ($O(1)$) para trayectos previamente calculados.
+  * Reducción significativa de peticiones salientes hacia la API externa de OSRM.
 
 ---
 
 ## Tolerancia a Fallos y Resiliencia (Circuit Breaker y Rate Limiter)
-
-- **Contexto:** OSRM es un servicio de terceros sujeto a caídas de red, latencias elevadas o bloqueos por exceso de tráfico (_HTTP 429 / 500_). El fallo de este servicio externo no debe interrumpir la gestión de reservas en el sistema.
-- **Decisión:** Se integró **Resilience4j** configurando dos patrones coordinados sobre el cliente de rutas:
-  - **Rate Limiter (`osrmLimiter`):** Limita el caudal de peticiones salientes por ventana de tiempo para respetar los límites de uso del proveedor externo.
-  - **Circuit Breaker (`osrmBreaker`):** Monitorea la tasa de errores y abre el circuito ante fallos repetidos para evitar degradar los hilos de ejecución del microservicio.
-  - **Fallback (`fallbackCalcularRuta`):** Ante cualquier excepción o apertura del circuito, se calcula la distancia geodésica en línea recta mediante la **fórmula de Haversine** y se proyecta el tiempo de traslado asumiendo una velocidad promedio de `50 km/h` (con un piso mínimo de 5 minutos). El resultado se etiqueta explícitamente con `fuente: "ESTIMADA"`.
-- **Consecuencias:** El microservicio garantiza alta disponibilidad funcional mediante _degradación elegante_, evitando propagar errores `500` hacia `ms-operaciones` o los usuarios finales.
+* **Contexto:** OSRM es un servicio de terceros sujeto a caídas de red, latencias elevadas o bloqueos por exceso de tráfico (*HTTP 429 / 500*). El fallo de este servicio externo no debe interrumpir la gestión de reservas en el sistema.
+* **Decisión:** Se integró **Resilience4j** configurando dos patrones coordinados sobre el cliente de rutas:
+  * **Rate Limiter (`osrmLimiter`):** Limita el caudal de peticiones salientes por ventana de tiempo para respetar los límites de uso del proveedor externo.
+  * **Circuit Breaker (`osrmBreaker`):** Monitorea la tasa de errores y abre el circuito ante fallos repetidos para evitar degradar los hilos de ejecución del microservicio.
+  * **Fallback (`fallbackCalcularRuta`):** Ante cualquier excepción o apertura del circuito, se calcula la distancia geodésica en línea recta mediante la **fórmula de Haversine** y se proyecta el tiempo de traslado asumiendo una velocidad promedio de `50 km/h` (con un piso mínimo de 5 minutos). El resultado se etiqueta explícitamente con `fuente: "ESTIMADA"`.
+* **Consecuencias:** El microservicio garantiza alta disponibilidad funcional mediante *degradación elegante*, evitando propagar errores `500` hacia `ms-operaciones` o los usuarios finales.
 
 ---
 
 ## Estrategia de Pruebas de Integración Desacopladas
-
-- **Contexto:** La ejecución de tests automatizados no debe depender de conectividad a internet ni requerir infraestructura pesada levantada (Keycloak, base de datos en contenedores) para validar la lógica del cliente y la caché.
-- **Decisión:** Se implementaron pruebas de integración utilizando `MockRestServiceServer` interceptando el `RestTemplate` interno de `OsrmProveedorRutas`, validando respuestas exitosas (`200 OK`) y el comportamiento de aciertos de caché sin realizar tráfico de red real.
-- **Consecuencias:** Ejecución determinística y reproducible de pruebas sin consumo de servicios externos.
+* **Contexto:** La ejecución de tests automatizados no debe depender de conectividad a internet ni requerir infraestructura pesada levantada (Keycloak, base de datos en contenedores) para validar la lógica del cliente y la caché.
+* **Decisión:** Se implementaron pruebas de integración utilizando `MockRestServiceServer` interceptando el `RestTemplate` interno de `OsrmProveedorRutas`, validando respuestas exitosas (`200 OK`) y el comportamiento de aciertos de caché sin realizar tráfico de red real.
+* **Consecuencias:** Ejecución determinística y reproducible de pruebas sin consumo de servicios externos.
 
 ## Dependencia entre fases (ms-obras)
 
@@ -230,6 +220,7 @@ el 10 me parece que todavía falta hacer la revisión de quienes pueden usar los
 
 **Consecuencias:** quien ya tenía la base debe recrearla (`docker compose down -v`).
 
+
 ## Consultas de lectura en ms-obras
 
 **Problema:** la revisión del PR notó que no se podían ver ni listar las obras, y que el cronograma exigía conocer el id del tramo de antemano.
@@ -245,7 +236,6 @@ el 10 me parece que todavía falta hacer la revisión de quienes pueden usar los
 **Problema:** al comparar ms-obras con la sección 07 del cuestionario faltaban 7 de los 15 endpoints comprometidos, dos rutas tenían otro nombre y ninguna llamada podía completar una fase, de lo que depende RN-01.
 
 **Decisión:**
-
 - Se implementaron los 7 faltantes (editar obra y tramo, consultar tramo y fase, materiales de una fase, avances y riesgo) y se renombraron `reprogramar` a `PATCH /fases/{id}/programacion` y `datos-operacion` a `GET /internos/fases/{id}/contexto-ejecucion`, solo para SISTEMA. Regla de rutas: prefijo `/api/obras` más la ruta del cuestionario, porque el gateway no recorta el prefijo.
 - `POST /internos/fases/{id}/avances` guarda el avance real en la columna `avance_porcentaje` (migración V4) y responde 201. El primer avance de una fase PENDIENTE la inicia y aplica RN-01. Al llegar al 100 % queda COMPLETADA. El avance no puede retroceder (422 con código `AVANCE`).
 - `PATCH /internos/fases/{id}/riesgo` pasa la fase al nuevo estado EN_RIESGO. En ese estado no admite avances ni inicio. El PLANIFICADOR lo resuelve reprogramándola, y vuelve a PENDIENTE. Quién decide cuándo marcarla (al llegar a N suspensiones) es Operaciones.
@@ -255,7 +245,6 @@ el 10 me parece que todavía falta hacer la revisión de quienes pueden usar los
 **Alternativa descartada:** dejar las rutas anteriores y documentar la diferencia (una diferencia sin justificar con el compromiso baja el puntaje de ALC-01), y guardar estado y avance de la obra en la base (habría que mantenerlos sincronizados con las fases).
 
 **Consecuencias:** siguen abiertas estas diferencias con el cuestionario. El cuestionario dice que los cambios de alcance se acuerdan con la cátedra, así que conviene decidirlas en equipo:
-
 - Los ids son `BIGSERIAL` y el DER comprometido usa `uuid`.
 - El proyecto usa Spring Boot 4.1.2 y el cuestionario dice 3.2 (el roadmap, tarea 4, pedía avisar a la cátedra).
 - El DER pone `material_requerido` en la fase; acá se calcula al consultar.
