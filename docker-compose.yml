@@ -138,6 +138,8 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      # el job diario usa la fecha de la JVM: en UTC, después de las 21 h de Argentina procesaba el día siguiente
+      TZ: America/Argentina/Buenos_Aires
       OPERACIONES_DB_PASSWORD: ${OPERACIONES_DB_PASSWORD:? Falta OPERACIONES_DB_PASSWORD en el .env}
       SERVICIO_SISTEMA_SECRET: ${SERVICIO_SISTEMA_SECRET:? Falta SERVICIO_SISTEMA_SECRET en el .env}
     healthcheck:

@@ -365,3 +365,18 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 **Alternativas:** un `docker-compose.docs.yml` que publique los puertos en `127.0.0.1` (descartada: el documento de compromisos declara que los microservicios no se exponen al exterior y ningún documento pide ver Swagger en el despliegue); publicar los puertos en el compose base (descartada por lo mismo).
 
 **Consecuencias:** por el gateway, `/api/<servicio>/v3/api-docs` no existe (hoy responde 500 por la limitación de errores de commons) y el gateway no tiene Swagger propio. Verificado: con el compose arriba, los puertos 8082 a 8084 no responden desde la máquina.
+
+## Escenario de demo del job diario (paso 11): datos de Obras y zona horaria
+
+- **Datos en Obras** (`ms-obras` V5): mueve las fases del tramo 1 a fechas relativas a hoy (fase 1 terminada ayer, fase 2 desde hoy) y agrega el tramo 2 lejano (Río Cuarto, unos 200 km de la cuadrilla Alfa) con la fase 3, BASE y sin fase anterior. En una base limpia quedan los ids 2 y 3 que espera `V4__seed_demo_orders.sql` de ms-operaciones. Las fechas se calculan con la hora de Argentina, igual que ese seed.
+- **Por qué mover las fechas:** con las fases en diciembre y las órdenes en noviembre, una suspensión reprogramaba la fase 2 a una fecha anterior al fin de la fase 1 y Obras la rechazaba por RN-02, así que la saga fallaba.
+- **Por qué BASE en el tramo lejano:** la cuadrilla Alfa cumple operarios, máquina y certificación para BASE, así que lo único que falla es el viaje (RN-07, más de 90 min).
+- **Zona horaria:** `TZ=America/Argentina/Buenos_Aires` en el servicio ms-operaciones del compose. El job usa la fecha de la JVM y en UTC, después de las 21 h de Argentina, procesaba las órdenes del día siguiente.
+- **Suspensión por clima en la demo:** con el clima real no se puede forzar. El ADMIN sube el umbral de BASE antes de habilitar la orden de mañana y lo restaura después:
+  - `PUT /api/operaciones/umbrales-climaticos/BASE` con `{"humedadSueloMaxima":0.40,"probPrecipitacionMaxima":20.0,"temperaturaMinima":60.0}` → cualquier clima queda fuera del umbral.
+  - `POST /api/operaciones/habilitaciones-diarias` con la fecha de mañana → la orden queda REPROGRAMADA y se crea una orden nueva para pasado mañana.
+  - Restaurar con `{"humedadSueloMaxima":0.40,"probPrecipitacionMaxima":20.0,"temperaturaMinima":5.0}` (los valores de V2).
+  - La lógica de la suspensión sin trucos queda cubierta por `SuspensionServiceTest`, con clima simulado.
+- **Guion de las 3 órdenes:** habilitar hoy (orden 1 → HABILITADA), mañana con el umbral alto (orden 2 → suspendida y reprogramada) y pasado mañana (orden 3 → queda PROGRAMADA con motivo RN-07).
+- **Cuidado en el día 3:** la orden que crea la saga cae el mismo día que la orden 3 y usa la misma cuadrilla. La orden 3 (id 3) se crea antes, pero el proceso diario no garantiza el orden: si la nueva se habilita primero, la orden 3 muestra RN-05 (cuadrilla ya reservada) en vez de RN-07. Para mostrar el rechazo por distancia sin ese ruido, habilitar el día 3 antes de suspender la orden 2, o hacer la suspensión en otra corrida de la demo.
+- **Bases anteriores:** si la base ya estaba levantada, hay que recrearla (`docker compose down -v`) para que los ids y las fechas coincidan.
