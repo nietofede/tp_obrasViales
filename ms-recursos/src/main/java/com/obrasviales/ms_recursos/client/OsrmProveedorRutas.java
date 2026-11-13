@@ -2,6 +2,8 @@ package com.obrasviales.ms_recursos.client;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
@@ -12,6 +14,8 @@ import java.time.Duration;
 
 @Component
 public class OsrmProveedorRutas implements ProveedorRutas {
+
+    private static final Logger log = LoggerFactory.getLogger(OsrmProveedorRutas.class);
 
     private static final String USER_AGENT = "GOVP-ms-recursos/0.0.1 (TPI UTN FRC; Backend de Aplicaciones)";
 
@@ -68,8 +72,7 @@ public class OsrmProveedorRutas implements ProveedorRutas {
     public ResultadoRuta fallbackCalcularRuta(double origenLat, double origenLon,
                                              double destinoLat, double destinoLon,
                                              Throwable ex) {
-        System.err.println("WARN [Resilience4j]: OSRM no disponible o limitado. Motivo: " 
-                + ex.getMessage() + ". Usando estimación en línea recta.");
+        log.warn("OSRM no disponible o limitado ({}). Se usa la estimación en línea recta.", ex.getMessage());
 
         double distanciaKm = calcularDistanciaHaversine(origenLat, origenLon, destinoLat, destinoLon) * factorCorreccion;
         int minutosEstimados = (int) Math.ceil((distanciaKm / 50.0) * 60.0);
