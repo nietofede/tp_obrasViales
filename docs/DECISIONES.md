@@ -330,3 +330,27 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - **Orden que dejó a su fase en riesgo:** no se cancela por acá (409). La decisión del PLANIFICADOR se toma en `POST /fases-en-riesgo/{faseId}/decisiones`, que es el que reinicia el conteo de la fase.
 - **Reprogramación** (`PATCH /ordenes/{id}/reprogramacion`, PLANIFICADOR, con `fecha`): mueve de fecha una orden PROGRAMADA, es decir sin recursos, para reintentar su reserva otro día. La fecha no puede ser anterior a hoy. No toca la fase en Obras: solo cambia la fecha de la orden.
 - **Umbrales** (`GET /api/operaciones/umbrales-climaticos`): lista los umbrales de todos los tipos de trabajo, para ADMIN, PLANIFICADOR, CAPATAZ y AUDITOR.
+
+## Docker: Dockerfiles, perfil docker y compose completo
+
+**Decisión:** cada módulo tiene un `Dockerfile` en dos etapas con Java 25 (Maven compila con `-pl <módulo> -am`, un JRE ejecuta como usuario sin privilegios; el contexto es la raíz del repo y el `.dockerignore` deja afuera `.env`, `target/` y `docs/`). Lo que depende de la red de Docker va en un archivo nuevo `application-docker.yml` por módulo, que se activa con `SPRING_PROFILES_ACTIVE=docker`: URL de Postgres, `jwk-set-uri` de Keycloak y, en operaciones, las URL de Obras y Recursos y la del token de SISTEMA. En el gateway se repiten las tres rutas completas, porque las listas del yml se reemplazan enteras. Los secretos entran como variables de entorno desde el compose, nunca en la imagen.
+
+**Alternativas:** compilar en la máquina y copiar el `.jar` (descartada: depende del entorno de cada integrante); editar los `application.yml` con valores de Docker (descartada: rompe la ejecución por terminal y choca con el trabajo de los demás).
+
+**Consecuencias:** `docker compose up -d --build` levanta Postgres, Keycloak, los tres servicios y el gateway, cada uno esperando por `service_healthy`. Solo el gateway y Keycloak publican puertos; Postgres se publica solo en `127.0.0.1` para tests y ejecución por terminal. Los healthchecks usan `bash` y `/dev/tcp` porque las imágenes no traen `curl` ni `wget`. Verificado: 6 servicios `healthy`, por el gateway 401 sin token y 200 con token, y los puertos 8082 a 8084 no responden desde afuera.
+
+## Docker: validación de JWT con el emisor fijo
+
+**Decisión:** Keycloak se configura con `KC_HOSTNAME_URL=http://localhost:8080`, así el claim `iss` de todos los tokens es siempre ese, se pidan desde afuera o por `keycloak:8080`. Los servicios conservan ese `issuer-uri` solo para comparar el `iss` y bajan las claves por `jwk-set-uri` en `keycloak:8080`.
+
+**Alternativas:** cambiar el `iss` a `http://keycloak:8080` (descartada: obliga a editar el archivo hosts de cada máquina); apagar la validación del emisor (descartada: cualquier emisor sería válido).
+
+**Consecuencias:** `issuer-uri` y `KEYCLOAK_PORT` tienen que coincidir en el puerto 8080. Verificado: un token pedido desde afuera y otro desde la red interna traen el mismo `iss` y el gateway acepta ambos; sin token y con token inválido da 401.
+
+## Docker: el Swagger de los servicios no se publica
+
+**Decisión:** el compose no publica los puertos de Obras, Recursos ni Operaciones; la interfaz de Swagger de cada servicio se ve ejecutándolo por terminal (`localhost:808x/swagger-ui.html`). El OpenAPI de cada servicio sigue generándose con springdoc y representa la API implementada.
+
+**Alternativas:** un `docker-compose.docs.yml` que publique los puertos en `127.0.0.1` (descartada: el documento de compromisos declara que los microservicios no se exponen al exterior y ningún documento pide ver Swagger en el despliegue); publicar los puertos en el compose base (descartada por lo mismo).
+
+**Consecuencias:** por el gateway, `/api/<servicio>/v3/api-docs` no existe (hoy responde 500 por la limitación de errores de commons) y el gateway no tiene Swagger propio. Verificado: con el compose arriba, los puertos 8082 a 8084 no responden desde la máquina.
