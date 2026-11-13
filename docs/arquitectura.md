@@ -4,35 +4,67 @@ Complementa el diagrama de contenedores (C2) de [`c2-contenedores.md`](c2-conten
 
 ## 1. Contexto (C1)
 
-El sistema gestiona obras viales: planificación de obras, tramos y fases; recursos (cuadrillas, máquinas, plantas de mezcla); y la ejecución diaria de las órdenes de trabajo, condicionada por el clima. Las personas lo usan por API, siempre con un rol de Keycloak.
-
-> Nota: el texto del cuestionario (sección 05) no estaba disponible al escribir este diagrama; los actores y sistemas salen de lo implementado y del README. Cotejar con el cuestionario antes de entregar.
+Es el diagrama de Contexto del modelo C4 de la sección 05 del cuestionario. El sistema decide cada día si una cuadrilla puede ejecutar una obra, según el estado de la obra, los recursos, las rutas y el clima. Incluye la cuenta de servicio SISTEMA (job diario). Hay cinco actores, todos con rol de Keycloak, y tres sistemas externos.
 
 ```mermaid
 flowchart TB
-    planificador["PLANIFICADOR<br/>planifica obras y órdenes,<br/>decide fases en riesgo"]
-    capataz["CAPATAZ<br/>inicia, avanza y cierra órdenes,<br/>resuelve clima dudoso"]
-    admin["ADMIN<br/>umbrales climáticos y<br/>límite de suspensiones"]
-    auditor["AUDITOR<br/>consulta"]
-    operario["OPERARIO<br/>consulta sus asignaciones"]
+    planificador["Planificador<br/>Crea obras, tramos y fases; arma el cronograma;<br/>emite órdenes; decide sobre fases en riesgo"]
+    capataz["Capataz<br/>Confirma o rechaza órdenes; registra inicio, fin y avance;<br/>hace check-in de cuadrilla; resuelve casos con clima incierto"]
+    operario["Operario<br/>Consulta sus asignaciones del día (solo lectura)"]
+    auditor["Auditor<br/>Consulta historial de suspensiones y reportes (solo lectura)"]
+    admin["Admin<br/>Gestiona catálogos, umbrales climáticos y usuarios"]
 
-    sistema(["Obras Viales<br/>sistema de gestión de obras viales<br/>(gateway, 3 microservicios, Keycloak)"])
+    obras(["Gestión Integral de Obras Viales<br/>Planifica obras, asigna cuadrillas y máquinas y decide cada día<br/>si una orden puede ejecutarse según clima y rutas reales.<br/>Incluye la cuenta de servicio SISTEMA (job diario)"])
 
-    meteo["Open-Meteo<br/>pronóstico (humedad, lluvia,<br/>temperatura)"]
-    osrm["OSRM<br/>tiempos y rutas<br/>(datos de OpenStreetMap)"]
-    job["Job diario<br/>cuenta de servicio SISTEMA"]
+    keycloak["Keycloak (externo)<br/>OIDC, emisión de JWT, roles y client credentials"]
+    meteo["Open-Meteo (externo)<br/>Pronóstico horario: humedad de suelo,<br/>probabilidad de lluvia y temperatura"]
+    osrm["OSRM, servidor público demo (externo)<br/>Rutas por calle: duraciones y recorridos"]
 
-    planificador -->|"API REST + JWT"| sistema
-    capataz -->|"API REST + JWT"| sistema
-    admin -->|"API REST + JWT"| sistema
-    auditor -->|"API REST + JWT"| sistema
-    operario -->|"API REST + JWT"| sistema
-    job -->|"habilitación diaria"| sistema
-    sistema -->|"HTTPS"| meteo
-    sistema -->|"HTTPS"| osrm
+    planificador -->|"Planifica obras y emite órdenes<br/>HTTPS/JSON + JWT"| obras
+    capataz -->|"Confirma órdenes, registra avance y check-in<br/>HTTPS/JSON + JWT"| obras
+    operario -->|"Consulta asignaciones del día<br/>HTTPS/JSON + JWT"| obras
+    auditor -->|"Consulta historial y reportes<br/>HTTPS/JSON + JWT"| obras
+    admin -->|"Configura catálogos, umbrales y usuarios<br/>HTTPS/JSON + JWT"| obras
+
+    obras -->|"Valida JWT y obtiene token de servicio<br/>OIDC / OAuth2"| keycloak
+    obras -->|"Consulta pronóstico por coordenadas del tramo<br/>HTTPS/JSON"| meteo
+    obras -->|"Calcula tiempos cuadrilla→tramo y planta→tramo<br/>HTTPS/JSON (/table, /route)"| osrm
 ```
 
-Los límites del sistema: no hay interfaz gráfica, notificaciones, GPS ni reportes; son parte de lo que quedó fuera de alcance.
+Definición textual editable (la del cuestionario, PlantUML con C4-PlantUML):
+
+```plantuml
+@startuml C1_Contexto_Obras_Viales
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+title Diagrama de Contexto (C4 - Nivel 1) - Gestión Integral de Obras Viales con Control Climático de Ejecución
+
+Person(planificador, "Planificador", "Crea obras, tramos y fases; arma el cronograma; emite órdenes; decide sobre fases en riesgo.")
+Person(capataz, "Capataz", "Confirma o rechaza órdenes; registra inicio, fin y avance; hace check-in de cuadrilla; resuelve casos con clima incierto.")
+Person(operario, "Operario", "Consulta sus asignaciones del día (solo lectura).")
+Person(auditor, "Auditor", "Consulta historial de suspensiones y reportes (solo lectura).")
+Person(admin, "Admin", "Gestiona catálogos, umbrales climáticos y usuarios.")
+
+System(obras, "Gestión Integral de Obras Viales", "Planifica obras, asigna cuadrillas y máquinas, y decide cada día si una orden puede ejecutarse según clima y rutas reales. Incluye la cuenta de servicio SISTEMA (job diario).")
+
+System_Ext(keycloak, "Keycloak", "Proveedor de identidad: OIDC, emisión de JWT, roles y client credentials.")
+System_Ext(meteo, "Open-Meteo", "API pública de pronóstico horario: humedad de suelo, probabilidad de lluvia y temperatura.")
+System_Ext(osrm, "OSRM (servidor público demo)", "API pública de rutas por calle: duraciones y recorridos.")
+
+Rel(planificador, obras, "Planifica obras y emite órdenes", "HTTPS/JSON + JWT")
+Rel(capataz, obras, "Confirma órdenes, registra avance y check-in", "HTTPS/JSON + JWT")
+Rel(operario, obras, "Consulta asignaciones del día", "HTTPS/JSON + JWT")
+Rel(auditor, obras, "Consulta historial y reportes", "HTTPS/JSON + JWT")
+Rel(admin, obras, "Configura catálogos, umbrales y usuarios", "HTTPS/JSON + JWT")
+
+Rel(obras, keycloak, "Valida JWT y obtiene token de servicio", "OIDC / OAuth2")
+Rel(obras, meteo, "Consulta pronóstico por coordenadas del tramo", "HTTPS/JSON")
+Rel(obras, osrm, "Calcula tiempos cuadrilla→tramo y planta→tramo", "HTTPS/JSON (/table, /route)")
+@enduml
+```
+
+Cuatro de los cinco roles (Planificador, Capataz, Auditor y Admin) ya operan en la implementación; el Operario solo tendrá un endpoint propio (`GET /operarios/me/asignaciones`) cuando se mergee la Rama 1. Los reportes del Auditor y la gestión de usuarios por API están fuera de alcance: los usuarios se administran en Keycloak.
 
 ## 2. Modelo de datos (ER)
 
