@@ -492,3 +492,43 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - Las carpetas de Fallas, con el stack sano, solo recorren el camino feliz; cada request documenta cómo provocar la falla (apagar un contenedor o definir `APP_OPEN_METEO_URL` o `APP_OSRM_URL`) y el resultado verificado.
 - El TTL de las reservas (30 min) está fijo en el código y ningún job invoca `expirarReservasVencidas`, así que el escenario 5 del compromiso queda pendiente de la Rama 1.
 - Diferencias con el cuestionario anotadas en `docs/matriz-requisitos.md`: RN-11 devuelve 422 (el cuestionario dice 409), RN-07 deja la orden en su estado anterior en lugar de `SIN_RECURSOS`, y los ids son `BIGSERIAL` en lugar de uuid.
+
+## Clima: ventana de ejecución de la fecha de la orden (RN-09)
+
+**Decisión:** `OpenMeteoService` pide los datos horarios de la fecha de la orden (`start_date` y `end_date`, con `timezone=auto` para que las horas sean las locales del tramo) y evalúa la ventana de ejecución: desde `app.open-meteo.hora-inicio-jornada` (8 h) durante `app.open-meteo.ventana-ejecucion-horas` (6 h). De cada variable toma el peor valor de la ventana: la mayor humedad del suelo, la mayor probabilidad de lluvia y la menor temperatura. Si falta un dato de cualquier hora de la ventana, no se inventa: se lanza el error y la orden queda en PENDIENTE_CONFIRMACION_CLIMATICA (RN-10). La caché del último pronóstico ahora se guarda por coordenada y fecha.
+
+**Alternativas:** el valor de la hora actual, que era lo implementado (descartada: una orden de mañana se decidía con el clima de este momento y la clave de configuración de la ventana no se usaba) y el promedio de la ventana (descartada: una hora de lluvia fuerte quedaría diluida y la carpeta asfáltica se arruina igual).
+
+**Consecuencias:** se cumple lo comprometido en la propuesta («ventana de ejecución, por defecto 6 horas, configurable»). Una fecha fuera del rango del pronóstico (Open-Meteo da hasta unos 16 días) responde 400 y la orden queda pendiente de confirmación, que es el comportamiento de RN-10. Verificado: tests de `OpenMeteoServiceTest` (peor valor, horas fuera de la ventana, ventana configurable, datos faltantes) y una corrida real contra Open-Meteo, donde la evaluación guardada coincidió con el peor valor de 08:00 a 13:00 de esa fecha y una orden para dentro de siete meses quedó en PENDIENTE_CONFIRMACION_CLIMATICA.
+
+## OSRM: un pedido por segundo y vencimiento de la caché de rutas
+
+**Decisión:** el rate limiter de OSRM pasa a 1 pedido por segundo, que es la política del servidor público y lo comprometido en la propuesta; si no hay permiso, el pedido espera hasta 3 s antes de usar la estimación en línea recta (antes eran 10 por segundo y 500 ms). La caché de rutas se vacía entera cada `app.osrm.cache-ttl` (6 h) con `VencimientoCacheRutas`, así ninguna ruta guardada queda más vieja que ese tiempo.
+
+**Alternativas:** una caché con vencimiento por entrada (Caffeine; descartada por ahora: suma una dependencia y el vaciado completo cumple el mismo límite de antigüedad) y dejar el límite en 10 por segundo (descartada: incumple la política de uso del servidor de demostración).
+
+**Consecuencias:** una reserva con más de unas cuatro rutas nuevas en el mismo segundo usa la estimación (`fuenteRuta = ESTIMADA`) para las que no entran en la espera; las rutas repetidas salen de la caché sin consumir permisos. La espera de 3 s queda por debajo del timeout de lectura de 10 s del cliente de Operaciones. Verificado con `VencimientoCacheRutasTest` y los tests de OSRM existentes.
+
+## `Coordenada` de obras-commons en uso
+
+**Decisión:** Recursos arma la URL de OSRM con `Coordenada.toOsrmString()` (longitud,latitud, el orden que espera OSRM) y Operaciones valida las coordenadas del tramo con `Coordenada` antes de pedir el clima.
+
+**Alternativas:** borrar `Coordenada` de commons (descartada: está en el compromiso de la librería común) o usarla como entidad embebida (descartada: metería `jakarta.persistence` en commons).
+
+**Consecuencias:** el value object lo usan dos servicios, que es lo que justifica tenerlo en la librería común; las requests siguen validando los rangos con Bean Validation en el borde. Verificado con `CoordenadaTest` (5 casos) y los tests de OSRM y de Open-Meteo.
+
+## Diferencias con el compromiso que se documentan y no se implementan
+
+**Decisión:** las siguientes diferencias se dejan registradas en lugar de implementarse, porque no cambian el resultado del proceso central:
+
+- **`/table` de OSRM:** se usa solo `/route`, una llamada por cuadrilla candidata y otra para la planta. Con pocas cuadrillas el resultado es el mismo; la caché evita repetir pares y el límite de 1 pedido por segundo se respeta.
+- **Confirmación del CAPATAZ con ruta estimada:** si OSRM cae, la reserva usa la estimación en línea recta marcada `ESTIMADA` y la orden sigue el flujo normal; no se pide confirmación aunque el margen de la mezcla sea ajustado. El dato queda visible en la reserva (`fuenteRuta`).
+- **WireMock:** las APIs externas y los otros servicios se simulan con `MockRestServiceServer` de Spring, que intercepta el cliente HTTP sin levantar un servidor; cumple el mismo fin (tests sin red) con una dependencia menos.
+- **Horas de máquina:** el cierre de la orden las guarda en Operaciones, pero no actualiza `maquinas.horas_uso` de Recursos; el mantenimiento preventivo por horas está fuera del alcance comprometido.
+- **Nombre de la interfaz del clima:** se llama `InterfazClimaService` y cumple el papel de `ProveedorClima` de la propuesta (Operaciones solo conoce la interfaz).
+- **Seed:** la fase 2 sembrada es BASE; el cuestionario la describe como Carpeta Asfáltica. El escenario de demo funciona igual.
+- **RN-05:** el conflicto de horario responde 422 con `codigoRegla` RN-05, como el resto de las reglas de elegibilidad; el cuestionario dice 409.
+
+**Alternativas:** implementar cada una (descartada por ahora: el alcance de la cátedra prioriza el proceso central completo y comprobable sobre los agregados).
+
+**Consecuencias:** quedan anotadas también en `docs/matriz-requisitos.md`, sección 4. Las de versión de Spring Boot, identificadores y códigos de error hay que comunicarlas a la cátedra (Alcance, §9): anotarlas no equivale a avisar.
