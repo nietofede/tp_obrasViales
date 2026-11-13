@@ -2,7 +2,7 @@
 
 Archivos:
 
-- `obras-viales.postman_collection.json`: la colección (48 requests).
+- `obras-viales.postman_collection.json`: la colección (52 requests).
 - `local.postman_environment.json`: variables de entorno de ejemplo (`baseUrl`, `keycloakUrl`, `sistemaSecret`).
 
 ## Cómo usarla

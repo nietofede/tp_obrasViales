@@ -1096,7 +1096,7 @@
           "description": "",
           "item": [
             {
-              "name": "Iniciar fase BASE con RELEVAMIENTO pendiente -> 422",
+              "name": "Iniciar fase BASE con RELEVAMIENTO pendiente -> 409",
               "request": {
                 "method": "POST",
                 "header": [
@@ -1108,7 +1108,7 @@
                 "url": {
                   "raw": "{{baseUrl}}/api/obras/fases/{{faseId2}}/iniciar"
                 },
-                "description": "Usa las fases de Setup. Esperado: 422 con código de regla RN-01 (la fase 1 no está completa)."
+                "description": "Usa las fases de Setup. Esperado: 409 (RN-01: la fase 1 no está completa)."
               },
               "event": [
                 {
@@ -1116,7 +1116,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });"
+                      "pm.test(\"Status 409\", function () { pm.response.to.have.status(409); });"
                     ]
                   }
                 }
@@ -1150,6 +1150,196 @@
                     "type": "text/javascript",
                     "exec": [
                       "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "RN-05 sin solapamiento de cuadrilla",
+          "description": "",
+          "item": [
+            {
+              "name": "Reserva 1 (cuadrilla Alfa)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/recursos/internos/reservas"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 9101,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{hoy}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Esperado: 201, reserva PROVISORIA (guardada en {{reservaId}}). Si ya hay otra reserva vigente ese día (por ejemplo la del Flujo principal), dará 422."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000);",
+                      "pm.collectionVariables.set(\"hoy\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                      "pm.collectionVariables.set(\"reservaId\", pm.response.json().id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Reserva 2 el mismo día -> 422",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/recursos/internos/reservas"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 9102,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{hoy}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Esperado: 422 con código RN-05: en el seed solo la cuadrilla Alfa puede trabajar y ya está reservada."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000);",
+                      "pm.collectionVariables.set(\"hoy\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Liberar reserva 1",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/recursos/internos/reservas/{{reservaId}}/liberacion"
+                },
+                "description": "Esperado: 200, estado LIBERADA. Deja la cuadrilla libre."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "RN-07 viaje máximo de la cuadrilla",
+          "description": "",
+          "item": [
+            {
+              "name": "Tramo lejano (Buenos Aires) -> 422",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/recursos/internos/reservas"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 9103,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{hoy}}\",\n  \"tramoLat\": -34.6,\n  \"tramoLon\": -58.4\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Esperado: 422 con código RN-07: el viaje desde la base de la cuadrilla supera el máximo."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000);",
+                      "pm.collectionVariables.set(\"hoy\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });"
                     ]
                   }
                 }
@@ -1828,6 +2018,10 @@
     },
     {
       "key": "tokenVencido",
+      "value": ""
+    },
+    {
+      "key": "reservaId",
       "value": ""
     },
     {
