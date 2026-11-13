@@ -14,9 +14,7 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token"
-            },
+            "url": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token",
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
@@ -58,9 +56,7 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token"
-            },
+            "url": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token",
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
@@ -102,9 +98,7 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token"
-            },
+            "url": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token",
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
@@ -146,9 +140,7 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token"
-            },
+            "url": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token",
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
@@ -190,9 +182,7 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token"
-            },
+            "url": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token",
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
@@ -234,9 +224,7 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": {
-              "raw": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token"
-            },
+            "url": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token",
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
@@ -289,9 +277,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras"
-            },
+            "url": "{{baseUrl}}/api/obras",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nombre\": \"Obra Colección Postman\",\n  \"descripcion\": \"Creada por la colección\"\n}",
@@ -330,9 +316,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras/{{obraId}}/tramos"
-            },
+            "url": "{{baseUrl}}/api/obras/{{obraId}}/tramos",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nombre\": \"Tramo A\",\n  \"superficieM2\": 1200,\n  \"latitud\": -31.25,\n  \"longitud\": -64.45\n}",
@@ -371,9 +355,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras/tramos/{{tramoId}}/fases"
-            },
+            "url": "{{baseUrl}}/api/obras/tramos/{{tramoId}}/fases",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"tipo\": \"RELEVAMIENTO\",\n  \"fechaInicioPlanificada\": \"2027-03-01\",\n  \"fechaFinPlanificada\": \"2027-03-05\"\n}",
@@ -412,9 +394,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras/tramos/{{tramoId}}/fases"
-            },
+            "url": "{{baseUrl}}/api/obras/tramos/{{tramoId}}/fases",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"tipo\": \"BASE\",\n  \"fechaInicioPlanificada\": \"2027-03-06\",\n  \"fechaFinPlanificada\": \"2027-03-10\",\n  \"faseAnteriorId\": \"{{faseId1}}\"\n}",
@@ -459,9 +439,7 @@
                 "value": "Bearer {{tokenPlanificador}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras/{{obraId}}/cronograma"
-            },
+            "url": "{{baseUrl}}/api/obras/{{obraId}}/cronograma",
             "description": "Esperado: 200 con las fases ordenadas."
           },
           "event": [
@@ -487,9 +465,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras"
-            },
+            "url": "{{baseUrl}}/api/obras",
             "description": "Esperado: 401. No hay token."
           },
           "event": [
@@ -514,9 +490,7 @@
                 "value": "Bearer {{tokenBasura}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras"
-            },
+            "url": "{{baseUrl}}/api/obras",
             "description": "Esperado: 401. Variable tokenBasura sin definir/inválida."
           },
           "event": [
@@ -541,9 +515,7 @@
                 "value": "Bearer {{tokenOperario}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras"
-            },
+            "url": "{{baseUrl}}/api/obras",
             "description": "Esperado: 403. Autenticado pero sin rol."
           },
           "event": [
@@ -568,9 +540,7 @@
                 "value": "Bearer {{tokenPlanificador}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras"
-            },
+            "url": "{{baseUrl}}/api/obras",
             "description": "Esperado: 200."
           },
           "event": [
@@ -599,9 +569,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras"
-            },
+            "url": "{{baseUrl}}/api/obras",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nombre\": \"x\"\n}",
@@ -639,9 +607,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras"
-            },
+            "url": "{{baseUrl}}/api/obras",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nombre\": \"x\"\n}",
@@ -675,9 +641,7 @@
                 "value": "Bearer {{tokenAuditor}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras"
-            },
+            "url": "{{baseUrl}}/api/obras",
             "description": "Esperado: 200 (solo lectura)."
           },
           "event": [
@@ -706,9 +670,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE"
-            },
+            "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"humedadSueloMaxima\": 0.4,\n  \"probPrecipitacionMaxima\": 40,\n  \"temperaturaMinima\": 5\n}",
@@ -742,9 +704,7 @@
                 "value": "Bearer {{tokenPlanificador}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras/internos/fases/2/contexto-ejecucion"
-            },
+            "url": "{{baseUrl}}/api/obras/internos/fases/2/contexto-ejecucion",
             "description": "Esperado: 403: /internos exige rol SISTEMA."
           },
           "event": [
@@ -769,9 +729,7 @@
                 "value": "Bearer {{tokenSistema}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras/internos/fases/2/contexto-ejecucion"
-            },
+            "url": "{{baseUrl}}/api/obras/internos/fases/2/contexto-ejecucion",
             "description": "Esperado: 200 sobre la fase 2 del seed."
           },
           "event": [
@@ -796,9 +754,7 @@
                 "value": "Bearer {{tokenSistema}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/recursos/internos/reservas/999999/confirmacion"
-            },
+            "url": "{{baseUrl}}/api/recursos/internos/reservas/999999/confirmacion",
             "description": "Esperado: 404 en formato estándar. (Hoy puede dar 500 hasta que se mergee la Rama 1.)"
           },
           "event": [
@@ -823,9 +779,7 @@
                 "value": "Bearer {{tokenCapataz}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/recursos/internos/reservas/1/confirmacion"
-            },
+            "url": "{{baseUrl}}/api/recursos/internos/reservas/1/confirmacion",
             "description": "Esperado: 403."
           },
           "event": [
@@ -860,9 +814,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/operaciones/habilitaciones-diarias"
-            },
+            "url": "{{baseUrl}}/api/operaciones/habilitaciones-diarias",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fecha\": \"{{hoy}}\"\n}",
@@ -906,9 +858,7 @@
                 "value": "Bearer {{tokenPlanificador}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/operaciones/ordenes/1"
-            },
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1",
             "description": "Esperado: estado HABILITADA."
           },
           "event": [
@@ -934,9 +884,7 @@
                 "value": "Bearer {{tokenPlanificador}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/operaciones/ordenes/1/evaluaciones-climaticas"
-            },
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1/evaluaciones-climaticas",
             "description": "Esperado: 200, con humedad, precipitación y temperatura evaluadas."
           },
           "event": [
@@ -961,9 +909,7 @@
                 "value": "Bearer {{tokenCapataz}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/operaciones/ordenes/1/inicio"
-            },
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1/inicio",
             "description": "Esperado: 200, estado EN_EJECUCION y la fase 2 pasa a EN_CURSO en Obras."
           },
           "event": [
@@ -992,9 +938,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/operaciones/ordenes/1/avances"
-            },
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1/avances",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"porcentaje\": 60\n}",
@@ -1004,7 +948,7 @@
                 }
               }
             },
-            "description": "Esperado: 200; avanceFase 60."
+            "description": "Esperado: 201; avanceFase 60."
           },
           "event": [
             {
@@ -1012,7 +956,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
                 ]
               }
             }
@@ -1032,9 +976,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/operaciones/ordenes/1/avances"
-            },
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1/avances",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"porcentaje\": 100\n}",
@@ -1044,7 +986,7 @@
                 }
               }
             },
-            "description": "Esperado: 200; la fase pasa a COMPLETADA."
+            "description": "Esperado: 201; la fase pasa a COMPLETADA."
           },
           "event": [
             {
@@ -1052,7 +994,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
                 ]
               }
             }
@@ -1072,9 +1014,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/operaciones/ordenes/1/cierre"
-            },
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1/cierre",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"horasMaquina\": 6.5,\n  \"materiales\": [\n    {\n      \"material\": \"Asfalto\",\n      \"cantidad\": 12.5,\n      \"unidad\": \"tn\"\n    }\n  ]\n}",
@@ -1108,9 +1048,7 @@
                 "value": "Bearer {{tokenAuditor}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras/1/cronograma"
-            },
+            "url": "{{baseUrl}}/api/obras/1/cronograma",
             "description": "Esperado: 200; la fase 2 figura COMPLETADA."
           },
           "event": [
@@ -1145,9 +1083,7 @@
                     "value": "Bearer {{tokenCapataz}}"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/obras/fases/{{faseId2}}/iniciar"
-                },
+                "url": "{{baseUrl}}/api/obras/fases/{{faseId2}}/iniciar",
                 "description": "Usa las fases de Setup. Esperado: 409 (RN-01: la fase 1 no está completa)."
               },
               "event": [
@@ -1178,9 +1114,7 @@
                     "value": "Bearer {{tokenPlanificador}}"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/obras/fases/2/materiales"
-                },
+                "url": "{{baseUrl}}/api/obras/fases/2/materiales",
                 "description": "Esperado: 200; cantidades proporcionales a 5000 m² del tramo 1."
               },
               "event": [
@@ -1215,19 +1149,17 @@
                     "value": "application/json"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/recursos/internos/reservas"
-                },
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"ordenTrabajoId\": 9101,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{hoy}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
+                  "raw": "{\n  \"ordenTrabajoId\": 9101,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{fechaReserva}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
                 },
-                "description": "Esperado: 201, reserva PROVISORIA (guardada en {{reservaId}}). Si ya hay otra reserva vigente ese día (por ejemplo la del Flujo principal), dará 422."
+                "description": "Esperado: 201, reserva PROVISORIA (guardada en {{reservaId}}) para dentro de 5 días, cuando la cuadrilla Alfa está libre. El día de hoy no sirve: el Flujo principal ya la reservó."
               },
               "event": [
                 {
@@ -1235,8 +1167,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "const d = new Date(Date.now() - 3 * 3600 * 1000);",
-                      "pm.collectionVariables.set(\"hoy\", d.toISOString().slice(0, 10));"
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 5 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaReserva\", d.toISOString().slice(0, 10));"
                     ]
                   }
                 },
@@ -1266,19 +1198,17 @@
                     "value": "application/json"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/recursos/internos/reservas"
-                },
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"ordenTrabajoId\": 9102,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{hoy}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
+                  "raw": "{\n  \"ordenTrabajoId\": 9102,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{fechaReserva}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
                 },
-                "description": "Esperado: 422 con código RN-05: en el seed solo la cuadrilla Alfa puede trabajar y ya está reservada."
+                "description": "Esperado: 422; el detalle dice «Cuadrilla Alfa: RN-05, ya tiene una reserva vigente para ese día» (la otra cuadrilla del seed no tiene operarios y se rechaza por RN-06, que es el código que viaja en `codigoRegla`)."
               },
               "event": [
                 {
@@ -1286,8 +1216,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "const d = new Date(Date.now() - 3 * 3600 * 1000);",
-                      "pm.collectionVariables.set(\"hoy\", d.toISOString().slice(0, 10));"
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 5 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaReserva\", d.toISOString().slice(0, 10));"
                     ]
                   }
                 },
@@ -1296,7 +1226,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });"
+                      "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });",
+                      "pm.test(\"El detalle menciona RN-05\", () => pm.expect(pm.response.json().detail).to.include(\"RN-05\"));"
                     ]
                   }
                 }
@@ -1312,9 +1243,7 @@
                     "value": "Bearer {{tokenSistema}}"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/recursos/internos/reservas/{{reservaId}}/liberacion"
-                },
+                "url": "{{baseUrl}}/api/recursos/internos/reservas/{{reservaId}}/liberacion",
                 "description": "Esperado: 200, estado LIBERADA. Deja la cuadrilla libre."
               },
               "event": [
@@ -1349,19 +1278,17 @@
                     "value": "application/json"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/recursos/internos/reservas"
-                },
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"ordenTrabajoId\": 9103,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{hoy}}\",\n  \"tramoLat\": -34.6,\n  \"tramoLon\": -58.4\n}",
+                  "raw": "{\n  \"ordenTrabajoId\": 9103,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{fechaReserva}}\",\n  \"tramoLat\": -34.6,\n  \"tramoLon\": -58.4\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
                 },
-                "description": "Esperado: 422 con código RN-07: el viaje desde la base de la cuadrilla supera el máximo."
+                "description": "Esperado: 422 con codigoRegla RN-07: el viaje (unos 566 min) supera el máximo de 90."
               },
               "event": [
                 {
@@ -1369,8 +1296,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "const d = new Date(Date.now() - 3 * 3600 * 1000);",
-                      "pm.collectionVariables.set(\"hoy\", d.toISOString().slice(0, 10));"
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 5 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaReserva\", d.toISOString().slice(0, 10));"
                     ]
                   }
                 },
@@ -1379,7 +1306,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });"
+                      "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });",
+                      "pm.test(\"codigoRegla RN-07\", () => pm.expect(pm.response.json().codigoRegla).to.eql(\"RN-07\"));"
                     ]
                   }
                 }
@@ -1401,9 +1329,7 @@
                     "value": "Bearer {{tokenPlanificador}}"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/operaciones/umbrales-climaticos"
-                },
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos",
                 "description": "Esperado: 200 con los 5 tipos de trabajo."
               },
               "event": [
@@ -1432,9 +1358,7 @@
                     "value": "application/json"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE"
-                },
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"humedadSueloMaxima\": 0,\n  \"probPrecipitacionMaxima\": 0,\n  \"temperaturaMinima\": 100\n}",
@@ -1472,9 +1396,7 @@
                     "value": "application/json"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE"
-                },
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"humedadSueloMaxima\": 0.4,\n  \"probPrecipitacionMaxima\": 40,\n  \"temperaturaMinima\": 5\n}",
@@ -1518,9 +1440,7 @@
                     "value": "application/json"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/operaciones/ordenes/2/resolucion-climatica"
-                },
+                "url": "{{baseUrl}}/api/operaciones/ordenes/2/resolucion-climatica",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"decision\": \"HABILITAR\"\n}",
@@ -1560,9 +1480,7 @@
                     "value": "Bearer {{tokenCapataz}}"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/operaciones/ordenes/2/inicio"
-                },
+                "url": "{{baseUrl}}/api/operaciones/ordenes/2/inicio",
                 "description": "Orden 2 del seed (mañana, aún PROGRAMADA). Esperado: 422 por transición inválida."
               },
               "event": [
@@ -1597,9 +1515,7 @@
                     "value": "application/json"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/operaciones/configuracion/limite-suspensiones"
-                },
+                "url": "{{baseUrl}}/api/operaciones/configuracion/limite-suspensiones",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"limite\": 1\n}",
@@ -1633,9 +1549,7 @@
                     "value": "Bearer {{tokenPlanificador}}"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/operaciones/fases-en-riesgo"
-                },
+                "url": "{{baseUrl}}/api/operaciones/fases-en-riesgo",
                 "description": "Esperado: 200; tras suspender aparece la fase."
               },
               "event": [
@@ -1660,9 +1574,7 @@
                     "value": "Bearer {{tokenAuditor}}"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/operaciones/suspensiones"
-                },
+                "url": "{{baseUrl}}/api/operaciones/suspensiones",
                 "description": "Esperado: 200."
               },
               "event": [
@@ -1691,9 +1603,7 @@
                     "value": "application/json"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/operaciones/configuracion/limite-suspensiones"
-                },
+                "url": "{{baseUrl}}/api/operaciones/configuracion/limite-suspensiones",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"limite\": 3\n}",
@@ -1737,9 +1647,7 @@
                     "value": "application/json"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/obras"
-                },
+                "url": "{{baseUrl}}/api/obras",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"nombre\": \"\"\n}",
@@ -1777,9 +1685,7 @@
                     "value": "application/json"
                   }
                 ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/operaciones/ordenes/1/avances"
-                },
+                "url": "{{baseUrl}}/api/operaciones/ordenes/1/avances",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"porcentaje\": 0\n}",
@@ -1825,9 +1731,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/operaciones/habilitaciones-diarias"
-            },
+            "url": "{{baseUrl}}/api/operaciones/habilitaciones-diarias",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fecha\": \"{{hoy}}\"\n}",
@@ -1875,9 +1779,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/operaciones/habilitaciones-diarias"
-            },
+            "url": "{{baseUrl}}/api/operaciones/habilitaciones-diarias",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fecha\": \"{{hoy}}\"\n}",
@@ -1925,9 +1827,7 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/operaciones/habilitaciones-diarias"
-            },
+            "url": "{{baseUrl}}/api/operaciones/habilitaciones-diarias",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fecha\": \"{{hoy}}\"\n}",
@@ -1975,21 +1875,29 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/recursos/internos/reservas"
-            },
+            "url": "{{baseUrl}}/api/recursos/internos/reservas",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ordenTrabajoId\": 9001,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{hoy}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
+              "raw": "{\n  \"ordenTrabajoId\": 9001,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{fechaFalla}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "ANTES: cortar la salida a internet de ms-recursos (o apuntar la URL de OSRM a un host inexistente). Esperado: 201 con fuenteRuta = ESTIMADA (distancia en línea recta). Si la cuadrilla/planta no están disponibles ese día puede dar 422. Nota: ordenTrabajoId 9001 es ficticio; liberar luego la reserva."
+            "description": "ANTES: cortar la salida a internet de ms-recursos (o apuntar la URL de OSRM a un host inexistente). Esperado: 201 con fuenteRuta = ESTIMADA (distancia en línea recta). Usa una fecha libre (hoy + 6 días) para no chocar con las demás reservas; con internet funcionando devuelve fuenteRuta OSRM. Nota: ordenTrabajoId 9001 es ficticio; liberar luego la reserva."
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(Date.now() - 3 * 3600 * 1000 + 6 * 86400000);",
+                  "pm.collectionVariables.set(\"fechaFalla\", d.toISOString().slice(0, 10));"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -2011,9 +1919,7 @@
                 "value": "Bearer {{tokenVencido}}"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/obras"
-            },
+            "url": "{{baseUrl}}/api/obras",
             "description": "Esperado: 401. Definir tokenVencido con un token de más de 5 minutos."
           },
           "event": [
@@ -2062,6 +1968,14 @@
     },
     {
       "key": "reservaId",
+      "value": ""
+    },
+    {
+      "key": "fechaReserva",
+      "value": ""
+    },
+    {
+      "key": "fechaFalla",
       "value": ""
     },
     {
