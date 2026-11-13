@@ -250,3 +250,83 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - El DER pone `material_requerido` en la fase; acá se calcula al consultar.
 - La obra no guarda `estado` ni `fecha_inicio`; se derivan o no existen.
 - RN-03: el cuestionario pide rechazar un tipo de trabajo sin rendimiento definido; acá devuelve una lista vacía (RELEVAMIENTO no consume material).
+
+## Ajustes previos de ms-operaciones antes de integrar con Obras
+
+**Problema:** antes de conectar ms-operaciones con ms-obras había tres desalineaciones. Las rutas estaban bajo `/api/v1/...`, pero el gateway solo enruta `/api/operaciones/**` y no recorta el prefijo (ver «Rutas del gateway sin StripPrefix»). Los tipos de trabajo no coincidían con los `TipoFase` de Obras (`SUB_BASE` y `LOSA` frente a `SUBBASE` y `LOSA_HORMIGON`, y faltaba `RELEVAMIENTO`), así que `valueOf` sobre lo que manda Obras fallaría. Y varias excepciones (`OrdenNoEncontrada`, `TransicionInvalida`, `IllegalArgumentException`, `IllegalStateException`, `RuntimeException`) no las conoce el manejador global de commons y salían como 500.
+
+**Decisión:**
+- Los controllers quedan en `/api/operaciones/ordenes` y `/api/operaciones/umbrales-climaticos`, con los nombres del PDF. El resto de las rutas del PDF se agregan al implementar cada funcionalidad.
+- `TipoTrabajo` usa los mismos nombres que `TipoFase` de Obras. El `V2` se corrigió (todavía no estaba en `main`, por eso se pudo editar; una vez mergeado ya no se edita).
+- `RELEVAMIENTO` tiene un umbral permisivo de demo (humedad 0,60, lluvia 40 %, temperatura mínima 0): es la primera fase de cada tramo y, sin umbral, no se podría habilitar nunca y bloquearía las siguientes por RN-01. Los valores son de demo y el ADMIN los puede ajustar con `PUT /api/operaciones/umbrales-climaticos/{tipoTrabajo}`.
+- Las excepciones propias heredan de las de commons: `OrdenNoEncontrada` da 404, `TransicionInvalida` da 422 con código `RN-11`, un tipo de trabajo sin umbral da 422 con `RN-09` y resolver el riesgo de una orden que no está en riesgo da 409.
+
+**Alternativa descartada:** mantener un traductor entre `TipoTrabajo` y `TipoFase` (dos nombres para lo mismo y un lugar más donde desalinearse), y no cargar umbral para `RELEVAMIENTO` (bloquea la cadena de fases).
+
+**Consecuencias:** `EN_RIESGO` y `FINALIZADA` siguen siendo estados de la orden aunque el PDF habla de la fase en riesgo; se revisan al implementar RN-12. Quien tenga una base de ms-operaciones anterior debe recrearla (`docker compose down -v`).
+
+## Cliente de ms-operaciones hacia ms-obras
+
+**Problema:** Operaciones necesita datos de la fase (tramo, coordenadas, tipo de trabajo, si la fase previa está completa) y ningún servicio puede leer las tablas de otro.
+
+**Decisión:** `ObrasClient` (interfaz) con su implementación `ObrasHttpClient`, que llama a `GET /api/obras/internos/fases/{id}/contexto-ejecucion` con el `sistemaRestClient` de commons (token de la cuenta SISTEMA). La respuesta se recibe en un DTO propio, `ContextoFaseDTO`, que ignora campos desconocidos y trae el tipo de trabajo y el estado como texto. Un 404 de Obras se traduce a 404 («la fase no existe en ms-obras»); cualquier otro fallo (5xx, 401, 403, sin conexión) se traduce a `ServicioNoDisponibleException`, que ms-operaciones responde con 503 sin detalles internos (el detalle va al log). Al crear una orden se valida que la fase exista y que pertenezca al tramo indicado (422 con código `ORDEN-TRAMO`). `crearOrden` no es transaccional, para no mantener una transacción de base abierta mientras se espera la respuesta HTTP. Verificado con Obras real: 201, 404, 422 y 503 con Obras apagado. Fue la primera vez que `SistemaTokenService` se probó contra Keycloak.
+
+**Alternativas descartadas:** compartir el DTO de Obras por commons (acopla los dos servicios: un cambio en Obras obligaría a recompilar Operaciones); dejar que un error de red salga como 500 (no informa la causa); validar RN-01 al crear la orden (el PDF la ubica al habilitar).
+
+**Consecuencias:** el `sistemaRestClient` de commons no define timeouts, así que una Obras colgada (no caída) podría dejar la llamada esperando; queda pendiente. Si Obras cambia la ruta o el contrato hay que actualizar el cliente y su test. La URL de Obras está en `app.servicios.obras-url` y apunta a localhost: al dockerizar se cambia por el nombre del servicio.
+
+## Habilitación de órdenes en ms-operaciones (Obras + Recursos + clima)
+
+- **Un solo flujo.** `POST /api/operaciones/ordenes/{id}/habilitacion` toma una orden PROGRAMADA (o RECURSOS_ASIGNADOS si un intento anterior quedó a medias) y hace: contexto de la fase en Obras (RN-01) → umbral del tipo de trabajo (RN-09) → reserva en Recursos (RN-04 a RN-08) → clima → HABILITADA o SUSPENDIDA.
+- **Orden de los pasos.** El umbral se busca antes de reservar para no reservar recursos de una orden que igual no se puede evaluar.
+- **Rechazo de Recursos (422) o Recursos caído (503):** la orden queda como estaba y el error se informa. Recursos es idempotente por orden, así que reintentar es seguro.
+- **Clima OK:** se confirma la reserva y la orden queda HABILITADA. Si la confirmación falla (reserva vencida, Recursos caído) se deshace todo y la orden queda como estaba.
+- **Clima malo:** SUSPENDIDA y se libera la reserva. Si Recursos no responde al liberar, no se frena la suspensión: la reserva provisoria vence sola por TTL (30 min).
+- **Clima caído:** PENDIENTE_CONFIRMACION_CLIMATICA y se conserva la reserva.
+- **Hora de salida del camión.** Recursos devuelve solo la hora; la orden guarda `fechaProgramada` + esa hora.
+- **Proceso diario.** `POST /api/operaciones/habilitaciones-diarias` con `{"fecha":"yyyy-MM-dd"}` (PLANIFICADOR o SISTEMA) habilita las órdenes PROGRAMADAS y RECURSOS_ASIGNADOS de la fecha. Cada orden va en su propia transacción: una que falla no frena a las demás. Devuelve por orden el estado resultante y el motivo si falló. Se puede reejecutar.
+- **Pendiente.** La transacción de `habilitarOrden` sigue abierta durante las llamadas HTTP; se revisa junto con la saga de suspensión.
+
+## Saga de suspensión y RN-12 en ms-operaciones
+
+- **Orquestación desde Operaciones** (no coreografía de eventos): `SuspensionService` ejecuta los pasos en orden y es quien decide qué hacer ante cada falla. Es más fácil de seguir, de probar con simulaciones y de reintentar; el costo es que Operaciones conoce los pasos de Obras y Recursos.
+- **Pasos:** 1) liberar la reserva en Recursos; 2) registrar la suspensión; 3) contar las suspensiones vigentes **de la fase** (RN-12 las cuenta por fase, no por orden); 4) si no llegó al límite, reprogramar la fase en Obras (que corre en cascada las dependientes, RN-02) y crear una orden nueva PROGRAMADA, y la orden suspendida queda REPROGRAMADA; 5) si llegó al límite, marcar la fase EN_RIESGO en Obras y dejar la orden SUSPENDIDA, sin orden nueva, hasta que decida el PLANIFICADOR.
+- **Fecha nueva:** la fase se reprograma al día siguiente de la fecha de la orden suspendida. Si Obras la rechaza (RN-02, por ejemplo), el error se informa y no se crea nada. Es una simplificación: si hace falta otra regla de fechas, es un cambio en un solo lugar.
+- **Falla de Obras en medio de la saga:** se deshace todo lo local y se informa el error; la orden queda como estaba y se puede reintentar. Lo ya liberado en Recursos no molesta: liberar es idempotente.
+- **Falla de Recursos al liberar:** no frena la suspensión; la reserva provisoria vence sola por TTL (30 min).
+- **Límite configurable:** tabla `configuracion_suspensiones` (una fila, valor inicial 3), `PUT /api/operaciones/configuracion/limite-suspensiones` solo ADMIN.
+- **Historial:** tabla `suspensiones` (orden, fase, motivo, detalle, fecha, vigente). `vigente` deja de ser verdadero cuando el PLANIFICADOR decide sobre la fase, para que el conteo empiece de nuevo.
+- **Fases en riesgo:** tabla `fases_en_riesgo` con las pendientes de decisión (migración V3).
+- **Decisión del PLANIFICADOR** (`POST /api/operaciones/fases-en-riesgo/{faseId}/decisiones`): REPROGRAMAR (exige `nuevaFechaInicio`) reprograma la fase en Obras, crea una orden nueva y deja la suspendida REPROGRAMADA; CANCELAR deja la orden CANCELADA. En los dos casos las suspensiones de la fase pasan a no vigentes (el historial se conserva) y el conteo empieza de nuevo. Obras no tiene un endpoint para cancelar fases, así que al cancelar la fase sigue EN_RIESGO en Obras.
+- **Consultas:** `GET /api/operaciones/suspensiones?faseId=&ordenId=` (PLANIFICADOR, AUDITOR) y `GET /api/operaciones/fases-en-riesgo` (PLANIFICADOR, AUDITOR, solo pendientes).
+- **Estados retirados:** `EN_RIESGO` y `FINALIZADA` ya no son estados de la orden (el riesgo es de la fase, como dice el PDF) y se eliminó `PATCH /ordenes/{id}/resolver-riesgo`. Reemplaza lo dicho en «Ajustes previos de ms-operaciones».
+
+## Ejecución de órdenes en ms-operaciones
+
+- **Inicio** (`PATCH /api/operaciones/ordenes/{id}/inicio`, CAPATAZ): HABILITADA pasa a EN_EJECUCION. No llama a Obras: ahí el primer avance es el que inicia la fase y vuelve a aplicar RN-01.
+- **Rechazo** (`PATCH /ordenes/{id}/rechazo`, CAPATAZ, con `motivo`): solo una orden HABILITADA. Se suspende con motivo RECHAZO y corre la misma saga que una suspensión por clima, con RN-12 incluida; el rechazo del capataz cuenta para el límite de la fase.
+- **Avances** (`POST /ordenes/{id}/avances`, CAPATAZ, con `porcentaje`): solo una orden EN_EJECUCION. Se reenvía a Obras. El porcentaje es el acumulado de la fase (1 a 100) y no puede retroceder; los rechazos de Obras (409 si la fase está en riesgo o completada, 422 `AVANCE`) se informan tal cual.
+- **Cierre:** ver «Cierre de órdenes en ms-operaciones».
+
+## Resolución climática (RN-10) en ms-operaciones
+
+- **Cuándo ocurre:** si falta cualquier dato climático (o Open-Meteo falla o tarda más de 5 s) la orden no se habilita sola: queda PENDIENTE_CONFIRMACION_CLIMATICA y conserva su reserva de recursos.
+- **Quién decide:** `PATCH /api/operaciones/ordenes/{id}/resolucion-climatica` (solo CAPATAZ), con `decision` HABILITAR o SUSPENDER y un `motivo` opcional.
+- **HABILITAR** confirma la reserva en Recursos y deja la orden HABILITADA. Si la reserva ya venció por TTL (30 min), Recursos responde 409 y la orden sigue pendiente; queda la opción de suspenderla, que reserva de nuevo al volver a habilitar la orden nueva.
+- **SUSPENDER** corre la saga de suspensión con motivo CLIMA (cuenta para RN-12), con el motivo del capataz o uno por defecto.
+- Solo se puede resolver una orden en PENDIENTE_CONFIRMACION_CLIMATICA (RN-11).
+
+## Cierre de órdenes en ms-operaciones
+
+- **Endpoint:** `PATCH /api/operaciones/ordenes/{id}/cierre` (solo CAPATAZ), con `horasMaquina` y `materiales` (lista de `material`, `cantidad`, `unidad`; puede ir vacía si no hubo consumo).
+- **Efecto:** una orden EN_EJECUCION pasa a COMPLETADA y queda registrado su cierre. Cualquier otro estado da 422 `RN-11`, así que una orden se cierra una sola vez.
+- **Forma del consumo:** el PDF solo dice «consumo real de materiales y horas de máquina» y no define los campos. Se eligió un total de horas de máquina por orden y una línea por material con la misma forma que usa Obras (`material`, `cantidad`, `unidad`), para poder compararlo con lo planificado.
+- **Persistencia** (migración V5): tabla `cierres_orden` (una por orden, restricción única) y `cierre_consumos` (una fila por material).
+- **Fuera de alcance:** cerrar no libera la reserva en Recursos ni completa la fase en Obras. La fase se completa sola cuando el avance llega al 100 %.
+
+## Cancelación, reprogramación de órdenes y consulta de umbrales
+
+- **Cancelación** (`PATCH /api/operaciones/ordenes/{id}/cancelacion`, PLANIFICADOR): pasa la orden a CANCELADA y libera su reserva en Recursos (si la liberación falla no se frena: la reserva vence por TTL). Solo desde los estados que la máquina de estados permite (PROGRAMADA, RECURSOS_ASIGNADOS, SUSPENDIDA); el resto da 422 `RN-11`.
+- **Orden que dejó a su fase en riesgo:** no se cancela por acá (409). La decisión del PLANIFICADOR se toma en `POST /fases-en-riesgo/{faseId}/decisiones`, que es el que reinicia el conteo de la fase.
+- **Reprogramación** (`PATCH /ordenes/{id}/reprogramacion`, PLANIFICADOR, con `fecha`): mueve de fecha una orden PROGRAMADA, es decir sin recursos, para reintentar su reserva otro día. La fecha no puede ser anterior a hoy. No toca la fase en Obras: solo cambia la fecha de la orden.
+- **Umbrales** (`GET /api/operaciones/umbrales-climaticos`): lista los umbrales de todos los tipos de trabajo, para ADMIN, PLANIFICADOR, CAPATAZ y AUDITOR.
