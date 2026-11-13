@@ -479,6 +479,7 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - **Caché de Open-Meteo:** se guarda el último pronóstico completo por coordenada (unos 100 m) durante `app.open-meteo.cache-ttl` (15 min por defecto). Una respuesta incompleta no se guarda y un pronóstico vencido no se usa si Open-Meteo falla (RN-10).
 - **Gateway:** reglas gruesas por servicio y método con la unión de los roles que algún endpoint acepta; el permiso fino sigue en cada servicio. Las rutas `/internos/**` solo pasan con el rol SISTEMA (la colección las usa para probar RN-05 a RN-08). Recursos tiene sus reglas desde que se completaron sus endpoints (GET para todos los roles, POST para ADMIN, PLANIFICADOR y CAPATAZ, PUT para ADMIN y PLANIFICADOR). **Limitación:** si un rol tiene algún endpoint con ese método en el servicio, un cuerpo inválido en otro endpoint sigue dando 400 en vez de 403.
 - **Keycloak:** `servicio-sistema` ya no tiene el flujo de contraseña; solo usa client credentials.
+- **401 y 403 del gateway en formato estándar:** el gateway tiene su propio entry point y access denied handler, con el mismo `application/problem+json` que commons (`type`, `title`, `status`, `detail`, `instance`, `timestamp` y `correlationId`). Cubre los casos sin token, con token inválido o vencido, y con rol insuficiente según las reglas por ruta. Se repite el código porque el gateway no depende de commons: si cambia el formato en uno, hay que cambiarlo en el otro. Antes el gateway respondía esos casos con el cuerpo vacío.
 
 ## Colección de Postman, matrices y guion de demo
 

@@ -65,8 +65,14 @@ public class SecurityConfig {
                 .requestMatchers("/api/**").denyAll()
                 .anyRequest().authenticated()
             )
+            // 401 y 403 en el formato estandar, igual que los servicios (sin token, token invalido o rol insuficiente)
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(new ProblemDetailAuthenticationEntryPoint())
+                .accessDeniedHandler(new ProblemDetailAccessDeniedHandler()))
             .oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(jwt -> jwt.jwtAuthenticationConverter(conversorDeRoles())));
+                .jwt(jwt -> jwt.jwtAuthenticationConverter(conversorDeRoles()))
+                .authenticationEntryPoint(new ProblemDetailAuthenticationEntryPoint())
+                .accessDeniedHandler(new ProblemDetailAccessDeniedHandler()));
         return http.build();
     }
 
