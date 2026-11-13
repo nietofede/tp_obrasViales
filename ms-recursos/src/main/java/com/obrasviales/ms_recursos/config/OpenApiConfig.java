@@ -12,7 +12,10 @@ import org.springframework.context.annotation.Configuration;
         info = @Info(
                 title = "GOVP - ms-recursos",
                 version = "v1",
-                description = "Maquinas, operarios, cuadrillas, plantas y elegibilidad."),
+                description = "Catalogos de recursos (maquinas, operarios, certificaciones, cuadrillas y plantas de mezcla), "
+                        + "configuracion de desplazamiento y motor de elegibilidad que propone y reserva recursos "
+                        + "para las ordenes de trabajo. Los tiempos de viaje se calculan con OSRM, con datos de "
+                        + "(c) OpenStreetMap contributors bajo licencia ODbL (https://www.openstreetmap.org/copyright)."),
         security = @SecurityRequirement(name = "bearerAuth"))
 @SecurityScheme(
         name = "bearerAuth",
