@@ -5,11 +5,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableScheduling
-@SpringBootApplication(scanBasePackages = "com.obrasviales")
+@SpringBootApplication
 public class MsOperacionesApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(MsOperacionesApplication.class, args);
-    }
+	public static void main(String[] args) {
+		SpringApplication.run(MsOperacionesApplication.class, args);
+	}
 
 }
