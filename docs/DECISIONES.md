@@ -480,3 +480,15 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 - **Gateway:** reglas gruesas por servicio y método con la unión de los roles que algún endpoint acepta; el permiso fino sigue en cada servicio. Las rutas `/internos/**` solo pasan con el rol SISTEMA (la colección las usa para probar RN-05 a RN-08). Recursos tiene sus reglas desde que se completaron sus endpoints (GET para todos los roles, POST para ADMIN, PLANIFICADOR y CAPATAZ, PUT para ADMIN y PLANIFICADOR). **Limitación:** si un rol tiene algún endpoint con ese método en el servicio, un cuerpo inválido en otro endpoint sigue dando 400 en vez de 403.
 - **Keycloak:** `servicio-sistema` ya no tiene el flujo de contraseña; solo usa client credentials.
 - **401 y 403 del gateway en formato estándar:** el gateway tiene su propio entry point y access denied handler, con el mismo `application/problem+json` que commons (`type`, `title`, `status`, `detail`, `instance`, `timestamp` y `correlationId`). Cubre los casos sin token, con token inválido o vencido, y con rol insuficiente según las reglas por ruta. Se repite el código porque el gateway no depende de commons: si cambia el formato en uno, hay que cambiarlo en el otro. Antes el gateway respondía esos casos con el cuerpo vacío.
+
+## Colección de Postman, matrices y guion de demo
+
+**Decisión:** la colección ejecutable se entrega en Postman (carpeta `coleccion/`, con las seis carpetas numeradas del cuestionario, un token por rol y por SISTEMA, el entorno de ejemplo y el resultado esperado en cada request). El guion de demo y las matrices viven en `docs/`, dentro del repositorio, para que viajen con la entrega y se revisen en los PR. La colección se corrió con Newman sobre el stack levantado desde cero (56 requests, 59 aserciones).
+
+**Alternativas:** Bruno (descartada: el equipo eligió Postman); guion y matrices en documentos aparte (descartada: se desactualizan respecto del código).
+
+**Consecuencias:**
+- Para repetir la corrida hace falta una base limpia, porque el flujo principal completa la orden 1.
+- Las carpetas de Fallas, con el stack sano, solo recorren el camino feliz; cada request documenta cómo provocar la falla (apagar un contenedor o definir `APP_OPEN_METEO_URL` o `APP_OSRM_URL`) y el resultado verificado.
+- El TTL de las reservas (30 min) está fijo en el código y ningún job invoca `expirarReservasVencidas`, así que el escenario 5 del compromiso queda pendiente de la Rama 1.
+- Diferencias con el cuestionario anotadas en `docs/matriz-requisitos.md`: RN-11 devuelve 422 (el cuestionario dice 409), RN-07 deja la orden en su estado anterior en lugar de `SIN_RECURSOS`, y los ids son `BIGSERIAL` en lugar de uuid.

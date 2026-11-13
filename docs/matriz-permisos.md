@@ -24,7 +24,9 @@ Todo lo demás exige JWT.
 
 ## 3. Permisos por capacidad (propuesta a confirmar)
 
-Leyenda: ✔ permitido, — no permitido, ? a definir con el equipo.
+Leyenda: ✔ permitido, — no permitido.
+
+El gateway aplica una regla gruesa por ruta y método (la unión de los roles que algún endpoint de ese servicio acepta) y cada servicio afina con `@PreAuthorize`. Un rol sin ningún permiso en esa ruta recibe 403 en el gateway, aunque mande un cuerpo inválido; un rol que sí tiene permiso en otro endpoint de la misma ruta llega al servicio, que valida el cuerpo antes de evaluar el rol y puede responder 400. Las rutas `/api/*/internos/**` solo las abre el gateway al rol SISTEMA.
 
 | Capacidad | Servicio | ADMIN | PLANIFICADOR | CAPATAZ | OPERARIO | AUDITOR | SISTEMA | Fuente |
 |---|---|---|---|---|---|---|---|---|
@@ -32,9 +34,13 @@ Leyenda: ✔ permitido, — no permitido, ? a definir con el equipo.
 | Confirmar una orden habilitada | operaciones | — | — | ✔ | — | — | — | CLAUDE.md |
 | Decidir sobre una fase en riesgo | operaciones | — | ✔ | — | — | — | — | CLAUDE.md |
 | Configurar umbrales climáticos | operaciones | ✔ | — | — | — | — | — | CLAUDE.md |
-| Check-in de ubicación | recursos | — | — | ✔ | — | — | — | CLAUDE.md |
+| Check-in de ubicación | recursos | — | — | ✔ | — | — | — | CLAUDE.md; en la implementación, solo el capataz de esa cuadrilla |
 | Proponer y reservar / liberar reservas | recursos | — | — | — | — | — | ✔ | Propuesta: lo llama la saga |
-| Consultar (solo lectura) | los tres | ? | ? | ? | ? | ✔ | — | Propuesta |
+| Consultar catálogos y cuadrillas (máquinas, operarios, cuadrillas, composición mínima) | recursos | ✔ | ✔ | ✔ | — | ✔ | — | Implementado en ms-recursos (`Permisos.LECTURA`) |
+| Consultar plantas de mezcla y la configuración de desplazamiento | recursos | ✔ | ✔ | — | — | — | — | Implementado en ms-recursos (`Permisos.ADMIN_O_PLANIFICADOR`) |
+| Consultar una reserva | recursos | — | ✔ | ✔ | — | ✔ | ✔ | Implementado en ms-recursos (`Permisos.LECTURA_O_SISTEMA`) |
+| Consultar órdenes y sus evaluaciones climáticas | operaciones | — | ✔ | ✔ | — | ✔ | — | Cuestionario; implementado en ms-operaciones (el OPERARIO y el ADMIN reciben 403) |
+| Crear órdenes de trabajo | operaciones | — | ✔ | — | — | — | — | Cuestionario (F-08); el ADMIN ya no puede |
 | Crear y editar obras y tramos; crear fases | obras | — | ✔ | — | — | — | — | Cuestionario, sección 07: PLANIFICADOR |
 | Consultar el cronograma de un tramo | obras | — | ✔ | ✔ | — | ✔ | — | Propuesta |
 | Consultar el cronograma de una obra | obras | — | ✔ | ✔ | — | ✔ | — | Cuestionario, sección 07 |
@@ -45,8 +51,10 @@ Leyenda: ✔ permitido, — no permitido, ? a definir con el equipo.
 | Contexto de ejecución de una fase para Operaciones (incluye materiales, RN-03) | obras | — | — | — | — | — | ✔ | Cuestionario, sección 07: solo SISTEMA |
 | Registrar el avance de una fase (completa la fase al 100 %) | obras | — | — | — | — | — | ✔ | Cuestionario, sección 07: solo SISTEMA |
 | Marcar una fase en riesgo | obras | — | — | — | — | — | ✔ | Cuestionario, sección 07: solo SISTEMA |
-| ABM de máquinas, operarios y cuadrillas | recursos | ? | ? | — | — | — | — | A definir en el paso 9 |
-| Funciones del OPERARIO | — | — | — | — | ? | — | — | Los documentos no lo detallan |
+| Alta y edición de máquinas; alta de operarios y de sus certificaciones; alta de plantas | recursos | ✔ | — | — | — | — | — | Implementado en ms-recursos (`Permisos.SOLO_ADMIN`) |
+| Armar y editar cuadrillas (valida RN-04) | recursos | — | ✔ | — | — | — | — | Implementado en ms-recursos (`Permisos.SOLO_PLANIFICADOR`) |
+| Editar la composición mínima por tipo de trabajo y la configuración de desplazamiento (RN-06, RN-07, RN-08) | recursos | ✔ | — | — | — | — | — | Implementado en ms-recursos (`Permisos.SOLO_ADMIN`) |
+| Consultar las propias asignaciones del día (`GET /operarios/me/asignaciones`) | recursos | — | — | — | ✔ | — | — | Cuestionario, sección 04 (F-15); implementado con `Permisos.SOLO_OPERARIO` |
 
 ## 4. Pruebas obligatorias por endpoint
 
