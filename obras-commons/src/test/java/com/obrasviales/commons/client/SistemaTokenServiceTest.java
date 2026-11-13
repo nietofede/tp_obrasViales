@@ -26,7 +26,6 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-// Va en ms-operaciones porque obras-commons todavia no tiene dependencias de test; se mueve cuando las tenga.
 // Keycloak simulado con MockRestServiceServer y una espera falsa, para no dormir en los tests.
 class SistemaTokenServiceTest {
 

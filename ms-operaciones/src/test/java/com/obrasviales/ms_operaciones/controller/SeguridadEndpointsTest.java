@@ -26,7 +26,6 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.stream.Stream;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -99,13 +98,13 @@ class SeguridadEndpointsTest {
 
     // el cambio de estado libre se quito: dejaba pasar una orden a EN_EJECUCION sin reserva ni clima.
     // cada transicion tiene su endpoint (habilitacion, inicio, rechazo, cierre, cancelacion, reprogramacion).
-    // hoy una ruta inexistente da 500 (lo corrige el manejo de errores de commons); aca solo importa que no se acepte.
+    // la ruta ya no existe: 404 en el formato estandar de commons.
     @Test
     void elCambioDeEstadoLibreYaNoExiste() throws Exception {
         for (String rolUsuario : new String[] {"PLANIFICADOR", "CAPATAZ"}) {
             mockMvc.perform(MockMvcRequestBuilders.patch(ORDENES + "/1/estado?nuevoEstado=EN_EJECUCION")
                             .with(jwt().authorities(rol(rolUsuario))))
-                    .andExpect(result -> assertThat(result.getResponse().getStatus()).isGreaterThanOrEqualTo(400));
+                    .andExpect(status().isNotFound());
         }
     }
 
