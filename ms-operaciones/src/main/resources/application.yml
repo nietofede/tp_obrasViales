@@ -38,7 +38,9 @@ resilience4j:
 app:
   open-meteo:
     url: https://api.open-meteo.com/v1/forecast
+    # RN-09: se evalua el peor valor de la ventana, desde la hora de inicio de la jornada (hora local del tramo)
     ventana-ejecucion-horas: 6
+    hora-inicio-jornada: 8
   servicios:
     obras-url: http://localhost:8082
     recursos-url: http://localhost:8083

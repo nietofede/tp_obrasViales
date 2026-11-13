@@ -15,19 +15,7 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class OpenMeteoResponseDTO {
 
-    private CurrentData current;
     private HourlyData hourly;
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class CurrentData {
-        private String time;
-
-        @JsonProperty("temperature_2m")
-        private Double temperature2m;
-    }
 
     @Getter
     @Setter
@@ -35,6 +23,9 @@ public class OpenMeteoResponseDTO {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class HourlyData {
         private List<String> time;
+
+        @JsonProperty("temperature_2m")
+        private List<Double> temperature2m;
 
         @JsonProperty("precipitation_probability")
         private List<Double> precipitationProbability;

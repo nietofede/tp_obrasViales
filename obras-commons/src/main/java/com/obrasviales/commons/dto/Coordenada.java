@@ -13,7 +13,7 @@ public record Coordenada(Double latitud, Double longitud) implements Serializabl
         }
     }
 
-    // crep que asi lo requiere Osrm
+    // OSRM espera las coordenadas como longitud,latitud (al reves que la mayoria de las APIs)
     public String toOsrmString() {
         return longitud + "," + latitud;
     }
