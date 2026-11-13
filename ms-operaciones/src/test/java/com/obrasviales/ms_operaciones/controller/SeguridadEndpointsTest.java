@@ -63,11 +63,11 @@ class SeguridadEndpointsTest {
 
     static Stream<Caso> casos() {
         return Stream.of(
-                new Caso("POST", ORDENES, "{\"faseId\":1,\"tramoId\":1,\"fechaProgramada\":\"2099-01-01\"}", "CAPATAZ", "PLANIFICADOR", 201),
-                new Caso("GET", ORDENES + "/1", null, null, "AUDITOR", 200),
-                new Caso("GET", ORDENES, null, null, "AUDITOR", 200),
+                new Caso("POST", ORDENES, "{\"faseId\":1,\"tramoId\":1,\"fechaProgramada\":\"2099-01-01\"}", "ADMIN", "PLANIFICADOR", 201),
+                new Caso("GET", ORDENES + "/1", null, "OPERARIO", "AUDITOR", 200),
+                new Caso("GET", ORDENES, null, "OPERARIO", "AUDITOR", 200),
                 new Caso("POST", ORDENES + "/1/habilitacion", null, "CAPATAZ", "PLANIFICADOR", 200),
-                new Caso("GET", ORDENES + "/1/evaluaciones-climaticas", null, null, "AUDITOR", 200),
+                new Caso("GET", ORDENES + "/1/evaluaciones-climaticas", null, "OPERARIO", "CAPATAZ", 200),
                 new Caso("PATCH", ORDENES + "/1/cancelacion", null, "CAPATAZ", "PLANIFICADOR", 200),
                 new Caso("PATCH", ORDENES + "/1/reprogramacion", "{\"fecha\":\"2099-01-01\"}", "CAPATAZ", "PLANIFICADOR", 200),
                 new Caso("PATCH", ORDENES + "/1/resolucion-climatica", "{\"decision\":\"HABILITAR\"}", "PLANIFICADOR", "CAPATAZ", 200),

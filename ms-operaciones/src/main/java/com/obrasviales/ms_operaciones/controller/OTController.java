@@ -29,7 +29,7 @@ public class OTController {
     private final OTServiceInterfaz otService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('" + Roles.PLANIFICADOR + "', '" + Roles.ADMIN + "')") 
+    @PreAuthorize("hasRole('" + Roles.PLANIFICADOR + "')")
     @Operation(summary = "Crear una nueva orden de trabajo en estado PROGRAMADA (PLANIFICADOR)")
     public ResponseEntity<OrdenTrabajoDTO> crearOrden(
             @Valid @RequestBody CrearOrdenRequest request) {
@@ -39,7 +39,7 @@ public class OTController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()") // Cualquier usuario logueado puede consultar
+    @PreAuthorize("hasAnyRole('" + Roles.PLANIFICADOR + "', '" + Roles.CAPATAZ + "', '" + Roles.AUDITOR + "')")
     @Operation(summary = "Obtener una orden de trabajo por su ID")
     public ResponseEntity<OrdenTrabajoDTO> obtenerPorId(@PathVariable Long id) {
         OrdenTrabajoDTO dto = otService.obtenerPorId(id);
@@ -47,7 +47,7 @@ public class OTController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('" + Roles.PLANIFICADOR + "', '" + Roles.CAPATAZ + "', '" + Roles.AUDITOR + "')")
     @Operation(summary = "Listar órdenes de trabajo filtrando por fecha y/o estado")
     public ResponseEntity<List<OrdenTrabajoDTO>> listar(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
@@ -65,7 +65,7 @@ public class OTController {
     }
 
     @GetMapping("/{id}/evaluaciones-climaticas")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('" + Roles.PLANIFICADOR + "', '" + Roles.CAPATAZ + "', '" + Roles.AUDITOR + "')")
     @Operation(summary = "Obtener el historial de evaluaciones climáticas de una orden")
     public ResponseEntity<List<EvaluacionClimaticaResponseDTO>> obtenerHistorialClimatico(@PathVariable Long id) {
         List<EvaluacionClimaticaResponseDTO> historial = otService.obtenerHistorialClimatico(id)
