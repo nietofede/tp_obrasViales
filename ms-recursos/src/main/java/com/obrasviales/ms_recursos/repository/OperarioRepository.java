@@ -8,4 +8,8 @@ import java.util.Optional;
 public interface OperarioRepository extends JpaRepository<Operario, Long> {
     Optional<Operario> findByKeycloakUsername(String keycloakUsername);
     List<Operario> findByCuadrillaIdAndEstado(Long cuadrillaId, String estado);
+
+    List<Operario> findByCuadrillaId(Long cuadrillaId);
+
+    boolean existsByKeycloakUsername(String keycloakUsername);
 }

@@ -253,6 +253,19 @@ public class ReservaService {
         return r; // LIBERADA o EXPIRADA: ya no bloquea recursos, liberar es idempotente
     }
 
+    @Transactional(readOnly = true)
+    public Reserva obtener(Long id) {
+        return reservaRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Reserva no encontrada: " + id));
+    }
+
+    // Pasa a EXPIRADA las provisorias cuyo TTL ya venció. Las vencidas ya no bloquean recursos aunque nadie
+    // las toque (ver bloqueaRecursos), pero así el estado guardado también refleja la realidad.
+    @Transactional
+    public int expirarVencidas() {
+        return reservaRepository.expirarReservasVencidas(LocalDateTime.now());
+    }
+
     // Una reserva bloquea recursos solo si está CONFIRMADA, o PROVISORIA y todavía no venció su TTL.
     private boolean bloqueaRecursos(Reserva r, LocalDateTime ahora) {
         return "CONFIRMADA".equals(r.getEstado())
