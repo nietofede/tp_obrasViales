@@ -109,7 +109,7 @@
 
       <div id="p-permisos" class="oculto">
         <p class="meta">Elegí un endpoint en el Explorador y volvé acá. Se manda el mismo pedido sin token y con cada rol, y se compara con los roles permitidos: sin token tiene que dar 401, un rol no permitido 403 y un rol permitido cualquier otra cosa (2xx, o 404/422 si el dato no existe: lo importante es que pasó la seguridad).</p>
-        <div class="fila"><button class="primario" id="probar">Probar con los seis roles</button><span id="aviso-permisos" class="aviso"></span></div>
+        <div class="fila"><button class="primario" id="probar">Probar con los cinco roles</button><span id="aviso-permisos" class="aviso"></span></div>
         <div id="tabla-permisos"></div>
       </div>
     </section>
@@ -136,7 +136,6 @@ const ROLES = [
   { id: "A", nombre: "ADMIN", usuario: "admin" },
   { id: "P", nombre: "PLANIFICADOR", usuario: "planificador" },
   { id: "C", nombre: "CAPATAZ", usuario: "capataz" },
-  { id: "O", nombre: "OPERARIO", usuario: "operario" },
   { id: "U", nombre: "AUDITOR", usuario: "auditor" },
   { id: "S", nombre: "SISTEMA", usuario: null }
 ];
@@ -151,60 +150,34 @@ const ENDPOINTS = [
   ["Obras", "POST", "/api/obras", "P", "Registrar una obra", { nombre: "Obra de prueba", descripcion: "Creada desde el panel" }],
   ["Obras", "GET", "/api/obras", "PCU", "Listar obras con estado y avance"],
   ["Obras", "GET", "/api/obras/1", "PCU", "Una obra con sus tramos y fases"],
-  ["Obras", "PUT", "/api/obras/1", "P", "Modificar una obra", { nombre: "Ruta Provincial 34", descripcion: "Editada desde el panel" }],
   ["Obras", "POST", "/api/obras/1/tramos", "P", "Agregar un tramo", { nombre: "Tramo panel", superficieM2: 1000, latitud: -31.40, longitud: -64.20 }],
   ["Obras", "GET", "/api/obras/1/tramos", "PCU", "Tramos de una obra (extra)"],
   ["Obras", "GET", "/api/obras/1/cronograma", "PCU", "Cronograma con dependencias (RN-02)"],
-  ["Obras", "GET", "/api/obras/tramos/1", "PCU", "Un tramo con ubicación y superficie"],
-  ["Obras", "PUT", "/api/obras/tramos/1", "P", "Modificar un tramo y recalcular materiales (RN-03)", { nombre: "Tramo 1", superficieM2: 5000, latitud: -31.245, longitud: -64.456 }],
   ["Obras", "POST", "/api/obras/tramos/1/fases", "P", "Definir una fase", { tipo: "SUBBASE", fechaInicioPlanificada: LEJOS, fechaFinPlanificada: d(35) }],
-  ["Obras", "GET", "/api/obras/tramos/1/fases", "PCU", "Fases de un tramo (extra)"],
-  ["Obras", "GET", "/api/obras/fases/2", "PCU", "Una fase con estado y fechas"],
   ["Obras", "GET", "/api/obras/fases/2/materiales", "PC", "Materiales por superficie (RN-03)"],
   ["Obras", "PATCH", "/api/obras/fases/2/programacion", "PS", "Reprogramar una fase en cascada (RN-02)", { nuevaFechaInicio: d(20) }],
   ["Obras", "GET", "/api/obras/internos/fases/2/contexto-ejecucion", "S", "Interno: contexto de la fase para Operaciones"],
 
-  ["Recursos", "POST", "/api/recursos/maquinas", "A", "Registrar una máquina", { codigo: "EXC-" + Date.now() % 10000, tipo: "EXCAVADORA", horasUso: 0 }],
-  ["Recursos", "GET", "/api/recursos/maquinas?fecha=" + HOY, "APCU", "Máquinas y mantenimiento en una fecha"],
-  ["Recursos", "PUT", "/api/recursos/maquinas/1", "A", "Modificar una máquina", { codigo: "PAV-01", tipo: "PAVIMENTADORA", estado: "DISPONIBLE" }],
-  ["Recursos", "POST", "/api/recursos/operarios", "A", "Registrar un operario", { nombre: "Operario del panel", rolOperativo: "PEON" }],
-  ["Recursos", "GET", "/api/recursos/operarios", "APCU", "Operarios con sus certificaciones"],
-  ["Recursos", "POST", "/api/recursos/operarios/3/certificaciones", "A", "Otorgar una certificación (RN-04)", { tipoMaquina: "RODILLO_COMPACTADOR", vencimiento: d(365) }],
-  ["Recursos", "GET", "/api/recursos/operarios/me/asignaciones", "O", "Mis asignaciones (usuario del token)"],
-  ["Recursos", "POST", "/api/recursos/plantas", "A", "Registrar una planta de mezcla", { nombre: "Planta del panel", latitud: -31.35, longitud: -64.15 }],
-  ["Recursos", "GET", "/api/recursos/plantas", "AP", "Plantas de mezcla"],
-  ["Recursos", "POST", "/api/recursos/cuadrillas", "P", "Armar una cuadrilla (valida RN-04)", { nombre: "Cuadrilla panel " + Date.now() % 1000, latitudBase: -31.40, longitudBase: -64.20, operarioIds: [], maquinaIds: [] }],
+  ["Recursos", "GET", "/api/recursos/maquinas", "APCU", "Máquinas precargadas con su cuadrilla"],
+  ["Recursos", "GET", "/api/recursos/operarios", "APCU", "Operarios con sus certificaciones (RN-04)"],
   ["Recursos", "GET", "/api/recursos/cuadrillas", "APCU", "Cuadrillas con su ubicación"],
-  ["Recursos", "GET", "/api/recursos/cuadrillas/1", "APCU", "Una cuadrilla (extra)"],
-  ["Recursos", "PUT", "/api/recursos/cuadrillas/1", "P", "Modificar una cuadrilla", { nombre: "Cuadrilla Alfa", latitudBase: -31.38, longitudBase: -64.22, operarioIds: [1, 2, 3], maquinaIds: [1, 2] }],
   ["Recursos", "POST", "/api/recursos/cuadrillas/1/ubicaciones", "C", "Check-in del capataz de su cuadrilla", { latitud: -31.39, longitud: -64.21 }],
-  ["Recursos", "GET", "/api/recursos/tipos-trabajo/composicion-minima", "APCU", "Composición mínima por tipo (extra)"],
-  ["Recursos", "PUT", "/api/recursos/tipos-trabajo/BASE/composicion-minima", "A", "Definir la composición mínima (RN-06)", { minOperarios: 2, tipoMaquinaRequerida: "RODILLO_COMPACTADOR", cantidadMaquinas: 1, requiereMezcla: false }],
-  ["Recursos", "GET", "/api/recursos/configuracion/desplazamiento", "AP", "Viaje máximo, ventana de mezcla y margen"],
-  ["Recursos", "PUT", "/api/recursos/configuracion/desplazamiento", "A", "Cambiar la configuración (RN-07, RN-08)", { viajeMaximoCuadrillaMin: 90, duracionJornadaMin: 480, ventanaTransporteMezclaMin: 60, margenCamionMin: 15 }],
-  ["Recursos", "GET", "/api/recursos/reservas/1", "PCUS", "Una reserva con hora de salida del camión"],
   ["Recursos", "POST", "/api/recursos/internos/reservas", "S", "Interno: proponer y reservar (RN-04 a RN-08)", { ordenTrabajoId: 999, tipoTrabajo: "BASE", fecha: LEJOS, tramoLat: -31.4, tramoLon: -64.2 }],
 
-  ["Operaciones", "POST", "/api/operaciones/ordenes", "P", "Programar una orden", { faseId: 2, tramoId: 1, fechaProgramada: d(4) }],
+  ["Operaciones", "POST", "/api/operaciones/ordenes", "P", "Programar una orden (en una fase en riesgo, es la decisión del PLANIFICADOR: RN-12)", { faseId: 2, tramoId: 1, fechaProgramada: d(4) }],
   ["Operaciones", "GET", "/api/operaciones/ordenes", "PCU", "Listar órdenes (filtros fecha, estado, obraId)"],
   ["Operaciones", "GET", "/api/operaciones/ordenes?fecha=" + HOY, "PCU", "Órdenes de hoy"],
   ["Operaciones", "GET", "/api/operaciones/ordenes/1", "PCU", "Una orden con su estado"],
   ["Operaciones", "POST", "/api/operaciones/habilitaciones-diarias", "PS", "Habilitar las órdenes de una fecha (proceso central)", { fecha: HOY }],
-  ["Operaciones", "POST", "/api/operaciones/ordenes/1/habilitacion", "PS", "Habilitar una orden"],
+  ["Operaciones", "POST", "/api/operaciones/ordenes/1/habilitacion", "PS", "Habilitar una orden puntual (mismo proceso que el del día)"],
   ["Operaciones", "GET", "/api/operaciones/ordenes/1/evaluaciones-climaticas", "PCU", "Evaluaciones climáticas (RN-09)"],
   ["Operaciones", "PATCH", "/api/operaciones/ordenes/1/resolucion-climatica", "C", "Resolver clima incierto (RN-10)", { decision: "HABILITAR", motivo: "Se revisó el pronóstico en el lugar" }],
   ["Operaciones", "PATCH", "/api/operaciones/ordenes/1/inicio", "C", "Iniciar la orden habilitada"],
   ["Operaciones", "PATCH", "/api/operaciones/ordenes/1/rechazo", "C", "Rechazar la orden (dispara la saga)", { motivo: "Falta personal" }],
-  ["Operaciones", "POST", "/api/operaciones/ordenes/1/avances", "C", "Registrar avance", { porcentaje: 60 }],
-  ["Operaciones", "PATCH", "/api/operaciones/ordenes/1/cierre", "C", "Cerrar con consumo real y horas de máquina", { horasMaquina: 6, materiales: [] }],
-  ["Operaciones", "PATCH", "/api/operaciones/ordenes/1/reprogramacion", "P", "Mover una orden a otra fecha", { fecha: d(5) }],
-  ["Operaciones", "PATCH", "/api/operaciones/ordenes/1/cancelacion", "P", "Cancelar una orden y liberar su reserva"],
+  ["Operaciones", "POST", "/api/operaciones/ordenes/1/avances", "C", "Registrar avance (al 100 % la orden queda COMPLETADA)", { porcentaje: 60 }],
   ["Operaciones", "GET", "/api/operaciones/suspensiones", "PU", "Historial de suspensiones"],
   ["Operaciones", "GET", "/api/operaciones/umbrales-climaticos", "APCU", "Umbrales climáticos vigentes"],
-  ["Operaciones", "PUT", "/api/operaciones/umbrales-climaticos/BASE", "A", "Definir umbrales de un tipo (RN-09)", { humedadSueloMaxima: 0.4, probPrecipitacionMaxima: 20, temperaturaMinima: 5 }],
-  ["Operaciones", "PUT", "/api/operaciones/configuracion/limite-suspensiones", "A", "Límite de suspensiones (RN-12)", { limite: 3 }],
-  ["Operaciones", "GET", "/api/operaciones/fases-en-riesgo", "PU", "Fases en riesgo (RN-12)"],
-  ["Operaciones", "POST", "/api/operaciones/fases-en-riesgo/2/decisiones", "P", "Decidir sobre una fase en riesgo", { decision: "REPROGRAMAR", nuevaFechaInicio: d(10) }]
+  ["Operaciones", "PUT", "/api/operaciones/umbrales-climaticos/BASE", "A", "Definir umbrales de un tipo (RN-09)", { humedadSueloMaxima: 0.4, probPrecipitacionMaxima: 20, temperaturaMinima: 5 }]
 ].map(([servicio, metodo, ruta, roles, desc, cuerpo], i) => ({ i, servicio, metodo, ruta, roles, desc, cuerpo }));
 
 const PASOS = [
@@ -213,8 +186,7 @@ const PASOS = [
   ["2b. (Opcional) Umbrales de BASE permisivos", "Fuerza la habilitación sin importar el clima. Volvé a los valores normales con el paso 6.", "PUT", "/api/operaciones/umbrales-climaticos/BASE", "A", { humedadSueloMaxima: 1.0, probPrecipitacionMaxima: 100, temperaturaMinima: -50 }],
   ["3. Ver la orden 1", "Esperado: HABILITADA, con reservaId y horaSalidaCamion (si el clima acompañó).", "GET", "/api/operaciones/ordenes/1", "P"],
   ["3b. Ver la evaluación climática", "El peor valor de la ventana de 08:00 a 13:00 de la fecha de la orden, y si cumplió los umbrales.", "GET", "/api/operaciones/ordenes/1/evaluaciones-climaticas", "U"],
-  ["3c. Ver la reserva en Recursos", "CONFIRMADA, con hora de llegada de la cuadrilla y fuente de la ruta (OSRM o ESTIMADA).", "GET", "/api/recursos/reservas/1", "P"],
-  ["4. El CAPATAZ inicia, avanza y cierra", "Iniciar (EN_EJECUCION). Después cargá en el editor el avance (POST /avances con 100) y el cierre (PATCH /cierre).", "PATCH", "/api/operaciones/ordenes/1/inicio", "C"],
+  ["4. El CAPATAZ inicia y avanza", "Iniciar (EN_EJECUCION). Después cargá en el editor el avance (POST /avances con 100): la fase y la orden quedan COMPLETADA.", "PATCH", "/api/operaciones/ordenes/1/inicio", "C"],
   ["5. Forzar una suspensión por clima (orden de mañana)", "Bajá los umbrales de BASE a valores imposibles y habilitá mañana: la orden 2 se suspende, Recursos libera la reserva, Obras corre la fase y se crea una orden nueva.", "PUT", "/api/operaciones/umbrales-climaticos/BASE", "A", { humedadSueloMaxima: 0.0, probPrecipitacionMaxima: 0, temperaturaMinima: 60 }],
   ["5b. Habilitar mañana", "Esperado: la orden 2 queda REPROGRAMADA y aparece en suspensiones.", "POST", "/api/operaciones/habilitaciones-diarias", "P", { fecha: MANANA }],
   ["6. Restaurar los umbrales de BASE", "Valores normales: humedad 0,40 m³/m³, lluvia 20 %, temperatura mínima 5 °C.", "PUT", "/api/operaciones/umbrales-climaticos/BASE", "A", { humedadSueloMaxima: 0.4, probPrecipitacionMaxima: 20, temperaturaMinima: 5 }],

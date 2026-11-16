@@ -1,6 +1,6 @@
 # Panel del equipo (herramienta interna)
 
-**No es parte de la entrega ni se muestra en la defensa.** Es una página para que el equipo pruebe el backend sin armar requests a mano: pide los tokens de los seis roles, lista todos los endpoints con sus roles permitidos y un cuerpo de ejemplo, recorre el proceso central paso a paso y compara los permisos de un endpoint contra la matriz (sin token, rol insuficiente y rol correcto).
+**No es parte de la entrega ni se muestra en la defensa.** Es una página para que el equipo pruebe el backend sin armar requests a mano: pide los tokens de los cinco roles, lista todos los endpoints con sus roles permitidos y un cuerpo de ejemplo, recorre el proceso central paso a paso y compara los permisos de un endpoint contra la matriz (sin token, rol insuficiente y rol correcto).
 
 ## Cómo se usa
 
@@ -21,7 +21,7 @@ Si el stack usa otros puertos: `java PanelEquipo.java 9090 http://localhost:1808
 
 - **Explorador de la API**: todos los endpoints del cuestionario (más los extras), agrupados por servicio, con método, ruta, roles permitidos y un cuerpo de ejemplo. Elegís uno, el rol con el que querés mandarlo, lo editás si hace falta y ves el código, el tiempo, el `X-Correlation-Id` y la respuesta.
 - **Proceso central**: los pasos de la demo con los datos sembrados (habilitar hoy, forzar una suspensión por clima, rechazo por distancia, ejecución del CAPATAZ). Necesita una base limpia (`docker compose down -v`).
-- **Probar permisos**: manda el endpoint elegido sin token y con los seis roles y marca si cada respuesta es la esperada.
+- **Probar permisos**: manda el endpoint elegido sin token y con los cinco roles y marca si cada respuesta es la esperada.
 
 Los endpoints `/internos/` son solo para la cuenta SISTEMA: el gateway rechaza cualquier otro rol con 403. Los servicios los llaman directo entre sí, y desde el panel se pueden probar con el rol SISTEMA.
 
