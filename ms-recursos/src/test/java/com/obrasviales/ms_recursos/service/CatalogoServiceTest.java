@@ -2,7 +2,6 @@ package com.obrasviales.ms_recursos.service;
 
 import com.obrasviales.ms_recursos.dto.CatalogoDtos.MaquinaResponse;
 import com.obrasviales.ms_recursos.dto.CatalogoDtos.OperarioResponse;
-import com.obrasviales.ms_recursos.entity.Certificacion;
 import com.obrasviales.ms_recursos.entity.Cuadrilla;
 import com.obrasviales.ms_recursos.entity.Maquina;
 import com.obrasviales.ms_recursos.entity.Operario;
@@ -14,13 +13,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-// Consulta de máquinas y operarios: cada dato sale tal como está cargado, con la cuadrilla y las certificaciones.
+// Consulta de máquinas y operarios: cada dato sale tal como está cargado, con su cuadrilla.
 @ExtendWith(MockitoExtension.class)
 class CatalogoServiceTest {
 
@@ -55,15 +53,10 @@ class CatalogoServiceTest {
     }
 
     @Test
-    void listarOperariosIncluyeSusCertificaciones() {
+    void listarOperariosInformaEstadoYCuadrilla() {
         Operario o = new Operario();
         o.setId(1L);
         o.setNombre("Juan Pérez");
-        Certificacion c = new Certificacion();
-        c.setOperario(o);
-        c.setTipoMaquina("PAVIMENTADORA");
-        c.setVencimiento(LocalDate.of(2027, 12, 31));
-        o.getCertificaciones().add(c);
         when(operarioRepository.findAll()).thenReturn(List.of(o));
 
         List<OperarioResponse> lista = service.listarOperarios();
@@ -72,8 +65,6 @@ class CatalogoServiceTest {
             assertThat(r.nombre()).isEqualTo("Juan Pérez");
             assertThat(r.estado()).isEqualTo("ACTIVO");
             assertThat(r.cuadrillaId()).isNull();
-            assertThat(r.certificaciones()).singleElement()
-                    .satisfies(x -> assertThat(x.tipoMaquina()).isEqualTo("PAVIMENTADORA"));
         });
     }
 }

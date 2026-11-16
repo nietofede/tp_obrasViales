@@ -1,6 +1,5 @@
 package com.obrasviales.ms_recursos.dto;
 
-import com.obrasviales.ms_recursos.entity.Certificacion;
 import com.obrasviales.ms_recursos.entity.Cuadrilla;
 import com.obrasviales.ms_recursos.entity.Maquina;
 import com.obrasviales.ms_recursos.entity.Operario;
@@ -8,7 +7,6 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -27,18 +25,11 @@ public final class CatalogoDtos {
         }
     }
 
-    public record CertificacionResponse(Long id, String tipoMaquina, LocalDate vencimiento) {
-        public static CertificacionResponse desde(Certificacion c) {
-            return new CertificacionResponse(c.getId(), c.getTipoMaquina(), c.getVencimiento());
-        }
-    }
-
     public record OperarioResponse(Long id, String nombre, String keycloakUsername, String rolOperativo,
-                                   String estado, Long cuadrillaId, List<CertificacionResponse> certificaciones) {
+                                   String estado, Long cuadrillaId) {
         public static OperarioResponse desde(Operario o) {
             return new OperarioResponse(o.getId(), o.getNombre(), o.getKeycloakUsername(), o.getRolOperativo(),
-                    o.getEstado(), o.getCuadrilla() != null ? o.getCuadrilla().getId() : null,
-                    o.getCertificaciones().stream().map(CertificacionResponse::desde).toList());
+                    o.getEstado(), o.getCuadrilla() != null ? o.getCuadrilla().getId() : null);
         }
     }
 

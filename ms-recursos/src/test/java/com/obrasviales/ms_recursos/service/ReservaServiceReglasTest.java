@@ -9,7 +9,6 @@ import com.obrasviales.ms_recursos.entity.Maquina;
 import com.obrasviales.ms_recursos.entity.Operario;
 import com.obrasviales.ms_recursos.entity.PlantaMezcla;
 import com.obrasviales.ms_recursos.entity.Reserva;
-import com.obrasviales.ms_recursos.repository.CertificacionRepository;
 import com.obrasviales.ms_recursos.repository.ComposicionMinimaRepository;
 import com.obrasviales.ms_recursos.repository.ConfiguracionDesplazamientoRepository;
 import com.obrasviales.ms_recursos.repository.CuadrillaRepository;
@@ -35,11 +34,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-// Reglas de elegibilidad de "proponer y reservar" (RN-04 a RN-08): casos normales, de límite y de rechazo.
+// Reglas de elegibilidad de "proponer y reservar" (RN-05 a RN-08): casos normales, de límite y de rechazo.
 // Un rechazo es una ReglaNegocioException (422) con el código de la regla y el motivo de cada cuadrilla.
 @ExtendWith(MockitoExtension.class)
 class ReservaServiceReglasTest {
@@ -56,7 +54,6 @@ class ReservaServiceReglasTest {
     @Mock private CuadrillaRepository cuadrillaRepository;
     @Mock private OperarioRepository operarioRepository;
     @Mock private MaquinaRepository maquinaRepository;
-    @Mock private CertificacionRepository certificacionRepository;
     @Mock private ComposicionMinimaRepository composicionMinimaRepository;
     @Mock private ConfiguracionDesplazamientoRepository configRepository;
     @Mock private PlantaMezclaRepository plantaRepository;
@@ -124,27 +121,10 @@ class ReservaServiceReglasTest {
         assertTrue(ex.getMessage().contains("RODILLO_COMPACTADOR"));
     }
 
-    // ---------- RN-04: certificación vigente ----------
-
     @Test
-    void rn04_sinCertificacionVigente_esRechazada() {
+    void rn06_conLaMaquinaDelTipoRequerido_esElegible() {
         stubConfigYComposicion(config(90, 480, 60, 15), composicion("BASE", 2, "RODILLO_COMPACTADOR", 1, false));
         stubCuadrillaConMaquina("RODILLO_COMPACTADOR");
-        when(certificacionRepository.existsByOperarioIdAndTipoMaquinaAndVencimientoGreaterThanEqual(
-                anyLong(), eq("RODILLO_COMPACTADOR"), eq(FECHA))).thenReturn(false);
-
-        ReglaNegocioException ex = rechazo("BASE");
-
-        assertEquals("RN-04", ex.getCodigoRegla());
-        assertTrue(ex.getMessage().contains("certificación vigente"));
-    }
-
-    @Test
-    void rn04_conCertificacionVigente_esElegible() {
-        stubConfigYComposicion(config(90, 480, 60, 15), composicion("BASE", 2, "RODILLO_COMPACTADOR", 1, false));
-        stubCuadrillaConMaquina("RODILLO_COMPACTADOR");
-        when(certificacionRepository.existsByOperarioIdAndTipoMaquinaAndVencimientoGreaterThanEqual(
-                anyLong(), eq("RODILLO_COMPACTADOR"), eq(FECHA))).thenReturn(true);
         stubRuta(CUADRILLA_LAT, 14);
         guardar();
 
@@ -366,15 +346,13 @@ class ReservaServiceReglasTest {
                 .thenReturn(List.of(maquina(5, tipoMaquina)));
     }
 
-    // Trabajo de CARPETA_ASFALTICA: 3 operarios, una PAVIMENTADORA certificada y mezcla (queda por stubbear la ruta).
+    // Trabajo de CARPETA_ASFALTICA: 3 operarios, una PAVIMENTADORA y mezcla (queda por stubbear la ruta).
     private void stubTrabajoConMezcla(ConfiguracionDesplazamiento config) {
         stubConfigYComposicion(config, composicion("CARPETA_ASFALTICA", 3, "PAVIMENTADORA", 1, true));
         when(cuadrillaRepository.findAll()).thenReturn(List.of(cuadrilla(1, "Alfa")));
         when(operarioRepository.findByCuadrillaIdAndEstado(1L, "ACTIVO")).thenReturn(operarios(1, 2, 3));
         when(maquinaRepository.findByCuadrillaIdAndEstado(1L, "DISPONIBLE"))
                 .thenReturn(List.of(maquina(5, "PAVIMENTADORA")));
-        when(certificacionRepository.existsByOperarioIdAndTipoMaquinaAndVencimientoGreaterThanEqual(
-                anyLong(), eq("PAVIMENTADORA"), eq(FECHA))).thenReturn(true);
     }
 
     private void stubRuta(double latitudOrigen, int minutos) {

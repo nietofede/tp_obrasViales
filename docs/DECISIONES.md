@@ -569,3 +569,12 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 
 **Consecuencias:** la app interna `herramientas/app-govp/` (no es parte de la entrega) se adaptó a los 32 endpoints: sin pantallas de alta y edición de recursos, fases en riesgo, cierre ni asignaciones del operario. La guía del código del alcance completo quedó fuera del repo, como respaldo del equipo.
 
+## Se quita RN-04, certificación vigente del operario (2026-11-16)
+
+**Contexto:** después del recorte, el equipo revisó qué reglas agregan complejidad sin sumar al proceso central. RN-04 pedía que, para cada máquina que exige el trabajo, la cuadrilla tuviera al menos un operario con certificación vigente para ese tipo de máquina en la fecha de la orden. Era la regla más aislada: ninguna otra la usa y no aparece en los pasos del proceso central.
+
+**Decisión:** se quita. `ReservaService.evaluarCuadrilla` revisa RN-05, RN-06 y RN-07 (y RN-08 para la planta); se borran la entidad `Certificacion`, su repositorio, la lista de certificaciones de `Operario` y de `OperarioResponse`, y la tabla con `V4__quitar_rn04_y_restos_del_recorte.sql` (V1 y V2 ya están aplicadas y no se editan). Los demás números de regla no cambian, para que sigan coincidiendo con el cuestionario y la propuesta.
+
+**Alternativas:** (a) dejarla: es poco código, pero suma una tabla, datos de demo y un caso más para explicar; (b) quitar también RN-08 (mezcla y hora de salida del camión): se descartó porque está dentro del proceso central comprometido y es el segundo uso de OSRM que justifica la integración.
+
+**Consecuencias:** quedan 11 reglas con test y request. Los tests de RN-04 se borraron y se agregó `rn06_conLaMaquinaDelTipoRequerido_esElegible` para no perder el caso positivo con máquina; la colección pierde la carpeta RN-04 (82 requests). Hay que avisarle a la cátedra (borrador en `docs/aviso-cambios-catedra.md`).

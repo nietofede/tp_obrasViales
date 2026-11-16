@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 // Consulta de máquinas y operarios. Los datos se cargan con Flyway; las reglas de elegibilidad
-// (RN-04 a RN-08) están en ReservaService.
+// (RN-05 a RN-08) están en ReservaService.
 @Service
 public class CatalogoService {
 
@@ -27,7 +27,6 @@ public class CatalogoService {
         return maquinaRepository.findAll().stream().map(MaquinaResponse::desde).toList();
     }
 
-    // Con las certificaciones de cada operario (RN-04 las usa al reservar).
     @Transactional(readOnly = true)
     public List<OperarioResponse> listarOperarios() {
         return operarioRepository.findAll().stream().map(OperarioResponse::desde).toList();

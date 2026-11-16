@@ -19,7 +19,7 @@ Para ensayar con reloj. Los tiempos son una estimación de partida: ajustarlos d
 | 1 | Arranque desde cero | 4 min | Integrante A |
 | 2 | Arquitectura en una pantalla (C2 y C1) | 3 min | Integrante A |
 | 3 | Seguridad: 401 y 403 (escenario 4) | 3 min | Integrante C |
-| 4 | Camino feliz: habilitación, ejecución y cierre | 6 min | Integrante C |
+| 4 | Camino feliz: habilitación, ejecución y avance al 100 % | 6 min | Integrante C |
 | 5 | Escenario 1: suspensión por clima y replanificación | 4 min | Integrante C |
 | 6 | Escenario 2: Open-Meteo caído | 3 min | Integrante C |
 | 7 | Escenario 3: rechazo de recursos por distancia | 3 min | Integrante B |
@@ -71,7 +71,7 @@ Decir: el gateway valida firma y vigencia, y cada servicio vuelve a validar el t
 
 1. `03-Flujo-Principal > Habilitación diaria (hoy)` con el token SISTEMA. Esperado: la orden 1 (fase 2, tramo 1) queda `HABILITADA`.
 2. `Ver orden 1` y `Evaluaciones climáticas de la orden 1`: se ven los valores de humedad, lluvia y temperatura, y los umbrales cumplidos.
-3. CAPATAZ: `inicio` → `EN_EJECUCION`; `avances` 60 y 100; `cierre` con horas de máquina y materiales → `COMPLETADA`.
+3. CAPATAZ: `inicio` → `EN_EJECUCION`; `avances` 60 y 100: con el 100 % la fase y la orden quedan `COMPLETADA`.
 4. `GET /api/obras/1/cronograma`: la fase 2 figura `COMPLETADA`.
 
 Si el clima real de ese día no cumple los umbrales, la orden se suspende en vez de habilitarse. En ese caso, correr antes `04-Reglas-Negocio > RN-09 > ADMIN restaura umbrales` o subir los valores: es parte de la demo y se explica con el escenario 1.
@@ -107,7 +107,7 @@ Condición: un tramo cuya distancia supera la jornada o el viaje máximo.
 
 Para mostrar OSRM caído: agregar `APP_OSRM_URL: http://osrm-inexistente.invalid` bajo `ms-recursos` > `environment`, `docker compose up -d ms-recursos` y repetir una reserva; devuelve 201 con `fuenteRuta: ESTIMADA`.
 
-Para RN-04 (reserva en 2028, cuando ya venció la certificación del maquinista de la cuadrilla Alfa: 422 `RN-04`) y RN-08 (reserva con mezcla y hora de salida del camión), usar `04-Reglas-Negocio > RN-04` y `RN-08`; cada una explica el resultado esperado. El rechazo de RN-08 por la ventana queda en los tests (la configuración de desplazamiento ya no se edita).
+Para RN-08 (reserva con mezcla y hora de salida del camión), usar `04-Reglas-Negocio > RN-08`, que explica el resultado esperado. El rechazo de RN-08 por la ventana queda en los tests (la configuración de desplazamiento ya no se edita).
 
 ### 3.8 Escenario 5: vencimiento de reservas (3 min)
 
@@ -143,7 +143,7 @@ Cada integrante tiene que poder explicar **un servicio en profundidad y el flujo
 | Integrante | Servicio | Qué tiene que saber contar |
 |---|---|---|
 | A | `ms-obras` y el gateway | Modelo obra, tramo, fase; RN-01, RN-02, RN-03; rutas del gateway; correlationId |
-| B | `ms-recursos` | RN-04 a RN-08; OSRM, caché, circuit breaker y fallback `ESTIMADA`; reservas con TTL |
+| B | `ms-recursos` | RN-05 a RN-08; OSRM, caché, circuit breaker y fallback `ESTIMADA`; reservas con TTL |
 | C | `ms-operaciones` | Máquina de estados (RN-11); habilitación diaria; saga de suspensión; RN-09, RN-10, RN-12; clima |
 
 Y los tres: el flujo de punta a punta (C1, C2 y la secuencia de `docs/arquitectura.md`), la seguridad (Keycloak, gateway y `@PreAuthorize`) y cómo se levanta todo.

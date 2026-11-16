@@ -9,7 +9,6 @@ import com.obrasviales.ms_recursos.entity.Cuadrilla;
 import com.obrasviales.ms_recursos.entity.Operario;
 import com.obrasviales.ms_recursos.entity.PlantaMezcla;
 import com.obrasviales.ms_recursos.entity.Reserva;
-import com.obrasviales.ms_recursos.repository.CertificacionRepository;
 import com.obrasviales.ms_recursos.repository.ComposicionMinimaRepository;
 import com.obrasviales.ms_recursos.repository.ConfiguracionDesplazamientoRepository;
 import com.obrasviales.ms_recursos.repository.CuadrillaRepository;
@@ -56,7 +55,6 @@ class ReservaServiceEstadosTest {
     @Mock private CuadrillaRepository cuadrillaRepository;
     @Mock private OperarioRepository operarioRepository;
     @Mock private MaquinaRepository maquinaRepository;
-    @Mock private CertificacionRepository certificacionRepository;
     @Mock private ComposicionMinimaRepository composicionMinimaRepository;
     @Mock private ConfiguracionDesplazamientoRepository configRepository;
     @Mock private PlantaMezclaRepository plantaRepository;

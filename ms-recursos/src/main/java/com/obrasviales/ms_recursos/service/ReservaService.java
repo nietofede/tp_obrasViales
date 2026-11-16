@@ -23,7 +23,6 @@ public class ReservaService {
     private final CuadrillaRepository cuadrillaRepository;
     private final OperarioRepository operarioRepository;
     private final MaquinaRepository maquinaRepository;
-    private final CertificacionRepository certificacionRepository;
     private final ComposicionMinimaRepository composicionMinimaRepository;
     private final ConfiguracionDesplazamientoRepository configRepository;
     private final PlantaMezclaRepository plantaRepository;
@@ -33,7 +32,6 @@ public class ReservaService {
                           CuadrillaRepository cuadrillaRepository,
                           OperarioRepository operarioRepository,
                           MaquinaRepository maquinaRepository,
-                          CertificacionRepository certificacionRepository,
                           ComposicionMinimaRepository composicionMinimaRepository,
                           ConfiguracionDesplazamientoRepository configRepository,
                           PlantaMezclaRepository plantaRepository,
@@ -42,7 +40,6 @@ public class ReservaService {
         this.cuadrillaRepository = cuadrillaRepository;
         this.operarioRepository = operarioRepository;
         this.maquinaRepository = maquinaRepository;
-        this.certificacionRepository = certificacionRepository;
         this.composicionMinimaRepository = composicionMinimaRepository;
         this.configRepository = configRepository;
         this.plantaRepository = plantaRepository;
@@ -51,7 +48,7 @@ public class ReservaService {
 
     // Orden en que se revisan las reglas de elegibilidad. Si ninguna cuadrilla sirve, se informa la regla de la
     // cuadrilla que llegó más lejos en esa secuencia (la que estuvo más cerca de ser elegible).
-    private static final List<String> ORDEN_REGLAS = List.of("RN-05", "RN-06", "RN-04", "RN-07");
+    private static final List<String> ORDEN_REGLAS = List.of("RN-05", "RN-06", "RN-07");
 
     // Resultado de evaluar una cuadrilla: o fue rechazada (regla y detalle) o es elegible (con su ruta al tramo).
     private record Evaluacion(String regla, String detalle, ProveedorRutas.ResultadoRuta ruta) {
@@ -162,7 +159,7 @@ public class ReservaService {
     }
 
 
-    // Revisa las reglas de una cuadrilla en orden: RN-05, RN-06, RN-04 y RN-07. Devuelve la primera que incumple.
+    // Revisa las reglas de una cuadrilla en orden: RN-05, RN-06 y RN-07. Devuelve la primera que incumple.
     private Evaluacion evaluarCuadrilla(Cuadrilla c, ComposicionMinimaTrabajo requisitos, ConfiguracionDesplazamiento config,
                                         LocalDate fecha, LocalDateTime ahora, double tramoLat, double tramoLon) {
         // RN-05: la cuadrilla no puede tener otra reserva vigente ese día
@@ -187,14 +184,6 @@ public class ReservaService {
             if (maquinas < requisitos.getCantidadMaquinas()) {
                 return Evaluacion.rechazada("RN-06", "tiene " + maquinas + " máquinas " + tipoMaquina
                         + " disponibles ese día y se necesitan " + requisitos.getCantidadMaquinas());
-            }
-
-            // RN-04: al menos un operario con certificación vigente ese día para esa máquina
-            boolean tieneCertificado = operarios.stream().anyMatch(op ->
-                    certificacionRepository.existsByOperarioIdAndTipoMaquinaAndVencimientoGreaterThanEqual(
-                            op.getId(), tipoMaquina, fecha));
-            if (!tieneCertificado) {
-                return Evaluacion.rechazada("RN-04", "ningún operario tiene certificación vigente para " + tipoMaquina);
             }
         }
 
