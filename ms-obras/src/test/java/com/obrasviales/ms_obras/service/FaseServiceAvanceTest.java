@@ -240,15 +240,6 @@ class FaseServiceAvanceTest {
 
     // ---------- consultas ----------
 
-    @Test
-    void obtenerUnaFaseInexistenteEs404() {
-        when(faseRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> faseService.obtenerFase(99L))
-                .isInstanceOf(RecursoNoEncontradoException.class)
-                .hasMessageContaining("99");
-    }
-
     // RN-03: los materiales de una fase salen del tipo de fase y de la superficie de su tramo
     @Test
     void losMaterialesDeUnaFaseUsanSuTipoYLaSuperficieDeSuTramo() {

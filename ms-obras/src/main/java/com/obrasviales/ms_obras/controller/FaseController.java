@@ -24,22 +24,10 @@ public class FaseController {
 
     private final FaseService faseService;
 
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('PLANIFICADOR', 'CAPATAZ', 'AUDITOR')")
-    public FaseResponse obtener(@PathVariable Long id) {
-        return FaseResponse.desde(faseService.obtenerFase(id));
-    }
-
     @GetMapping("/{id}/materiales")
     @PreAuthorize("hasAnyRole('PLANIFICADOR', 'CAPATAZ')")
     public List<MaterialCalculado> materiales(@PathVariable Long id) {
         return faseService.materialesDeFase(id);
-    }
-
-    @PostMapping("/{id}/iniciar")
-    @PreAuthorize("hasAnyRole('CAPATAZ', 'SISTEMA')")
-    public FaseResponse iniciar(@PathVariable Long id) {
-        return FaseResponse.desde(faseService.iniciarFase(id));
     }
 
     @PatchMapping("/{id}/programacion")

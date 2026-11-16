@@ -16,7 +16,7 @@ este proyecto usa **Spring Boot 4.1.2, Spring Framework 7 y Java 25**
 |---|---|---|
 | `api-gateway` | 8081 | Único punto de entrada (Spring Cloud Gateway MVC). Valida el JWT y genera el correlation-id |
 | `ms-obras` | 8082 | Obras, tramos (con coordenadas), fases (relevamiento, base, sub-base, carpeta asfáltica o losa), materiales, cronograma. RN-01, 02, 03 |
-| `ms-recursos` | 8083 | Máquinas, operarios, certificaciones, mantenimiento, cuadrillas, plantas de mezcla. "Proponer y reservar" (reserva con TTL, idempotente) o rechazo motivado. Integra OSRM. RN-04 a 08 |
+| `ms-recursos` | 8083 | Consulta de máquinas, operarios y cuadrillas (precargados), check-in del CAPATAZ. "Proponer y reservar" (reserva con TTL, idempotente) o rechazo motivado. Integra OSRM. RN-04 a 08 |
 | `ms-operaciones` | 8084 | Órdenes de trabajo diarias y su máquina de estados, evaluación climática (es el único que habla con Open-Meteo), historial de suspensiones, orquestador de la saga. RN-09 a 12 |
 | `obras-commons` | — | Librería (JAR) compartida: conversor de roles de Keycloak, config base de seguridad, errores estándar y handler global, excepciones de dominio, constantes de roles, filtro de correlation-id, cliente HTTP con token de servicio, `Coordenada` |
 | Keycloak | 8080 | Autenticación (realm `obras-viales`) |
@@ -28,7 +28,7 @@ este proyecto usa **Spring Boot 4.1.2, Spring Framework 7 y Java 25**
 - Defensa en profundidad: el gateway valida el JWT y **cada servicio vuelve a validarlo** y autoriza por rol con `@PreAuthorize`. Los servicios no se exponen fuera de la red de Docker (cuando estén dockerizados).
 - Capas: controller → service → repository. Las reglas de negocio van en el service o el dominio, nunca en controllers ni repositories.
 
-**Roles:** `ADMIN`, `PLANIFICADOR`, `CAPATAZ`, `OPERARIO`, `AUDITOR`, más la cuenta de servicio `SISTEMA` (client credentials) que usan el job diario y las llamadas entre servicios.
+**Roles:** `ADMIN`, `PLANIFICADOR`, `CAPATAZ`, `AUDITOR` (el `OPERARIO` se quitó con el recorte de alcance), más la cuenta de servicio `SISTEMA` (client credentials) que usan el job diario y las llamadas entre servicios.
 
 **Proceso central (habilitación diaria de una orden):** 1) Operaciones pide a Obras el tramo y la fase (coordenadas, tipo de trabajo, materiales, fase previa completa); 2) pide a Recursos "proponer y reservar" (certificación, composición, disponibilidad, mantenimiento, ruta con OSRM) y recibe una reserva con TTL o un rechazo; 3) consulta Open-Meteo (ventana de 6 h); 4) aplica los umbrales climáticos por tipo de trabajo: si cumple la orden queda HABILITADA, si no queda SUSPENDIDA y se dispara una saga de compensación (liberar reservas, reprogramar la fase y sus dependientes, crear una orden nueva); 5) tras N suspensiones la fase queda "en riesgo" y decide el PLANIFICADOR.
 

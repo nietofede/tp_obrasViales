@@ -27,7 +27,6 @@ public class ReservaService {
     private final ComposicionMinimaRepository composicionMinimaRepository;
     private final ConfiguracionDesplazamientoRepository configRepository;
     private final PlantaMezclaRepository plantaRepository;
-    private final MantenimientoRepository mantenimientoRepository;
     private final ProveedorRutas proveedorRutas;
 
     public ReservaService(ReservaRepository reservaRepository,
@@ -38,7 +37,6 @@ public class ReservaService {
                           ComposicionMinimaRepository composicionMinimaRepository,
                           ConfiguracionDesplazamientoRepository configRepository,
                           PlantaMezclaRepository plantaRepository,
-                          MantenimientoRepository mantenimientoRepository,
                           ProveedorRutas proveedorRutas) {
         this.reservaRepository = reservaRepository;
         this.cuadrillaRepository = cuadrillaRepository;
@@ -48,7 +46,6 @@ public class ReservaService {
         this.composicionMinimaRepository = composicionMinimaRepository;
         this.configRepository = configRepository;
         this.plantaRepository = plantaRepository;
-        this.mantenimientoRepository = mantenimientoRepository;
         this.proveedorRutas = proveedorRutas;
     }
 
@@ -182,11 +179,10 @@ public class ReservaService {
 
         String tipoMaquina = requisitos.getTipoMaquinaRequerida();
         if (tipoMaquina != null) {
-            // RN-06: máquinas del tipo requerido, disponibles y sin mantenimiento ese día
+            // RN-06: máquinas del tipo requerido y disponibles
             long maquinas = maquinaRepository.findByCuadrillaIdAndEstado(c.getId(), "DISPONIBLE")
                     .stream()
                     .filter(m -> m.getTipo().equalsIgnoreCase(tipoMaquina))
-                    .filter(m -> !mantenimientoRepository.tieneMantenimientoEnFecha(m.getId(), fecha))
                     .count();
             if (maquinas < requisitos.getCantidadMaquinas()) {
                 return Evaluacion.rechazada("RN-06", "tiene " + maquinas + " máquinas " + tipoMaquina
@@ -251,12 +247,6 @@ public class ReservaService {
         }
 
         return r; // LIBERADA o EXPIRADA: ya no bloquea recursos, liberar es idempotente
-    }
-
-    @Transactional(readOnly = true)
-    public Reserva obtener(Long id) {
-        return reservaRepository.findById(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Reserva no encontrada: " + id));
     }
 
     // Pasa a EXPIRADA las provisorias cuyo TTL ya venció. Las vencidas ya no bloquean recursos aunque nadie

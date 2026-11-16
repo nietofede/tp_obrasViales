@@ -9,7 +9,6 @@ import com.obrasviales.ms_obras.domain.Fase;
 import com.obrasviales.ms_obras.domain.TipoFase;
 import com.obrasviales.ms_obras.domain.Tramo;
 import com.obrasviales.ms_obras.dto.FaseResponse;
-import com.obrasviales.ms_obras.service.CronogramaService;
 import com.obrasviales.ms_obras.service.FaseService;
 import com.obrasviales.ms_obras.service.ObraService;
 import org.junit.jupiter.api.Test;
@@ -23,12 +22,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
-import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -49,9 +46,6 @@ class TramoControllerTest {
 
     @MockitoBean
     private FaseService faseService;
-
-    @MockitoBean
-    private CronogramaService cronogramaService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -153,40 +147,4 @@ class TramoControllerTest {
 
     // ---------- Consultar cronograma ----------
 
-    @Test
-    void cronogramaSinTokenDevuelve401() throws Exception {
-        mockMvc.perform(get("/api/obras/tramos/10/fases"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void cronogramaConOperarioDevuelve403() throws Exception {
-        mockMvc.perform(get("/api/obras/tramos/10/fases")
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_OPERARIO"))))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void cronogramaConAuditorDevuelve200ConLasFases() throws Exception {
-        when(cronogramaService.cronogramaDelTramo(10L))
-                .thenReturn(List.of(respuesta(1L, TipoFase.BASE), respuesta(2L, TipoFase.SUBBASE)));
-
-        mockMvc.perform(get("/api/obras/tramos/10/fases")
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_AUDITOR"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].tipo").value("BASE"))
-                .andExpect(jsonPath("$[1].tipo").value("SUBBASE"));
-    }
-
-    @Test
-    void cronogramaDeTramoInexistenteDevuelve404() throws Exception {
-        when(cronogramaService.cronogramaDelTramo(99L))
-                .thenThrow(new RecursoNoEncontradoException("No existe el tramo con id 99"));
-
-        mockMvc.perform(get("/api/obras/tramos/99/fases")
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_PLANIFICADOR"))))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.detail").value("No existe el tramo con id 99"));
-    }
 }

@@ -13,7 +13,6 @@ import com.obrasviales.ms_recursos.repository.CertificacionRepository;
 import com.obrasviales.ms_recursos.repository.ComposicionMinimaRepository;
 import com.obrasviales.ms_recursos.repository.ConfiguracionDesplazamientoRepository;
 import com.obrasviales.ms_recursos.repository.CuadrillaRepository;
-import com.obrasviales.ms_recursos.repository.MantenimientoRepository;
 import com.obrasviales.ms_recursos.repository.MaquinaRepository;
 import com.obrasviales.ms_recursos.repository.OperarioRepository;
 import com.obrasviales.ms_recursos.repository.PlantaMezclaRepository;
@@ -61,7 +60,6 @@ class ReservaServiceReglasTest {
     @Mock private ComposicionMinimaRepository composicionMinimaRepository;
     @Mock private ConfiguracionDesplazamientoRepository configRepository;
     @Mock private PlantaMezclaRepository plantaRepository;
-    @Mock private MantenimientoRepository mantenimientoRepository;
     @Mock private ProveedorRutas proveedorRutas;
 
     @InjectMocks
@@ -124,18 +122,6 @@ class ReservaServiceReglasTest {
 
         assertEquals("RN-06", ex.getCodigoRegla());
         assertTrue(ex.getMessage().contains("RODILLO_COMPACTADOR"));
-    }
-
-    @Test
-    void rn06_maquinaEnMantenimientoEseDia_noCuenta() {
-        stubConfigYComposicion(config(90, 480, 60, 15), composicion("BASE", 2, "RODILLO_COMPACTADOR", 1, false));
-        when(cuadrillaRepository.findAll()).thenReturn(List.of(cuadrilla(1, "Alfa")));
-        when(operarioRepository.findByCuadrillaIdAndEstado(1L, "ACTIVO")).thenReturn(operarios(1, 2));
-        when(maquinaRepository.findByCuadrillaIdAndEstado(1L, "DISPONIBLE"))
-                .thenReturn(List.of(maquina(5, "RODILLO_COMPACTADOR")));
-        when(mantenimientoRepository.tieneMantenimientoEnFecha(5L, FECHA)).thenReturn(true);
-
-        assertEquals("RN-06", rechazo("BASE").getCodigoRegla());
     }
 
     // ---------- RN-04: certificación vigente ----------
@@ -373,12 +359,11 @@ class ReservaServiceReglasTest {
         when(operarioRepository.findByCuadrillaIdAndEstado(1L, "ACTIVO")).thenReturn(operarios(1, 2));
     }
 
-    // Una cuadrilla libre con 2 operarios y una máquina disponible, sin mantenimiento, del tipo indicado.
+    // Una cuadrilla libre con 2 operarios y una máquina disponible del tipo indicado.
     private void stubCuadrillaConMaquina(String tipoMaquina) {
         stubCuadrillaSinMaquina();
         when(maquinaRepository.findByCuadrillaIdAndEstado(1L, "DISPONIBLE"))
                 .thenReturn(List.of(maquina(5, tipoMaquina)));
-        when(mantenimientoRepository.tieneMantenimientoEnFecha(5L, FECHA)).thenReturn(false);
     }
 
     // Trabajo de CARPETA_ASFALTICA: 3 operarios, una PAVIMENTADORA certificada y mezcla (queda por stubbear la ruta).
@@ -388,7 +373,6 @@ class ReservaServiceReglasTest {
         when(operarioRepository.findByCuadrillaIdAndEstado(1L, "ACTIVO")).thenReturn(operarios(1, 2, 3));
         when(maquinaRepository.findByCuadrillaIdAndEstado(1L, "DISPONIBLE"))
                 .thenReturn(List.of(maquina(5, "PAVIMENTADORA")));
-        when(mantenimientoRepository.tieneMantenimientoEnFecha(5L, FECHA)).thenReturn(false);
         when(certificacionRepository.existsByOperarioIdAndTipoMaquinaAndVencimientoGreaterThanEqual(
                 anyLong(), eq("PAVIMENTADORA"), eq(FECHA))).thenReturn(true);
     }

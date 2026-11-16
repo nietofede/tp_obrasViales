@@ -6,12 +6,10 @@ import com.obrasviales.ms_operaciones.dtos.FaseDTO;
 import com.obrasviales.ms_operaciones.dtos.SuspensionDTO;
 import com.obrasviales.ms_operaciones.modelo.ConfiguracionSuspensiones;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
-import com.obrasviales.ms_operaciones.modelo.FaseEnRiesgo;
 import com.obrasviales.ms_operaciones.modelo.MotivoSuspension;
 import com.obrasviales.ms_operaciones.modelo.OrdenTrabajo;
 import com.obrasviales.ms_operaciones.modelo.Suspension;
 import com.obrasviales.ms_operaciones.repositorios.ConfiguracionSuspensionesRepository;
-import com.obrasviales.ms_operaciones.repositorios.FaseEnRiesgoRepository;
 import com.obrasviales.ms_operaciones.repositorios.OrdenTrabajoRepository;
 import com.obrasviales.ms_operaciones.repositorios.SuspensionRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +22,7 @@ import java.util.List;
 
 // Saga de suspension, orquestada desde Operaciones: liberar la reserva en Recursos, registrar la suspension y,
 // segun cuantas lleve la fase (RN-12), o bien reprogramar la fase en Obras (RN-02) y crear la orden nueva, o bien
-// marcar la fase en riesgo y esperar al PLANIFICADOR. No tiene @Transactional propio: corre dentro de la transaccion
+// marcar la fase en riesgo en Obras y esperar al PLANIFICADOR (reprograma la fase y crea la orden nueva a mano). No tiene @Transactional propio: corre dentro de la transaccion
 // de quien la llama, asi si falla un paso de Obras se deshace lo local (lo ya liberado en Recursos se repite sin dano).
 @Slf4j
 @Service
@@ -33,13 +31,12 @@ public class SuspensionService {
 
     private final SuspensionRepository suspensionRepository;
     private final ConfiguracionSuspensionesRepository configuracionRepository;
-    private final FaseEnRiesgoRepository faseEnRiesgoRepository;
     private final OrdenTrabajoRepository ordenTrabajoRepository;
     private final RecursosClient recursosClient;
     private final ObrasClient obrasClient;
 
     // Suspende la orden. Al terminar, la orden queda REPROGRAMADA (hay una orden nueva PROGRAMADA) o SUSPENDIDA
-    // (fase en riesgo, decide el PLANIFICADOR).
+    // (fase en riesgo, decide el PLANIFICADOR). El limite es fijo (3, sembrado en configuracion_suspensiones).
     public void suspender(OrdenTrabajo orden, MotivoSuspension motivo, String detalle) {
         liberarReserva(orden);
         orden.setEstado(EstadoOrden.SUSPENDIDA);
@@ -82,14 +79,6 @@ public class SuspensionService {
                 .orElseThrow(() -> new IllegalStateException("Falta la configuración del límite de suspensiones."));
     }
 
-    @Transactional
-    public int actualizarLimite(int nuevoLimite) {
-        ConfiguracionSuspensiones configuracion = configuracionRepository.findById(ConfiguracionSuspensiones.ID_UNICO)
-                .orElseGet(ConfiguracionSuspensiones::new);
-        configuracion.setLimiteSuspensiones(nuevoLimite);
-        return configuracionRepository.save(configuracion).getLimiteSuspensiones();
-    }
-
     // Si Recursos no responde no se frena la suspension: la reserva provisoria vence sola por TTL (30 min).
     public void liberarReserva(OrdenTrabajo orden) {
         if (orden.getReservaId() != null) {
@@ -129,11 +118,15 @@ public class SuspensionService {
     // En el limite: la fase queda en riesgo en Obras y no se crea orden nueva hasta que decida el PLANIFICADOR.
     private void marcarFaseEnRiesgo(OrdenTrabajo orden) {
         obrasClient.marcarFaseEnRiesgo(orden.getFaseId());
-        if (!faseEnRiesgoRepository.existsByFaseIdAndResueltaFalse(orden.getFaseId())) {
-            FaseEnRiesgo enRiesgo = new FaseEnRiesgo();
-            enRiesgo.setFaseId(orden.getFaseId());
-            enRiesgo.setOrdenTrabajoId(orden.getId());
-            faseEnRiesgoRepository.save(enRiesgo);
+    }
+
+    // Decision del PLANIFICADOR sobre una fase en riesgo: al crear la orden nueva, las suspendidas de la fase quedan
+    // REPROGRAMADA (ya tienen reemplazo) y el conteo de RN-12 vuelve a cero. El historial de suspensiones se conserva.
+    public void cerrarSuspensionesDeLaFase(Long faseId) {
+        for (OrdenTrabajo suspendida : ordenTrabajoRepository.findByFaseIdAndEstado(faseId, EstadoOrden.SUSPENDIDA)) {
+            suspendida.setEstado(EstadoOrden.REPROGRAMADA);
+            ordenTrabajoRepository.save(suspendida);
         }
+        suspensionRepository.marcarNoVigentes(faseId);
     }
 }

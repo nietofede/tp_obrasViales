@@ -9,5 +9,4 @@ public interface MaquinaRepository extends JpaRepository<Maquina, Long> {
 
     List<Maquina> findByCuadrillaId(Long cuadrillaId);
 
-    boolean existsByCodigo(String codigo);
 }

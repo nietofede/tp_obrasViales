@@ -11,5 +11,4 @@ public interface OperarioRepository extends JpaRepository<Operario, Long> {
 
     List<Operario> findByCuadrillaId(Long cuadrillaId);
 
-    boolean existsByKeycloakUsername(String keycloakUsername);
 }

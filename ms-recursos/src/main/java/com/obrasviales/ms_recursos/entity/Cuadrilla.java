@@ -2,8 +2,6 @@ package com.obrasviales.ms_recursos.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table (name = "cuadrillas")
@@ -26,12 +24,6 @@ public class Cuadrilla {
     @Column(name = "fecha_checkin", nullable = false)
     private LocalDateTime fechaCheckin = LocalDateTime.now();
 
-    @OneToMany(mappedBy = "cuadrilla", fetch = FetchType.LAZY)
-    private List<Operario> operarios = new ArrayList<>();
-
-    @OneToMany(mappedBy = "cuadrilla", fetch = FetchType.LAZY)
-    private List<Maquina> maquinas = new ArrayList<>();
-
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -46,11 +38,5 @@ public class Cuadrilla {
 
     public LocalDateTime getFechaCheckin() { return fechaCheckin; }
     public void setFechaCheckin(LocalDateTime fechaCheckin) { this.fechaCheckin = fechaCheckin; }
-
-    public List<Operario> getOperarios() { return operarios; }
-    public void setOperarios(List<Operario> operarios) { this.operarios = operarios; }
-
-    public List<Maquina> getMaquinas() { return maquinas; }
-    public void setMaquinas(List<Maquina> maquinas) { this.maquinas = maquinas; }
     
 }

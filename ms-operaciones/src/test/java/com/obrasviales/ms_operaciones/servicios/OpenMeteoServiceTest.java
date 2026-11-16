@@ -7,8 +7,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
-import java.time.Clock;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
@@ -116,7 +114,7 @@ class OpenMeteoServiceTest {
         MockRestServiceServer servidor = MockRestServiceServer.bindTo(builder).build();
         // jornada de 2 horas desde las 14: solo cuentan 14:00 y 15:00
         OpenMeteoService corta = new OpenMeteoService(builder.build(), "http://open-meteo.test/v1/forecast",
-                Duration.ofMinutes(15), Clock.systemDefaultZone(), 2, 14);
+                2, 14);
         List<String> lluvia = new java.util.ArrayList<>(constante("90"));
         lluvia.set(14, "5");
         lluvia.set(15, "15");
@@ -128,7 +126,7 @@ class OpenMeteoServiceTest {
     @Test
     void unaVentanaQueSeSaleDelDiaSeRechazaAlConfigurar() {
         assertThrows(IllegalArgumentException.class, () -> new OpenMeteoService(RestClient.builder().build(),
-                "http://open-meteo.test", Duration.ofMinutes(15), Clock.systemDefaultZone(), 6, 20));
+                "http://open-meteo.test", 6, 20));
     }
 
     @Test

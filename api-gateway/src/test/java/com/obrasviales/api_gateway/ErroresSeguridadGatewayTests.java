@@ -54,8 +54,8 @@ class ErroresSeguridadGatewayTests {
     void tokens() {
         when(jwtDecoder.decode(anyString())).thenAnswer(inv -> Jwt.withTokenValue(inv.getArgument(0))
                 .header("alg", "none")
-                .claim("sub", "operario")
-                .claim("realm_access", Map.of("roles", List.of("OPERARIO")))
+                .claim("sub", "servicio-sistema")
+                .claim("realm_access", Map.of("roles", List.of("SISTEMA")))
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(60))
                 .build());
@@ -99,7 +99,7 @@ class ErroresSeguridadGatewayTests {
 
     @Test
     void conRolInsuficienteDevuelve403EnFormatoEstandar() throws Exception {
-        HttpResponse<String> respuesta = get("/api/operaciones/ordenes", "token-operario");
+        HttpResponse<String> respuesta = get("/api/operaciones/ordenes", "token-sistema");
 
         esProblemJson(respuesta, 403, "urn:problem:forbidden", "/api/operaciones/ordenes");
     }

@@ -62,7 +62,7 @@ Correr `02-Seguridad`. Los tres casos que explican todo:
 | Request | Esperado |
 |---|---|
 | Sin token → `GET /api/obras` | 401 |
-| OPERARIO crea obra | 403 |
+| CAPATAZ crea obra | 403 |
 | PLANIFICADOR crea obra / lee obras | 200 o 201 |
 
 Decir: el gateway valida firma y vigencia, y cada servicio vuelve a validar el token y controla el rol con `@PreAuthorize`. Los endpoints `/internos/` exigen el rol SISTEMA.
@@ -85,18 +85,18 @@ Condición: una orden PROGRAMADA y umbrales por encima de lo que el clima real c
 3. `GET /api/operaciones/suspensiones`: una suspensión de motivo `CLIMA`, con el detalle de lo medido contra los umbrales. `GET /api/obras/1/cronograma` muestra la fase 2 con la fecha corrida.
 4. ADMIN: `ADMIN restaura los umbrales de BASE` (humedad 0.4, lluvia 20, temperatura 5).
 
-Para mostrar RN-12: con `ADMIN fija límite de suspensiones = 1` (carpeta RN-12), la primera suspensión deja la fase en riesgo y aparece en `GET /fases-en-riesgo`. Restaurar el límite a 3 después.
+Para explicar RN-12: el límite es fijo en 3. A la tercera suspensión vigente de la fase, Operaciones la marca `EN_RIESGO` en Obras (se ve en `GET /api/obras/1/cronograma`) y la orden queda `SUSPENDIDA`; el PLANIFICADOR reprograma la fase y crea la orden nueva, y el conteo vuelve a cero. Está cubierto por `SuspensionServiceTest`; en la demo alcanza con contarlo, porque llegar a tres suspensiones reales lleva tres habilitaciones con los umbrales bajados.
 
 ### 3.6 Escenario 2: Open-Meteo no disponible (3 min)
 
-Condición: la API de clima no responde y no hay caché reciente.
+Condición: la API de clima no responde.
 
 1. En `docker-compose.yml`, bajo `ms-operaciones` > `environment`, agregar `APP_OPEN_METEO_URL: http://clima-inexistente.invalid/v1/forecast` y correr `docker compose up -d ms-operaciones`.
 2. Habilitar una orden `PROGRAMADA`.
 3. Esperado (verificado): tarda unos 7 segundos por los tres reintentos y responde 200 con la orden en `PENDIENTE_CONFIRMACION_CLIMATICA`, con su `reservaId` conservada. El CAPATAZ decide con `PATCH /ordenes/{id}/resolucion-climatica` (`HABILITAR` o `SUSPENDER`).
 4. Restaurar: quitar la variable y repetir `docker compose up -d ms-operaciones`.
 
-La Rama 2 agregó una caché en memoria del último pronóstico (15 minutos por defecto, `app.open-meteo.cache-ttl`): si Open-Meteo falla y hay un pronóstico reciente de esas coordenadas, la orden se habilita igual. Al reiniciar `ms-operaciones` con la URL inválida la caché queda vacía, que es justo lo que muestra este escenario (verificado en un stack limpio: unos 5 segundos y `PENDIENTE_CONFIRMACION_CLIMATICA`).
+No hay caché del último pronóstico (se quitó con el recorte de alcance): sin respuesta de Open-Meteo, después de los reintentos la orden siempre queda `PENDIENTE_CONFIRMACION_CLIMATICA` y decide el CAPATAZ.
 
 ### 3.7 Escenario 3: rechazo de recursos por distancia (3 min)
 
@@ -107,7 +107,7 @@ Condición: un tramo cuya distancia supera la jornada o el viaje máximo.
 
 Para mostrar OSRM caído: agregar `APP_OSRM_URL: http://osrm-inexistente.invalid` bajo `ms-recursos` > `environment`, `docker compose up -d ms-recursos` y repetir una reserva; devuelve 201 con `fuenteRuta: ESTIMADA`.
 
-Para RN-04 (cuadrilla con un operario sin certificación vigente: 422) y RN-08 (mezcla fuera de la ventana de transporte: 422), usar `04-Reglas-Negocio > RN-04` y `RN-08`; cada una explica el resultado esperado.
+Para RN-04 (reserva en 2028, cuando ya venció la certificación del maquinista de la cuadrilla Alfa: 422 `RN-04`) y RN-08 (reserva con mezcla y hora de salida del camión), usar `04-Reglas-Negocio > RN-04` y `RN-08`; cada una explica el resultado esperado. El rechazo de RN-08 por la ventana queda en los tests (la configuración de desplazamiento ya no se edita).
 
 ### 3.8 Escenario 5: vencimiento de reservas (3 min)
 
@@ -119,7 +119,7 @@ Condición: reserva provisoria emitida y el orquestador cae antes de confirmar.
 4. Esperado: el job de Recursos pasa la reserva a `EXPIRADA` y la cuadrilla queda libre.
 5. `docker compose start ms-operaciones`.
 
-El job de Recursos (`ExpiracionReservasJob`) corre cada 60 segundos y pasa a EXPIRADA las reservas vencidas. Verificado: tras adelantar el vencimiento en la base, la reserva pasa de PROVISORIA a EXPIRADA en menos de un minuto. La orden de los pasos es: crear la reserva, adelantar `fecha_vencimiento_ttl` con el `psql` del paso 3, esperar hasta un minuto y consultar `GET /api/recursos/reservas/{id}`.
+El job de Recursos (`ExpiracionReservasJob`) corre cada 60 segundos y pasa a EXPIRADA las reservas vencidas. Verificado: tras adelantar el vencimiento en la base, la reserva pasa de PROVISORIA a EXPIRADA en menos de un minuto. La orden de los pasos es: crear la reserva, adelantar `fecha_vencimiento_ttl` con el `psql` del paso 3, esperar hasta un minuto y consultar el estado en la base (`SELECT estado FROM reservas WHERE id = ...;`): `GET /reservas/{id}` se quitó con el recorte.
 
 ### 3.9 Trazabilidad con correlationId (2 min)
 

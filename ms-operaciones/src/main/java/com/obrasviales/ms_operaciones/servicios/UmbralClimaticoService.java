@@ -1,6 +1,5 @@
 package com.obrasviales.ms_operaciones.servicios;
 
-import com.obrasviales.commons.exception.RecursoNoEncontradoException;
 import com.obrasviales.ms_operaciones.dtos.UmbralClimaticoRequest;
 import com.obrasviales.ms_operaciones.modelo.TipoTrabajo;
 import com.obrasviales.ms_operaciones.modelo.UmbralClimatico;
@@ -28,12 +27,6 @@ public class UmbralClimaticoService {
         umbral.setTemperaturaMinima(request.temperaturaMinima());
 
         return umbralRepository.save(umbral);
-    }
-
-    @Transactional(readOnly = true)
-    public UmbralClimatico obtenerUmbralPorTipo(TipoTrabajo tipoTrabajo) {
-        return umbralRepository.findByTipoTrabajo(tipoTrabajo)
-                .orElseThrow(() -> new RecursoNoEncontradoException("No hay umbrales configurados para el tipo de trabajo: " + tipoTrabajo));
     }
 
     @Transactional(readOnly = true)

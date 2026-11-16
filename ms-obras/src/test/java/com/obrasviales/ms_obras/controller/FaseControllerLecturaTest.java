@@ -66,42 +66,6 @@ class FaseControllerLecturaTest {
 
     // ---------- GET /api/obras/fases/{id} ----------
 
-    @Test
-    void obtenerSinTokenDevuelve401() throws Exception {
-        mockMvc.perform(get("/api/obras/fases/2"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void obtenerConOperarioDevuelve403() throws Exception {
-        mockMvc.perform(get("/api/obras/fases/2").with(jwt().authorities(rol("OPERARIO"))))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void obtenerConAuditorDevuelve200ConEstadoFechasYAvance() throws Exception {
-        when(faseService.obtenerFase(2L)).thenReturn(fase());
-
-        mockMvc.perform(get("/api/obras/fases/2").with(jwt().authorities(rol("AUDITOR"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(2))
-                .andExpect(jsonPath("$.tramoId").value(10))
-                .andExpect(jsonPath("$.faseAnteriorId").value(1))
-                .andExpect(jsonPath("$.estado").value("EN_CURSO"))
-                .andExpect(jsonPath("$.avance").value(40))
-                .andExpect(jsonPath("$.fechaInicioPlanificada").value("2026-12-06"));
-    }
-
-    @Test
-    void obtenerFaseInexistenteDevuelve404() throws Exception {
-        when(faseService.obtenerFase(99L))
-                .thenThrow(new RecursoNoEncontradoException("No existe la fase con id 99"));
-
-        mockMvc.perform(get("/api/obras/fases/99").with(jwt().authorities(rol("PLANIFICADOR"))))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.detail").value("No existe la fase con id 99"));
-    }
-
     // ---------- GET /api/obras/fases/{id}/materiales ----------
 
     @Test

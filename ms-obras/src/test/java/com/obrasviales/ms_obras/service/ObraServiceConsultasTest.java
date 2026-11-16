@@ -155,28 +155,6 @@ class ObraServiceConsultasTest {
 
     // ---------- editar una obra ----------
 
-    @Test
-    void actualizarObraCambiaElNombreYLaDescripcion() {
-        Obra obra = obra(1L, "Viejo");
-        when(obraRepository.findById(1L)).thenReturn(Optional.of(obra));
-        when(obraRepository.save(any(Obra.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        Obra resultado = obraService.actualizarObra(1L, "Nuevo", "Descripcion nueva");
-
-        assertThat(resultado.getNombre()).isEqualTo("Nuevo");
-        assertThat(resultado.getDescripcion()).isEqualTo("Descripcion nueva");
-    }
-
-    @Test
-    void actualizarObraInexistenteEs404YNoGuardaNada() {
-        when(obraRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> obraService.actualizarObra(99L, "Nuevo", "Desc"))
-                .isInstanceOf(RecursoNoEncontradoException.class);
-
-        verify(obraRepository, never()).save(any(Obra.class));
-    }
-
     // ---------- tramos ----------
 
     @Test
@@ -201,49 +179,6 @@ class ObraServiceConsultasTest {
                 .hasMessageContaining("99");
 
         verify(tramoRepository, never()).findByObraIdOrderByIdAsc(any());
-    }
-
-    @Test
-    void obtenerTramoExistenteLoDevuelve() {
-        Tramo tramo = tramo(20L, obra(5L, "Ruta 34"), "Tramo norte");
-        when(tramoRepository.findById(20L)).thenReturn(Optional.of(tramo));
-
-        assertThat(obraService.obtenerTramo(20L)).isSameAs(tramo);
-    }
-
-    @Test
-    void obtenerTramoInexistenteEs404() {
-        when(tramoRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> obraService.obtenerTramo(99L))
-                .isInstanceOf(RecursoNoEncontradoException.class)
-                .hasMessageContaining("99");
-    }
-
-    @Test
-    void actualizarTramoCambiaSusDatos() {
-        Tramo tramo = tramo(20L, obra(5L, "Ruta 34"), "Viejo");
-        when(tramoRepository.findById(20L)).thenReturn(Optional.of(tramo));
-        when(tramoRepository.save(any(Tramo.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        Tramo resultado = obraService.actualizarTramo(
-                20L, "Nuevo", new BigDecimal("1500.00"), -34.7, -58.5);
-
-        assertThat(resultado.getNombre()).isEqualTo("Nuevo");
-        assertThat(resultado.getSuperficieM2()).isEqualByComparingTo("1500.00");
-        assertThat(resultado.getLatitud()).isEqualTo(-34.7);
-        assertThat(resultado.getLongitud()).isEqualTo(-58.5);
-    }
-
-    @Test
-    void actualizarTramoInexistenteEs404YNoGuardaNada() {
-        when(tramoRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> obraService.actualizarTramo(
-                99L, "Nuevo", new BigDecimal("1500.00"), -34.7, -58.5))
-                .isInstanceOf(RecursoNoEncontradoException.class);
-
-        verify(tramoRepository, never()).save(any(Tramo.class));
     }
 
     // ---------- cronograma de la obra ----------

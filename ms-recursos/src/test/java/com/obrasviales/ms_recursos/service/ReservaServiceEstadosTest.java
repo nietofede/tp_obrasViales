@@ -13,7 +13,6 @@ import com.obrasviales.ms_recursos.repository.CertificacionRepository;
 import com.obrasviales.ms_recursos.repository.ComposicionMinimaRepository;
 import com.obrasviales.ms_recursos.repository.ConfiguracionDesplazamientoRepository;
 import com.obrasviales.ms_recursos.repository.CuadrillaRepository;
-import com.obrasviales.ms_recursos.repository.MantenimientoRepository;
 import com.obrasviales.ms_recursos.repository.MaquinaRepository;
 import com.obrasviales.ms_recursos.repository.OperarioRepository;
 import com.obrasviales.ms_recursos.repository.PlantaMezclaRepository;
@@ -61,7 +60,6 @@ class ReservaServiceEstadosTest {
     @Mock private ComposicionMinimaRepository composicionMinimaRepository;
     @Mock private ConfiguracionDesplazamientoRepository configRepository;
     @Mock private PlantaMezclaRepository plantaRepository;
-    @Mock private MantenimientoRepository mantenimientoRepository;
     @Mock private ProveedorRutas proveedorRutas;
 
     @InjectMocks

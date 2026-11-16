@@ -49,14 +49,6 @@ public class ObraController {
         return obraService.obtenerObra(obraId);
     }
 
-    @PutMapping("/{obraId}")
-    @PreAuthorize("hasRole('PLANIFICADOR')")
-    public ObraResponse actualizar(@PathVariable Long obraId,
-                                   @Valid @RequestBody CrearObraRequest request) {
-        return ObraResponse.desde(
-                obraService.actualizarObra(obraId, request.nombre(), request.descripcion()));
-    }
-
     @PostMapping("/{obraId}/tramos")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('PLANIFICADOR')")

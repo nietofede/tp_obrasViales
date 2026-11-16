@@ -74,15 +74,6 @@
         "attributes": {}
       },
       {
-        "id": "4063ceff-b054-48e2-bb89-238bb9f1750a",
-        "name": "OPERARIO",
-        "description": "Consulta sus asignaciones del día (solo lectura)",
-        "composite": false,
-        "clientRole": false,
-        "containerId": "f272a9ab-8584-4b51-aeec-bee2440ceaae",
-        "attributes": {}
-      },
-      {
         "id": "8fe3ac9a-e5a3-4b52-8428-e2f699310a20",
         "name": "SISTEMA",
         "description": "Cuenta de servicio (client credentials) para el job\ndiario y las llamadas entre servicios; no es una\npersona",
@@ -548,21 +539,6 @@
         }
       ],
       "realmRoles": ["PLANIFICADOR"]
-    },
-    {
-      "username": "operario",
-      "enabled": true,
-      "email": "operario@obrasviales.local",
-      "firstName": "Bruna",
-      "lastName": "Operario",
-      "credentials": [
-        {
-          "type": "password",
-          "value": "operario123",
-          "temporary": false
-        }
-      ],
-      "realmRoles": ["OPERARIO"]
     },
     {
       "username": "auditor",

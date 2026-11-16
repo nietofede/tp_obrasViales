@@ -532,3 +532,40 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 **Alternativas:** implementar cada una (descartada por ahora: el alcance de la cátedra prioriza el proceso central completo y comprobable sobre los agregados).
 
 **Consecuencias:** quedan anotadas también en `docs/matriz-requisitos.md`, sección 4. Las de versión de Spring Boot, identificadores y códigos de error hay que comunicarlas a la cátedra (Alcance, §9): anotarlas no equivale a avisar.
+
+## Recorte de alcance (2026-11-14)
+
+**Contexto:** el compromiso tenía 54 endpoints y cinco roles. Gran parte eran altas y ediciones de datos que ya carga Flyway, consultas que repiten información y configuraciones que nadie cambia en la demo. El documento de Alcance (§8) prioriza el proceso central completo y comprobable, y §9 pide fundamentar y comunicar los cambios significativos. Se pidió autorización a la cátedra con el mail de `docs/aviso-cambios-catedra.md`.
+
+**Decisión:** la API pasa de 54 a 32 endpoints (31 del cuestionario más `GET /obras/{id}/tramos`, que usa Operaciones para filtrar órdenes por obra). Se quitan:
+- Recursos (20 → 7): altas y ediciones de máquinas, operarios, certificaciones, plantas y cuadrillas; composición mínima y configuración de desplazamiento editables; asignaciones del operario; `GET /reservas/{id}`; el chequeo de mantenimiento al reservar (migración `V3__quitar_mantenimientos.sql`).
+- Obras (15 → 11, más 1 extra): edición de obras y tramos, consultas sueltas de tramo y fase, y los extras `POST /fases/{id}/iniciar` y `GET /tramos/{id}/fases` (el primer avance ya inicia la fase y controla RN-01).
+- Operaciones (19 → 13): cancelación y reprogramación manual, cierre con consumo real y horas de máquina (la orden queda COMPLETADA con el avance al 100 %), fases en riesgo con su decisión, límite de suspensiones configurable (queda fijo en 3) y la caché del último pronóstico (migración `V6__recorte_alcance.sql`).
+- El rol OPERARIO (commons, gateway y realm), porque su única función eran las asignaciones.
+
+**RN-12 simplificada:** a la tercera suspensión vigente, `SuspensionService` marca la fase en riesgo en Obras y la orden queda SUSPENDIDA (no se reprograma sola). El PLANIFICADOR decide reprogramando la fase y creando la orden nueva; `crearOrden` llama a `cerrarSuspensionesDeLaFase`, que pasa las suspendidas de la fase a REPROGRAMADA y reinicia el conteo (el historial se conserva).
+
+**Alternativas:** (a) dejar todo como estaba: más superficie para mantener, probar y defender sin sumar al proceso central; (b) quitar también OSRM (línea recta) y el job diario: se descartó porque son parte de INT-01 y del proceso central.
+
+**Consecuencias:** las doce reglas siguen con test y request; las demostraciones de RN-01, RN-04 y RN-06 en la colección cambian (primer avance por el endpoint interno, reserva con fecha posterior al vencimiento de las certificaciones del seed y tipo de trabajo sin composición). F-15 queda fuera y F-01, F-04, F-13 y F-14 reducidas (`docs/matriz-requisitos.md`). Las rutas quitadas de Operaciones tienen un test que comprueba el 404. Si la cátedra pide conservar algo, se recupera desde `main` anterior al recorte.
+
+## Se conserva la habilitación de una orden suelta (2026-11-15)
+
+**Contexto:** el primer borrador del recorte quitaba `POST /api/operaciones/ordenes/{id}/habilitacion` y dejaba solo la habilitación de todas las órdenes del día.
+
+**Decisión:** se conservan los dos. La habilitación de una orden usa el mismo método (`OrdenTrabajoServiceImpl.habilitarOrden`) que el lote del día y el job, así que no agrega lógica: es un controlador más.
+
+**Por qué:** en la demo y en la colección se controla exactamente qué orden se evalúa, y sirve para reintentar una orden a mano. El job diario se mantiene porque el proceso central comprometido lo dispara el planificador **o** un job, y porque es el que retoma las órdenes si Operaciones se cae a mitad de la saga.
+
+## Respuesta de la cátedra y limpieza final del recorte (2026-11-16)
+
+**Contexto:** el mail del recorte (`docs/aviso-cambios-catedra.md`) pedía quitar 12 grupos de funciones y pasar de 54 a 32 endpoints. El profesor respondió que el dominio ya era muy grande, que lo achiquemos con los criterios que se evalúan, que en la exposición se ve si queda mal o chico, y que lo planteado "suena razonable".
+
+**Decisión:** se aplica el recorte tal como se avisó, en la rama `feat/recorte-alcance` del repo del equipo (plan y registro en `docs/plan-recorte.md`). No se quitan más endpoints ni funciones que los avisados: cambiar lo que vio la cátedra obligaría a avisar de nuevo. Sí se borra lo interno que quedó sin uso:
+- `Cuadrilla.operarios` y `Cuadrilla.maquinas` (listas `@OneToMany` que solo leía el armado de cuadrillas; la relación sigue en `Operario.cuadrilla` y `Maquina.cuadrilla`, sin cambio de esquema porque el lado `mappedBy` no tiene columna).
+- La dependencia `wiremock-spring-boot` del pom de Recursos (ningún test la usaba; las APIs externas se simulan con `MockRestServiceServer`).
+
+**Se revisó y se deja:** `ContextoFaseDTO.materiales` (Operaciones no lo lee, pero es parte del paso 1 del proceso central: Obras informa materiales); la tabla `configuracion_suspensiones` (guarda el límite fijo de 3; pasarlo a una constante obligaría a otra migración sin ganar nada); los setters de las entidades de Recursos que ya nadie llama (son la forma habitual de una entidad JPA).
+
+**Consecuencias:** la app interna `herramientas/app-govp/` (no es parte de la entrega) se adaptó a los 32 endpoints: sin pantallas de alta y edición de recursos, fases en riesgo, cierre ni asignaciones del operario. La guía del código del alcance completo quedó fuera del repo, como respaldo del equipo.
+

@@ -37,6 +37,7 @@ class OrdenTrabajoServiceCrearOrdenTest {
     @Mock private EvaluacionClimaticaRepository evaluacionRepository;
     @Mock private InterfazClimaService climaService;
     @Mock private ObrasClient obrasClient;
+    @Mock private SuspensionService suspensionService;
 
     @InjectMocks private OrdenTrabajoServiceImpl service;
 
@@ -63,6 +64,8 @@ class OrdenTrabajoServiceCrearOrdenTest {
         assertEquals(EstadoOrden.PROGRAMADA, dto.getEstado());
         assertEquals(2L, dto.getFaseId());
         assertEquals(1L, dto.getTramoId());
+        // RN-12: crear la orden nueva cierra las suspensiones de la fase (si venia en riesgo)
+        verify(suspensionService).cerrarSuspensionesDeLaFase(2L);
     }
 
     @Test
@@ -74,6 +77,7 @@ class OrdenTrabajoServiceCrearOrdenTest {
 
         assertEquals("ORDEN-TRAMO", ex.getCodigoRegla());
         verify(ordenRepository, never()).save(any());
+        verify(suspensionService, never()).cerrarSuspensionesDeLaFase(any());
     }
 
     @Test

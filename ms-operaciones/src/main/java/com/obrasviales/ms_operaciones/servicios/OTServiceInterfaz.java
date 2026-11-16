@@ -15,7 +15,4 @@ public interface OTServiceInterfaz {
     List<OrdenTrabajoDTO> listar(LocalDate fecha, EstadoOrden estado, Long obraId);
     OrdenTrabajoDTO habilitarOrden(Long ordenId);
     List<EvaluacionClimatica> obtenerHistorialClimatico(Long ordenId);
-
-    OrdenTrabajoDTO cancelarOrden(Long id);
-    OrdenTrabajoDTO reprogramarOrden(Long id, LocalDate nuevaFecha);
 }

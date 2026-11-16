@@ -148,48 +148,6 @@
           ]
         },
         {
-          "name": "Token OPERARIO",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token",
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "grant_type",
-                  "value": "password"
-                },
-                {
-                  "key": "client_id",
-                  "value": "obras-public-client"
-                },
-                {
-                  "key": "username",
-                  "value": "operario"
-                },
-                {
-                  "key": "password",
-                  "value": "operario123"
-                }
-              ]
-            },
-            "description": "Resultado esperado: 200 y access_token guardado en {{tokenOperario}} (dura 5 min; si un request da 401 por vencimiento, repetir este)."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.collectionVariables.set(\"tokenOperario\", pm.response.json().access_token);"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "Token AUDITOR",
           "request": {
             "method": "POST",
@@ -467,330 +425,11 @@
           ]
         },
         {
-          "name": "Recursos: catálogos y personal",
+          "name": "Recursos: consultas y check-in",
           "description": "",
           "item": [
             {
-              "name": "ADMIN crea una máquina",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAdmin}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/maquinas",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"codigo\": \"COL-ROD-{{sufijo}}\",\n  \"tipo\": \"RODILLO_COMPACTADOR\",\n  \"estado\": \"DISPONIBLE\",\n  \"horasUso\": 0\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 201 con el id (guardado en {{maquinaId}})."
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.collectionVariables.set(\"sufijo\", String(Date.now()).slice(-8));"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
-                      "pm.collectionVariables.set(\"maquinaId\", pm.response.json().id);"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "ADMIN crea una segunda máquina",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAdmin}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/maquinas",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"codigo\": \"COL-ROD-B-{{sufijo}}\",\n  \"tipo\": \"RODILLO_COMPACTADOR\",\n  \"estado\": \"DISPONIBLE\",\n  \"horasUso\": 0\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 201 (id en {{maquina2Id}}); se usa en RN-04, porque la primera ya pertenece a una cuadrilla."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
-                      "pm.collectionVariables.set(\"maquina2Id\", pm.response.json().id);"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "ADMIN crea un operario",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAdmin}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/operarios",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Operario Colección\",\n  \"rolOperativo\": \"MAQUINISTA\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 201 (id en {{operarioId}})."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
-                      "pm.collectionVariables.set(\"operarioId\", pm.response.json().id);"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "ADMIN agrega una certificación vigente",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAdmin}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/operarios/{{operarioId}}/certificaciones",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"tipoMaquina\": \"RODILLO_COMPACTADOR\",\n  \"vencimiento\": \"2027-12-31\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 201. Un vencimiento en el pasado daría 400."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "ADMIN crea un operario sin certificación",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAdmin}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/operarios",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Operario Sin Certificación\",\n  \"rolOperativo\": \"PEON\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 201 (id en {{operarioSinCertId}}); se usa en RN-04."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
-                      "pm.collectionVariables.set(\"operarioSinCertId\", pm.response.json().id);"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "ADMIN crea una planta de mezcla",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAdmin}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/plantas",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Planta Colección\",\n  \"latitud\": -31.4,\n  \"longitud\": -64.19\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 201."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
-                      "pm.collectionVariables.set(\"plantaId\", pm.response.json().id);"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "PLANIFICADOR arma una cuadrilla",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenPlanificador}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/cuadrillas",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{ \"nombre\": \"Cuadrilla Colección {{sufijo}}\", \"latitudBase\": -31.4, \"longitudBase\": -64.2, \"operarioIds\": [{{operarioId}}], \"maquinaIds\": [{{maquinaId}}] }",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 201: el operario tiene certificación vigente para el rodillo (RN-04). Id en {{cuadrillaId}}. Queda con 1 solo operario, así que no es elegible para reservas (RN-06) y no altera las reglas de abajo."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
-                      "pm.collectionVariables.set(\"cuadrillaId\", pm.response.json().id);"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "PLANIFICADOR edita la cuadrilla",
-              "request": {
-                "method": "PUT",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenPlanificador}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/cuadrillas/{{cuadrillaId}}",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{ \"nombre\": \"Cuadrilla Colección editada {{sufijo}}\", \"latitudBase\": -31.4, \"longitudBase\": -64.2, \"operarioIds\": [{{operarioId}}], \"maquinaIds\": [{{maquinaId}}] }",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 200."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "Listar máquinas con disponibilidad en una fecha",
+              "name": "Listar máquinas",
               "request": {
                 "method": "GET",
                 "header": [
@@ -799,8 +438,8 @@
                     "value": "Bearer {{tokenPlanificador}}"
                   }
                 ],
-                "url": "{{baseUrl}}/api/recursos/maquinas?fecha=2026-12-01",
-                "description": "Esperado: 200; cada máquina trae enMantenimiento true o false para esa fecha."
+                "url": "{{baseUrl}}/api/recursos/maquinas",
+                "description": "Esperado: 200. Máquinas precargadas en el seed, con su cuadrilla y horas de uso."
               },
               "event": [
                 {
@@ -840,31 +479,6 @@
               ]
             },
             {
-              "name": "Listar plantas",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenPlanificador}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/plantas",
-                "description": "Esperado: 200."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
               "name": "Listar cuadrillas con su ubicación",
               "request": {
                 "method": "GET",
@@ -875,31 +489,6 @@
                   }
                 ],
                 "url": "{{baseUrl}}/api/recursos/cuadrillas",
-                "description": "Esperado: 200."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "Ver una cuadrilla",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenPlanificador}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/cuadrillas/{{cuadrillaId}}",
                 "description": "Esperado: 200."
               },
               "event": [
@@ -966,7 +555,7 @@
                     "value": "application/json"
                   }
                 ],
-                "url": "{{baseUrl}}/api/recursos/cuadrillas/{{cuadrillaId}}/ubicaciones",
+                "url": "{{baseUrl}}/api/recursos/cuadrillas/2/ubicaciones",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"latitud\": -31.41,\n  \"longitud\": -64.21\n}",
@@ -976,7 +565,7 @@
                     }
                   }
                 },
-                "description": "Esperado: 403: solo el capataz de esa cuadrilla registra su ubicación."
+                "description": "Esperado: 403: solo el capataz de esa cuadrilla registra su ubicación (el capataz del seed es de la cuadrilla 1, Alfa; la 2 es Beta Lejana)."
               },
               "event": [
                 {
@@ -985,91 +574,6 @@
                     "type": "text/javascript",
                     "exec": [
                       "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "OPERARIO consulta sus asignaciones",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenOperario}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/operarios/me/asignaciones?fecha={{hoy}}",
-                "description": "Esperado: 200 con la lista propia (puede venir vacía si no tiene reservas ese día)."
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const d = new Date(Date.now() - 3 * 3600 * 1000);",
-                      "pm.collectionVariables.set(\"hoy\", d.toISOString().slice(0, 10));"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "Consultar la configuración de desplazamiento",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenPlanificador}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/configuracion/desplazamiento",
-                "description": "Esperado: 200 con viaje máximo 90, jornada 480, ventana de mezcla 60 y margen del camión 15."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "Listar la composición mínima por tipo de trabajo",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAuditor}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/tipos-trabajo/composicion-minima",
-                "description": "Esperado: 200 con los 5 tipos."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
                     ]
                   }
                 }
@@ -1129,17 +633,17 @@
           ]
         },
         {
-          "name": "OPERARIO lee obras -> 403",
+          "name": "ADMIN lee obras -> 403",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{tokenOperario}}"
+                "value": "Bearer {{tokenAdmin}}"
               }
             ],
             "url": "{{baseUrl}}/api/obras",
-            "description": "Esperado: 403. Autenticado pero sin rol."
+            "description": "Esperado: 403. Las obras las leen PLANIFICADOR, CAPATAZ y AUDITOR."
           },
           "event": [
             {
@@ -1173,44 +677,6 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "OPERARIO crea obra -> 403",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenOperario}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/api/obras",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre\": \"x\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "description": "Esperado: 403. Escenario 4 del compromiso: un OPERARIO intenta crear una obra."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
                 ]
               }
             }
@@ -1442,17 +908,17 @@
               ]
             },
             {
-              "name": "OPERARIO lee máquinas -> 403",
+              "name": "SISTEMA lee máquinas -> 403",
               "request": {
                 "method": "GET",
                 "header": [
                   {
                     "key": "Authorization",
-                    "value": "Bearer {{tokenOperario}}"
+                    "value": "Bearer {{tokenSistema}}"
                   }
                 ],
                 "url": "{{baseUrl}}/api/recursos/maquinas",
-                "description": "Esperado: 403."
+                "description": "Esperado: 403. La cuenta de servicio solo usa los endpoints internos de reservas."
               },
               "event": [
                 {
@@ -1467,45 +933,7 @@
               ]
             },
             {
-              "name": "CAPATAZ crea máquina -> 403",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenCapataz}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/maquinas",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"codigo\": \"X\",\n  \"tipo\": \"X\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 403: solo ADMIN. (Con un cuerpo válido: con uno inválido daría 400, porque el cuerpo se valida antes que el rol.)"
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "PLANIFICADOR crea máquina -> 403",
+              "name": "PLANIFICADOR hace check-in -> 403",
               "request": {
                 "method": "POST",
                 "header": [
@@ -1518,168 +946,17 @@
                     "value": "application/json"
                   }
                 ],
-                "url": "{{baseUrl}}/api/recursos/maquinas",
+                "url": "{{baseUrl}}/api/recursos/cuadrillas/1/ubicaciones",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"codigo\": \"X\",\n  \"tipo\": \"X\"\n}",
+                  "raw": "{\n  \"latitud\": -31.41,\n  \"longitud\": -64.21\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
                 },
-                "description": "Esperado: 403."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "AUDITOR lee plantas -> 403",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAuditor}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/plantas",
-                "description": "Esperado: 403: las plantas solo las ven ADMIN y PLANIFICADOR."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "PLANIFICADOR cambia composición mínima -> 403",
-              "request": {
-                "method": "PUT",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenPlanificador}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/tipos-trabajo/BASE/composicion-minima",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"minOperarios\": 2,\n  \"tipoMaquinaRequerida\": \"RODILLO_COMPACTADOR\",\n  \"cantidadMaquinas\": 1,\n  \"requiereMezcla\": false\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 403: solo ADMIN."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "CAPATAZ lee configuración de desplazamiento -> 403",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenCapataz}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/configuracion/desplazamiento",
-                "description": "Esperado: 403: solo ADMIN y PLANIFICADOR."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "ADMIN crea cuadrilla -> 403",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAdmin}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/cuadrillas",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{ \"nombre\": \"X\", \"latitudBase\": -31.4, \"longitudBase\": -64.2, \"operarioIds\": [1], \"maquinaIds\": [1] }",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 403: las cuadrillas las arma el PLANIFICADOR. El cuerpo es válido a propósito: Spring valida el cuerpo antes de evaluar @PreAuthorize, así que con un cuerpo inválido daría 400 (las reglas del gateway de la Rama 2 lo corrigen)."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "OPERARIO consulta una reserva -> 403",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenOperario}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/reservas/1",
-                "description": "Esperado: 403."
+                "description": "Esperado: 403. El check-in de ubicación es solo del CAPATAZ."
               },
               "event": [
                 {
@@ -1699,31 +976,6 @@
           "name": "Operaciones",
           "description": "",
           "item": [
-            {
-              "name": "OPERARIO lee órdenes -> 403",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenOperario}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/operaciones/ordenes",
-                "description": "Esperado: 403. Solo PLANIFICADOR, CAPATAZ y AUDITOR leen órdenes."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
-                    ]
-                  }
-                }
-              ]
-            },
             {
               "name": "ADMIN lee órdenes -> 403",
               "request": {
@@ -1750,17 +1002,17 @@
               ]
             },
             {
-              "name": "OPERARIO lee las evaluaciones climáticas -> 403",
+              "name": "ADMIN lee las evaluaciones climáticas -> 403",
               "request": {
                 "method": "GET",
                 "header": [
                   {
                     "key": "Authorization",
-                    "value": "Bearer {{tokenOperario}}"
+                    "value": "Bearer {{tokenAdmin}}"
                   }
                 ],
                 "url": "{{baseUrl}}/api/operaciones/ordenes/1/evaluaciones-climaticas",
-                "description": "Esperado: 403."
+                "description": "Esperado: 403. Las evaluaciones las leen PLANIFICADOR, CAPATAZ y AUDITOR."
               },
               "event": [
                 {
@@ -1901,17 +1153,17 @@
               ]
             },
             {
-              "name": "PATCH /ordenes/{id}/estado ya no existe -> 404",
+              "name": "Rutas quitadas de Operaciones -> 404 (estado libre)",
               "request": {
                 "method": "PATCH",
                 "header": [
                   {
                     "key": "Authorization",
-                    "value": "Bearer {{tokenPlanificador}}"
+                    "value": "Bearer {{tokenCapataz}}"
                   }
                 ],
                 "url": "{{baseUrl}}/api/operaciones/ordenes/1/estado?nuevoEstado=EN_EJECUCION",
-                "description": "Esperado: 404 en formato estándar. El endpoint se quitó porque dejaba pasar una orden a EN_EJECUCION sin reserva ni clima; las transiciones van por habilitación, inicio, rechazo, cierre, cancelación y reprogramación."
+                "description": "Esperado: 404 en formato estándar. El cambio de estado libre se quitó porque dejaba pasar una orden a EN_EJECUCION sin reserva ni clima; las transiciones van por la habilitación diaria, inicio, rechazo y avances."
               },
               "event": [
                 {
@@ -1950,6 +1202,81 @@
                   }
                 },
                 "description": "Esperado: 403. Las rutas /internos/ solo las abre el gateway al rol SISTEMA."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Rutas quitadas de Operaciones -> 404 (cierre)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/1/cierre",
+                "description": "Esperado: 404. Quitada en el recorte de alcance (docs/DECISIONES.md): la orden se completa con el avance al 100 % y ya no se cancela a mano."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Rutas quitadas de Operaciones -> 404 (cancelación)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/1/cancelacion",
+                "description": "Esperado: 404. Quitada en el recorte de alcance (docs/DECISIONES.md): la orden se completa con el avance al 100 % y ya no se cancela a mano."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "CAPATAZ habilita una orden -> 403",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/1/habilitacion",
+                "description": "Esperado: 403. La habilitación de una orden la hacen el PLANIFICADOR o la cuenta SISTEMA."
               },
               "event": [
                 {
@@ -2476,7 +1803,7 @@
                 }
               }
             },
-            "description": "Esperado: 201; la fase pasa a COMPLETADA."
+            "description": "Esperado: 201; la fase pasa a COMPLETADA en Obras y la orden queda COMPLETADA."
           },
           "event": [
             {
@@ -2484,37 +1811,26 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
+                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"La fase queda COMPLETADA\", () => pm.expect(pm.response.json().estadoFase).to.eql(\"COMPLETADA\"));",
+                  "pm.test(\"La orden queda COMPLETADA\", () => pm.expect(pm.response.json().estadoOrden).to.eql(\"COMPLETADA\"));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "CAPATAZ cierra la orden 1",
+          "name": "Ver orden 1 (COMPLETADA)",
           "request": {
-            "method": "PATCH",
+            "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{tokenCapataz}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
+                "value": "Bearer {{tokenPlanificador}}"
               }
             ],
-            "url": "{{baseUrl}}/api/operaciones/ordenes/1/cierre",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"horasMaquina\": 6.5,\n  \"materiales\": [\n    {\n      \"material\": \"Asfalto\",\n      \"cantidad\": 12.5,\n      \"unidad\": \"tn\"\n    }\n  ]\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "description": "Esperado: 200, estado COMPLETADA, con horas de máquina y materiales consumidos."
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1",
+            "description": "Esperado: 200 con estado COMPLETADA."
           },
           "event": [
             {
@@ -2522,7 +1838,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Estado COMPLETADA\", () => pm.expect(pm.response.json().estado).to.eql(\"COMPLETADA\"));"
                 ]
               }
             }
@@ -2564,17 +1881,30 @@
           "description": "",
           "item": [
             {
-              "name": "Iniciar fase BASE con RELEVAMIENTO pendiente -> 409",
+              "name": "Avance en fase BASE con RELEVAMIENTO pendiente -> 409",
               "request": {
                 "method": "POST",
                 "header": [
                   {
                     "key": "Authorization",
-                    "value": "Bearer {{tokenCapataz}}"
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
                   }
                 ],
-                "url": "{{baseUrl}}/api/obras/fases/{{faseId2}}/iniciar",
-                "description": "Usa las fases de Setup. Esperado: 409 (RN-01: la fase 1 no está completa)."
+                "url": "{{baseUrl}}/api/obras/internos/fases/{{faseId2}}/avances",
+                "description": "Usa las fases de Setup. Es la llamada que hace Operaciones cuando el CAPATAZ registra el primer avance. Esperado: 409 (RN-01: la fase 1 no está completa). Operaciones además lo controla antes de reservar (`faseAnteriorCompletada`).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"porcentaje\": 10\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
               },
               "event": [
                 {
@@ -2733,30 +2063,30 @@
           "description": "",
           "item": [
             {
-              "name": "Cuadrilla con un operario sin certificación -> 422",
+              "name": "Reserva de BASE en 2028 (certificación vencida ese día) -> 422",
               "request": {
                 "method": "POST",
                 "header": [
                   {
                     "key": "Authorization",
-                    "value": "Bearer {{tokenPlanificador}}"
+                    "value": "Bearer {{tokenSistema}}"
                   },
                   {
                     "key": "Content-Type",
                     "value": "application/json"
                   }
                 ],
-                "url": "{{baseUrl}}/api/recursos/cuadrillas",
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
                 "body": {
                   "mode": "raw",
-                  "raw": "{ \"nombre\": \"Cuadrilla sin certificación {{sufijo}}\", \"latitudBase\": -31.4, \"longitudBase\": -64.2, \"operarioIds\": [{{operarioSinCertId}}], \"maquinaIds\": [{{maquina2Id}}] }",
+                  "raw": "{\n  \"ordenTrabajoId\": 9401,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"2028-03-01\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
                 },
-                "description": "Esperado: 422 con codigoRegla RN-04: ningún operario tiene certificación vigente para el rodillo."
+                "description": "Esperado: 422 con codigoRegla RN-04. La certificación de RODILLO_COMPACTADOR del único maquinista de la cuadrilla Alfa vence el 2027-12-31: RN-04 se evalúa contra la fecha de la orden. La cuadrilla Beta Lejana se rechaza por RN-06 (sin operarios)."
               },
               "event": [
                 {
@@ -2765,7 +2095,8 @@
                     "type": "text/javascript",
                     "exec": [
                       "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });",
-                      "pm.test(\"codigoRegla RN-04\", () => pm.expect(pm.response.json().codigoRegla).to.eql(\"RN-04\"));"
+                      "pm.test(\"codigoRegla RN-04\", () => pm.expect(pm.response.json().codigoRegla).to.eql(\"RN-04\"));",
+                      "pm.test(\"El detalle menciona la certificación\", () => pm.expect(pm.response.json().detail).to.include(\"certificación vigente\"));"
                     ]
                   }
                 }
@@ -2869,33 +2200,8 @@
                     "type": "text/javascript",
                     "exec": [
                       "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });",
-                      "pm.test(\"El detalle menciona RN-05\", () => pm.expect(pm.response.json().detail).to.include(\"RN-05\"));"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "Consultar la reserva 1",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenPlanificador}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/reservas/{{reservaId}}",
-                "description": "Esperado: 200 con estado PROVISORIA, cuadrilla y hora de llegada."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                      "pm.test(\"PROVISORIA\", () => pm.expect(pm.response.json().estado).to.eql(\"PROVISORIA\"));"
+                      "pm.test(\"El detalle menciona RN-05\", () => pm.expect(pm.response.json().detail).to.include(\"RN-05\"));",
+                      "pm.test(\"Beta Lejana se rechaza por RN-06\", () => pm.expect(pm.response.json().detail).to.include(\"RN-06\"));"
                     ]
                   }
                 }
@@ -2933,45 +2239,7 @@
           "description": "",
           "item": [
             {
-              "name": "ADMIN sube la composición mínima de BASE a 4 operarios",
-              "request": {
-                "method": "PUT",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAdmin}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/tipos-trabajo/BASE/composicion-minima",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"minOperarios\": 4,\n  \"tipoMaquinaRequerida\": \"RODILLO_COMPACTADOR\",\n  \"cantidadMaquinas\": 1,\n  \"requiereMezcla\": false\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 200. La cuadrilla Alfa tiene 3 operarios."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "Reserva de BASE sin dotación suficiente -> 422",
+              "name": "Reserva de un tipo de trabajo sin composición configurada -> 422",
               "request": {
                 "method": "POST",
                 "header": [
@@ -2987,14 +2255,14 @@
                 "url": "{{baseUrl}}/api/recursos/internos/reservas",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"ordenTrabajoId\": 9203,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{fechaRn06}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
+                  "raw": "{\n  \"ordenTrabajoId\": 9203,\n  \"tipoTrabajo\": \"PAVIMENTACION\",\n  \"fecha\": \"{{fechaRn06}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
                 },
-                "description": "Esperado: 422 con codigoRegla RN-06 (\"tiene 3 operarios activos y se necesitan 4\")."
+                "description": "Esperado: 422 con codigoRegla RN-06 («Tipo de trabajo no configurado»). La composición mínima es fija (seed); la otra cara de RN-06 se ve en el rechazo de la cuadrilla Beta Lejana («tiene 0 operarios activos y se necesitan 2») en el request de RN-05."
               },
               "event": [
                 {
@@ -3014,44 +2282,6 @@
                     "exec": [
                       "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });",
                       "pm.test(\"codigoRegla RN-06\", () => pm.expect(pm.response.json().codigoRegla).to.eql(\"RN-06\"));"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "ADMIN restaura la composición mínima de BASE (2)",
-              "request": {
-                "method": "PUT",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAdmin}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/tipos-trabajo/BASE/composicion-minima",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"minOperarios\": 2,\n  \"tipoMaquinaRequerida\": \"RODILLO_COMPACTADOR\",\n  \"cantidadMaquinas\": 1,\n  \"requiereMezcla\": false\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 200. Restaura el valor del seed."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
                     ]
                   }
                 }
@@ -3162,131 +2392,6 @@
                     "exec": [
                       "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
                       "pm.test(\"trae horaSalidaCamion\", () => pm.expect(pm.response.json().horaSalidaCamion).to.be.a(\"string\"));"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "ADMIN reduce la ventana de transporte a 1 minuto",
-              "request": {
-                "method": "PUT",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAdmin}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/configuracion/desplazamiento",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"viajeMaximoCuadrillaMin\": 90,\n  \"duracionJornadaMin\": 480,\n  \"ventanaTransporteMezclaMin\": 1,\n  \"margenCamionMin\": 15\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 200."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "Reserva con mezcla fuera de la ventana -> 422",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenSistema}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/internos/reservas",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"ordenTrabajoId\": 9202,\n  \"tipoTrabajo\": \"CARPETA_ASFALTICA\",\n  \"fecha\": \"{{fechaRn08b}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 422 con codigoRegla RN-08 (\"Ninguna planta llega dentro de la ventana de transporte de 1 min\")."
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 9 * 86400000);",
-                      "pm.collectionVariables.set(\"fechaRn08b\", d.toISOString().slice(0, 10));"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });",
-                      "pm.test(\"codigoRegla RN-08\", () => pm.expect(pm.response.json().codigoRegla).to.eql(\"RN-08\"));"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "ADMIN restaura la ventana de transporte (60)",
-              "request": {
-                "method": "PUT",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAdmin}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/configuracion/desplazamiento",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"viajeMaximoCuadrillaMin\": 90,\n  \"duracionJornadaMin\": 480,\n  \"ventanaTransporteMezclaMin\": 60,\n  \"margenCamionMin\": 15\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 200. Restaura los valores del seed."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
                     ]
                   }
                 }
@@ -3473,6 +2578,32 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "Habilitar la orden 1 ya COMPLETADA -> 422",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/1/habilitacion",
+                "description": "La orden 1 quedó COMPLETADA en 03-Flujo-Principal. Esperado: 422 con codigoRegla RN-11: solo se habilita una orden PROGRAMADA o RECURSOS_ASIGNADOS."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });",
+                      "pm.test(\"codigoRegla RN-11\", () => pm.expect(pm.response.json().codigoRegla).to.eql(\"RN-11\"));"
+                    ]
+                  }
+                }
+              ]
             }
           ]
         },
@@ -3480,69 +2611,6 @@
           "name": "RN-12 suspensiones y fase en riesgo",
           "description": "",
           "item": [
-            {
-              "name": "ADMIN fija límite de suspensiones = 1",
-              "request": {
-                "method": "PUT",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAdmin}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/operaciones/configuracion/limite-suspensiones",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"limite\": 1\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 200. Con 1, la primera suspensión deja la fase EN_RIESGO."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "Listar fases en riesgo",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenPlanificador}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/operaciones/fases-en-riesgo",
-                "description": "Esperado: 200; tras suspender aparece la fase."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                    ]
-                  }
-                }
-              ]
-            },
             {
               "name": "Listar suspensiones",
               "request": {
@@ -3554,45 +2622,7 @@
                   }
                 ],
                 "url": "{{baseUrl}}/api/operaciones/suspensiones",
-                "description": "Esperado: 200."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "ADMIN restaura el límite = 3",
-              "request": {
-                "method": "PUT",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenAdmin}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/operaciones/configuracion/limite-suspensiones",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"limite\": 3\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 200."
+                "description": "Esperado: 200. El límite es fijo en 3: a la tercera suspensión vigente de una fase, Operaciones la marca en riesgo en Obras (estado EN_RIESGO) y deja de reprogramarla sola; el PLANIFICADOR reprograma la fase y crea la orden nueva, y ahí el conteo vuelve a cero."
               },
               "event": [
                 {
@@ -3889,31 +2919,6 @@
           ]
         },
         {
-          "name": "Vencimiento de la reserva (escenario 5)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenPlanificador}}"
-              }
-            ],
-            "url": "{{baseUrl}}/api/recursos/reservas/{{reservaId}}",
-            "description": "La reserva provisoria vence a los 30 minutos y un job de Recursos (cada 60 s, variable APP_RESERVAS_EXPIRACION_MS) la pasa a EXPIRADA y deja libre la cuadrilla. Para no esperar: 1) crear una reserva con POST /internos/reservas (por ejemplo, el request RN-05 > Reserva 1, que el último request de esa carpeta libera, así que repetirlo con otro ordenTrabajoId); 2) adelantar su vencimiento: docker exec obras-postgres psql -U postgres -d ms_recursos -c \"UPDATE reservas SET fecha_vencimiento_ttl = now() - interval '1 minute' WHERE id = <id>\"; 3) esperar hasta 60 s y correr este request con el id de esa reserva. Verificado: el estado pasa de PROVISORIA a EXPIRADA. Sin los pasos 1 y 2 este request solo devuelve el estado actual (200)."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "Servicio con token vencido",
           "request": {
             "method": "GET",
@@ -3983,47 +2988,11 @@
       "value": ""
     },
     {
-      "key": "sufijo",
-      "value": ""
-    },
-    {
-      "key": "maquinaId",
-      "value": ""
-    },
-    {
-      "key": "maquina2Id",
-      "value": ""
-    },
-    {
-      "key": "operarioId",
-      "value": ""
-    },
-    {
-      "key": "operarioSinCertId",
-      "value": ""
-    },
-    {
-      "key": "plantaId",
-      "value": ""
-    },
-    {
-      "key": "cuadrillaId",
-      "value": ""
-    },
-    {
       "key": "fechaRn06",
       "value": ""
     },
     {
       "key": "fechaRn08a",
-      "value": ""
-    },
-    {
-      "key": "fechaRn08b",
-      "value": ""
-    },
-    {
-      "key": "correlation_id",
       "value": ""
     },
     {
@@ -4044,10 +3013,6 @@
     },
     {
       "key": "tokenCapataz",
-      "value": ""
-    },
-    {
-      "key": "tokenOperario",
       "value": ""
     },
     {
