@@ -48,7 +48,7 @@ Las rutas son las del gateway (prefijo `/api/<servicio>`). Las carpetas citadas 
 | Cliente HTTP con token de servicio | `SistemaRequestInterceptor`, `SistemaTokenService` (con timeout y reintento) y el `sistemaRestClient` | `SistemaTokenServiceTest`, `ObrasHttpClientTest`, `RecursosHttpClientTest` | ✔ |
 | Value Object `Coordenada` | `obras-commons/.../dto/Coordenada.java`, usada por `OsrmProveedorRutas` (Recursos, URL de OSRM en orden longitud,latitud) y `OpenMeteoService` (Operaciones, valida el tramo) | `CoordenadaTest`; las requests además validan los rangos con Bean Validation | ✔ |
 | Despliegue con Docker Compose | `docker-compose.yml`, un `Dockerfile` por módulo, healthchecks, `.env.example` | README, «Levantarlo desde cero» | ✔ |
-| Datos iniciales con Flyway | `V*.sql` de cada servicio; el seed de demo siembra tres órdenes con fechas relativas a hoy en hora de Argentina | `docs/arquitectura.md`, sección 2; colección: 03-Flujo-Principal | ✔ |
+| Datos iniciales con Flyway | `V*.sql` de cada servicio; el seed de demo siembra tres órdenes con fechas relativas a hoy en hora de Argentina | `docs/guia-del-proyecto.md`, secciones 2.3 y 6; colección: 03-Flujo-Principal | ✔ |
 | Colección ejecutable | `coleccion/` (Postman) | 83 requests tras el recorte de alcance (antes 111); la corrida con Newman sobre el stack desde cero se repite al cerrar el recorte | ✔ falta la corrida final entre los tres |
 
 ## 4. Diferencias entre el cuestionario y lo implementado

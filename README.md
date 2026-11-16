@@ -120,19 +120,22 @@ Conviene usar `clean` al cambiar de rama: si no, Maven puede arrastrar archivos 
 
 ## Dónde está la documentación
 
-- [`docs/guia-de-estudio.md`](docs/guia-de-estudio.md): por dónde empezar. Explica el sistema completo (arquitectura, proceso central, reglas, integraciones, seguridad, datos y decisiones) con referencias a los archivos y preguntas para practicar la defensa.
-- [`docs/guia-del-codigo.md`](docs/guia-del-codigo.md): qué resuelve el sistema, los 32 endpoints y la explicación de cada archivo y cada método, con cómo se relacionan entre sí.
-- [`docs/guia-de-defensa.md`](docs/guia-de-defensa.md): para preparar la defensa. Explica cómo funciona cada mecanismo con el código real (beans y `@Bean`, auto-configuración, seguridad JWT y `@PreAuthorize`, errores RFC 7807, JPA y `@Transactional`, Flyway, clientes entre servicios, Resilience4j, caché, tareas programadas, correlation-id), cada regla de negocio, la saga y las preguntas probables.
+Tres documentos para leer, de lo general a lo particular:
+
+- [`docs/vision-general.md`](docs/vision-general.md): por dónde empezar. Qué hace el programa, quién lo usa, los tres microservicios, el proceso central y qué pasa cuando algo falla, sin bajar al código.
+- [`docs/referencia-del-codigo.md`](docs/referencia-del-codigo.md): cada archivo y cada método, con qué se comunica, y cómo funciona cada mecanismo que usa (contenedor de Spring y `@Bean`, auto-configuración, seguridad, errores, JPA y `@Transactional`, Flyway, clientes entre servicios, Resilience4j, caché, tareas programadas, correlation-id), con un glosario de todas las anotaciones.
+- [`docs/guia-del-proyecto.md`](docs/guia-del-proyecto.md): para trabajar, presentar y defender: cómo arrancar y probar, diagramas (C1, ER y secuencia), las reglas en detalle, la saga, la seguridad, los datos de demo, la infraestructura, las decisiones, las trampas conocidas, el guion de la demo, las preguntas probables y la comunicación con la cátedra.
+
+Evidencia y registros:
+
 - [`docs/c2-contenedores.md`](docs/c2-contenedores.md): diagrama de contenedores de lo que levanta el compose, con quién se habla con quién y qué queda expuesto.
 - [`docs/DECISIONES.md`](docs/DECISIONES.md): la bitácora de decisiones, con las alternativas que evaluamos y sus consecuencias.
-- [`docs/matriz-permisos.md`](docs/matriz-permisos.md): qué rol puede hacer qué.
-- [`docs/CONSIDERACIONES.md`](docs/CONSIDERACIONES.md): guía para el equipo con lo que conviene saber antes de tocar cada área.
-- [`docs/trazabilidad-ms-obras.md`](docs/trazabilidad-ms-obras.md), [`docs/trazabilidad-ms-recursos.md`](docs/trazabilidad-ms-recursos.md) y [`docs/trazabilidad-ms-operaciones.md`](docs/trazabilidad-ms-operaciones.md): de cada requisito, dónde se implementa y qué evidencia lo respalda (tests, requests).
-- [`docs/ms-obras-api.md`](docs/ms-obras-api.md): guía de la API de Obras.
-- [`docs/arquitectura.md`](docs/arquitectura.md): diagrama de contexto (C1), modelo de datos de las tres bases (ER) y secuencia de la habilitación diaria.
 - [`docs/matriz-requisitos.md`](docs/matriz-requisitos.md): requisito, implementación y evidencia de cada funcionalidad y escenario comprometido.
-- [`docs/trazabilidad-reglas.md`](docs/trazabilidad-reglas.md): las reglas RN-01 a RN-12, con su test y su request.
-- [`docs/guion-demo.md`](docs/guion-demo.md): orden de la demo, comandos con su resultado esperado, quién explica qué y preguntas de defensa.
+- [`docs/matriz-permisos.md`](docs/matriz-permisos.md): qué rol puede hacer qué, endpoint por endpoint.
+- [`docs/trazabilidad-reglas.md`](docs/trazabilidad-reglas.md): las reglas de negocio con su test y su request.
+- [`docs/trazabilidad-ms-obras.md`](docs/trazabilidad-ms-obras.md), [`docs/trazabilidad-ms-recursos.md`](docs/trazabilidad-ms-recursos.md) y [`docs/trazabilidad-ms-operaciones.md`](docs/trazabilidad-ms-operaciones.md): de cada requisito, dónde se implementó y con qué se prueba.
+- [`docs/ms-obras-api.md`](docs/ms-obras-api.md): guía de la API de Obras con su prueba de punta a punta.
+- [`docs/plan-recorte.md`](docs/plan-recorte.md): plan y registro del recorte de alcance y de la quita de RN-04.
 - [`coleccion/`](coleccion/README.md): colección de Postman y entorno de ejemplo.
 
 ## Estado actual (13/11/2026)

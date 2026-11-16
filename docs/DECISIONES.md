@@ -578,3 +578,22 @@ Cada entrada: decisión, alternativas descartadas y consecuencias.
 **Alternativas:** (a) dejarla: es poco código, pero suma una tabla, datos de demo y un caso más para explicar; (b) quitar también RN-08 (mezcla y hora de salida del camión): se descartó porque está dentro del proceso central comprometido y es el segundo uso de OSRM que justifica la integración.
 
 **Consecuencias:** quedan 11 reglas con test y request. Los tests de RN-04 se borraron y se agregó `rn06_conLaMaquinaDelTipoRequerido_esElegible` para no perder el caso positivo con máquina; la colección pierde la carpeta RN-04 (82 requests). Hay que avisarle a la cátedra (borrador en `docs/aviso-cambios-catedra.md`).
+
+## Documentación unificada en tres documentos (2026-11-16)
+
+**Contexto:** en `docs/` había siete documentos de lectura (arquitectura, guía de estudio, guía de defensa, guía del código, guion de demo, consideraciones para el equipo y aviso a la cátedra) que se repetían entre sí y que había que actualizar todos juntos en cada cambio. Parte de `CONSIDERACIONES.md` ya estaba desactualizada.
+
+**Decisión:** se reemplazan por tres: `vision-general.md` (el programa por arriba), `referencia-del-codigo.md` (cada archivo y método, con el funcionamiento de cada mecanismo y un glosario de anotaciones) y `guia-del-proyecto.md` (todo lo demás: arranque, diagramas, reglas, saga, seguridad, datos, infraestructura, pruebas, decisiones, trampas, guion, preguntas y comunicación con la cátedra). Los documentos de evidencia (matrices, trazabilidades, C2, esta bitácora) siguen aparte. Las menciones a los documentos anteriores en las entradas viejas de esta bitácora se mantienen como historia; esta tabla dice dónde quedó cada uno:
+
+| Documento anterior | Dónde quedó su contenido |
+|---|---|
+| `arquitectura.md` (C1, ER, secuencia) | `guia-del-proyecto.md`, sección 2 (copiado sin cambios) |
+| `aviso-cambios-catedra.md` | `guia-del-proyecto.md`, sección 13 |
+| `CONSIDERACIONES.md` | `guia-del-proyecto.md`, secciones 1 (arranque) y 10 (trampas), reescritas: varios ítems estaban desactualizados |
+| `guion-demo.md` | `guia-del-proyecto.md`, sección 11 (y sus preguntas en la 12) |
+| `guia-de-estudio.md` | `vision-general.md` (lo general) y `guia-del-proyecto.md` (decisiones, seguridad, datos) |
+| `guia-de-defensa.md` | `referencia-del-codigo.md`, secciones 1 a 9 (mecanismos) y `guia-del-proyecto.md`, secciones 3, 4, 7, 8 y 12 |
+| `guia-del-codigo.md` | `referencia-del-codigo.md`, secciones 11 a 16 |
+
+**Consecuencias:** menos archivos que mantener y sin contradicciones entre ellos. Los diagramas y el guion se copiaron sin cambios de fondo; las trampas de `CONSIDERACIONES.md` se revisaron una por una y se dejaron solo las vigentes.
+
