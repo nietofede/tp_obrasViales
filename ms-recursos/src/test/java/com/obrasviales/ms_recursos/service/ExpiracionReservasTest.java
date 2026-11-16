@@ -1,7 +1,5 @@
 package com.obrasviales.ms_recursos.service;
 
-import com.obrasviales.commons.exception.RecursoNoEncontradoException;
-import com.obrasviales.ms_recursos.entity.Reserva;
 import com.obrasviales.ms_recursos.repository.ReservaRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -9,18 +7,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-// Consulta de una reserva y expiración por TTL (el job solo llama a este método cada tanto).
+// Expiración de reservas por TTL (el job solo llama a este método cada tanto).
 @ExtendWith(MockitoExtension.class)
 class ExpiracionReservasTest {
 
@@ -29,25 +25,7 @@ class ExpiracionReservasTest {
 
     private ReservaService serviceConSoloReservas() {
         // Estos dos métodos solo usan el repositorio de reservas; el resto de las dependencias no se tocan.
-        return new ReservaService(reservaRepository, null, null, null, null, null, null, null, null, null);
-    }
-
-    @Test
-    void obtenerDevuelveLaReservaPedida() {
-        Reserva r = new Reserva();
-        r.setId(4L);
-        when(reservaRepository.findById(4L)).thenReturn(Optional.of(r));
-
-        assertThat(serviceConSoloReservas().obtener(4L)).isSameAs(r);
-    }
-
-    @Test
-    void obtenerUnaReservaInexistente_lanza404() {
-        when(reservaRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> serviceConSoloReservas().obtener(99L))
-                .isInstanceOf(RecursoNoEncontradoException.class)
-                .hasMessageContaining("99");
+        return new ReservaService(reservaRepository, null, null, null, null, null, null, null, null);
     }
 
     @Test
