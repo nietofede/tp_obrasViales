@@ -19,7 +19,7 @@ Cada sección dice en qué archivo está lo que se explica, para poder abrirlo y
 
 ## 1. El problema en una frase
 
-Una repartición vial planifica obras de pavimentación y, **cada día**, tiene que decidir si una cuadrilla con sus máquinas y operarios puede trabajar en un tramo concreto. La decisión depende de cinco cosas: que la fase anterior de la obra esté terminada, que haya recursos certificados y libres, que la cuadrilla y la mezcla lleguen a tiempo (distancia real por calle, con OSRM), que el clima lo permita (Open-Meteo) y las reglas técnicas de cada tipo de trabajo.
+Una repartición vial planifica obras de pavimentación y, **cada día**, tiene que decidir si una cuadrilla con sus máquinas y operarios puede trabajar en un tramo concreto. La decisión depende de cinco cosas: que la fase anterior de la obra esté terminada, que haya recursos libres y suficientes, que la cuadrilla y la mezcla lleguen a tiempo (distancia real por calle, con OSRM), que el clima lo permita (Open-Meteo) y las reglas técnicas de cada tipo de trabajo.
 
 Si el clima no acompaña, la orden se **suspende** y eso tiene consecuencias en cadena: se liberan los recursos, se corre la fase (y las que dependen de ella) y se crea una orden nueva. Ese recorrido es el **proceso central** y es lo que más puntos da en la rúbrica (NEG-01, 15 puntos).
 
@@ -46,7 +46,7 @@ Cliente (Postman / panel)
   api-gateway :8081 ─── valida el token, aplica reglas por método y rol, genera el correlation-id
         │  (red interna de Docker: la "trusted zone")
         ├──► ms-obras       :8082  obras, tramos, fases, materiales, cronograma       (RN-01 a RN-03)
-        ├──► ms-recursos    :8083  máquinas, operarios, cuadrillas, reservas, OSRM     (RN-04 a RN-08)
+        ├──► ms-recursos    :8083  máquinas, operarios, cuadrillas, reservas, OSRM     (RN-05 a RN-08)
         └──► ms-operaciones :8084  órdenes, clima (Open-Meteo), saga, job diario       (RN-09 a RN-12)
 
   Keycloak :8080  emite los tokens (OIDC)        PostgreSQL :5432  una base por servicio
@@ -83,7 +83,7 @@ El diagrama de secuencia completo está en [`arquitectura.md`, sección 3](arqui
 
 **Paso 1. Pedir el contexto a Obras.** Operaciones llama a `GET /api/obras/internos/fases/{id}/contexto-ejecucion` (cliente `ObrasHttpClient`). Obras devuelve el tipo de trabajo, las coordenadas del tramo, los materiales y si la **fase previa está completa** (RN-01). Si no lo está, la orden no avanza y se informa el motivo.
 
-**Paso 2. Pedir recursos a Recursos.** Operaciones llama a `POST /api/recursos/internos/reservas` (cliente `RecursosHttpClient`) con la orden, el tipo de trabajo, la fecha y las coordenadas del tramo. Recursos (`ReservaService.proponerYReservar`) revisa cada cuadrilla con RN-05, RN-06, RN-04 y RN-07, y la planta con RN-08, consultando OSRM para los tiempos de viaje. Si alguna sirve, crea una **reserva PROVISORIA con vencimiento de 30 minutos**, la hora de llegada de la cuadrilla y la **hora de salida del camión**. Si ninguna sirve, responde **422** con el `codigoRegla` y el motivo de cada cuadrilla. La orden pasa a `RECURSOS_ASIGNADOS`.
+**Paso 2. Pedir recursos a Recursos.** Operaciones llama a `POST /api/recursos/internos/reservas` (cliente `RecursosHttpClient`) con la orden, el tipo de trabajo, la fecha y las coordenadas del tramo. Recursos (`ReservaService.proponerYReservar`) revisa cada cuadrilla con RN-05, RN-06 y RN-07, y la planta con RN-08, consultando OSRM para los tiempos de viaje. Si alguna sirve, crea una **reserva PROVISORIA con vencimiento de 30 minutos**, la hora de llegada de la cuadrilla y la **hora de salida del camión**. Si ninguna sirve, responde **422** con el `codigoRegla` y el motivo de cada cuadrilla. La orden pasa a `RECURSOS_ASIGNADOS`.
 
 **Paso 3. Consultar el clima.** La orden pasa a `EVALUACION_CLIMATICA`. `OpenMeteoService` pide a Open-Meteo los datos horarios **de la fecha de la orden** y toma el **peor valor de la ventana de ejecución** (de 08:00 a 13:00 por defecto, configurable con `app.open-meteo.hora-inicio-jornada` y `ventana-ejecucion-horas`): la mayor humedad del suelo, la mayor probabilidad de lluvia y la menor temperatura.
 
@@ -113,14 +113,14 @@ Las transiciones válidas están en el enum `EstadoOrden` (`ms-operaciones/.../m
 
 ---
 
-## 4. Las doce reglas de negocio
+## 4. Las reglas de negocio (once: RN-04 se quitó)
 
 | Regla | Qué dice | Dónde está | Qué pasa si no se cumple |
 |---|---|---|---|
 | RN-01 | Una fase no inicia sin la anterior completa | Obras (`FaseService`) y Operaciones (`habilitarOrden` mira `faseAnteriorCompletada`) | 409 en Obras; la orden no avanza |
 | RN-02 | Correr una fase corre en cascada las dependientes; no se aceptan ciclos | Obras (`FaseService`, `PATCH /fases/{id}/programacion`) | 422 si la fecha queda antes del fin de la previa o hay un ciclo |
 | RN-03 | Materiales = superficie × rendimiento del tipo de trabajo | Obras (`MaterialService`, `GET /fases/{id}/materiales`) | 422 con superficie ≤ 0 |
-| RN-04 | Un operario solo opera máquinas con certificación vigente | Recursos (`ReservaService` al reservar, `CuadrillaService` al armar la cuadrilla) | 422 `RN-04` |
+| ~~RN-04~~ | Quitada el 2026-11-16 (certificación vigente del operario): ver `DECISIONES.md`. Los números de las demás no cambian | — | — |
 | RN-05 | Ni la cuadrilla ni sus recursos con dos reservas el mismo día | Recursos (`ReservaRepository.existeReservaSolapada`) | 422 `RN-05`; se prueba otra cuadrilla |
 | RN-06 | La cuadrilla cumple la composición mínima del tipo de trabajo (operarios y máquinas del tipo requerido) | Recursos (`ReservaService`, tabla `composicion_minima_trabajo`) | 422 `RN-06` |
 | RN-07 | El viaje cuadrilla → tramo no supera el máximo (90 min) y la ida y vuelta entra en la jornada | Recursos (OSRM, `configuracion_desplazamiento`) | 422 `RN-07` |
@@ -128,9 +128,9 @@ Las transiciones válidas están en el enum `EstadoOrden` (`ms-operaciones/.../m
 | RN-09 | Se habilita solo si humedad del suelo y lluvia no superan el máximo y la temperatura alcanza el mínimo del tipo de trabajo | Operaciones (`habilitarOrden`, `umbrales_climaticos`) | `SUSPENDIDA` y saga |
 | RN-10 | Sin dato climático confiable, no se habilita sola | Operaciones (`OpenMeteoService` no inventa datos; reintentos y fallback) | `PENDIENTE_CONFIRMACION_CLIMATICA`, decide el CAPATAZ |
 | RN-11 | Solo transiciones de estado válidas | Operaciones (`EstadoOrden`) | 422 `RN-11` |
-| RN-12 | N suspensiones de una fase la ponen en riesgo y exigen decisión manual | Operaciones (`SuspensionService`, `FaseEnRiesgoService`) | La fase queda en riesgo; decide el PLANIFICADOR |
+| RN-12 | N suspensiones de una fase la ponen en riesgo y exigen decisión manual | Operaciones (`SuspensionService`) y Obras (fase EN_RIESGO) | A la tercera suspensión la fase queda en riesgo y la orden no se reprograma sola; el PLANIFICADOR reprograma la fase y crea la orden nueva |
 
-Cada regla tiene tests automáticos (casos normales, límite y rechazo) y requests en la colección: la tabla completa está en [`trazabilidad-reglas.md`](trazabilidad-reglas.md). Ejemplos de tests para mostrar: `ReservaServiceReglasTest` (RN-04 a RN-08), `FaseServiceTest` (RN-01, RN-02), `SuspensionServiceTest` (saga y RN-12), `OpenMeteoServiceTest` (RN-09 y RN-10).
+Cada regla tiene tests automáticos (casos normales, límite y rechazo) y requests en la colección: la tabla completa está en [`trazabilidad-reglas.md`](trazabilidad-reglas.md). Ejemplos de tests para mostrar: `ReservaServiceReglasTest` (RN-05 a RN-08), `FaseServiceTest` (RN-01, RN-02), `SuspensionServiceTest` (saga y RN-12), `OpenMeteoServiceTest` (RN-09 y RN-10).
 
 **Por qué los rechazos son 422 y no 400:** 400 es "el pedido está mal formado" (falta un campo, un número no es número). 422 es "el pedido está bien formado, pero el negocio no lo permite". El cliente distingue los dos casos solo por el código. El 409 se usa para conflictos de estado (por ejemplo confirmar una reserva ya liberada).
 
@@ -187,7 +187,7 @@ La matriz completa está en [`matriz-permisos.md`](matriz-permisos.md).
 
 1. El usuario pide un token a Keycloak (`POST /realms/obras-viales/protocol/openid-connect/token`). Keycloak devuelve un **JWT**: un texto firmado con los datos del usuario y sus roles (claim `realm_access.roles`), que vence en 5 minutos.
 2. Cada pedido lleva `Authorization: Bearer <token>`.
-3. El **gateway** valida la firma y la vigencia del token, y aplica **reglas gruesas por ruta y método** (`api-gateway/.../security/SecurityConfig.java`): por ejemplo, solo PLANIFICADOR puede hacer `PUT /api/obras/**`, y `/api/*/internos/**` solo deja pasar a la cuenta SISTEMA (cualquier otro rol recibe 403).
+3. El **gateway** valida la firma y la vigencia del token, y aplica **reglas gruesas por ruta y método** (`api-gateway/.../security/SecurityConfig.java`): por ejemplo, solo PLANIFICADOR puede hacer `POST /api/obras/**`, y `/api/*/internos/**` solo deja pasar a la cuenta SISTEMA (cualquier otro rol recibe 403).
 4. El **servicio vuelve a validar** el token y aplica la **autorización fina** con `@PreAuthorize` en cada endpoint. Esto es **defensa en profundidad**: si alguien llegara a un servicio sin pasar por el gateway, igual lo frena.
 5. `KeycloakConversorRoles` (commons) traduce los roles del token a `ROLE_PLANIFICADOR`, etc., que es lo que entiende `hasRole(...)`.
 
@@ -206,7 +206,7 @@ Ninguna contraseña está en el código: los `application.yml` usan `${VARIABLE}
 - **Un PostgreSQL con una base por servicio** (`ms_obras`, `ms_recursos`, `ms_operaciones`), cada una con **su usuario dueño** y sin acceso para los demás (`docker/init-db/01-init-schemas.sql`, con `REVOKE CONNECT ... FROM PUBLIC`). Ningún servicio puede leer la base de otro aunque quiera.
 - **Flyway** versiona el esquema: cada cambio es un archivo `V<n>__descripcion.sql` en `src/main/resources/db/migration`. Flyway guarda qué versiones aplicó y un checksum de cada una: **una migración ya aplicada no se edita nunca**, se agrega otra. Hibernate está en `ddl-auto: validate`, o sea, solo verifica que las entidades coincidan con las tablas.
 - **Ids `BIGSERIAL`** (enteros autoincrementales), no uuid como decía el cuestionario: es más simple y los ids no cruzan bases como claves foráneas.
-- **Datos de demo**: obra "Ruta Provincial 34" con dos tramos; cuadrillas Alfa (con operarios certificados) y Beta Lejana (sin operarios); una planta de mezcla; umbrales por tipo de trabajo; y tres órdenes sembradas con una fecha cada una (hoy, mañana y pasado mañana, en hora de Argentina). La tercera está en el tramo de Río Cuarto, lejos de la cuadrilla, para mostrar el rechazo por distancia (RN-07).
+- **Datos de demo**: obra "Ruta Provincial 34" con dos tramos; cuadrillas Alfa (3 operarios y 2 máquinas) y Beta Lejana (sin operarios); una planta de mezcla; umbrales por tipo de trabajo; y tres órdenes sembradas con una fecha cada una (hoy, mañana y pasado mañana, en hora de Argentina). La tercera está en el tramo de Río Cuarto, lejos de la cuadrilla, para mostrar el rechazo por distancia (RN-07).
 - El ER de cada base está en [`arquitectura.md`, sección 2](arquitectura.md).
 
 ---

@@ -1,7 +1,7 @@
 # ms-obras: guia de la API y requests para la coleccion
 
 Las rutas siguen el cuestionario de compromiso (seccion 07) con el prefijo `/api/obras`, porque el gateway (8081) no recorta el prefijo.
-Todos los endpoints tienen tests automaticos, y las 38 requests de la seccion 4 se corrieron contra Keycloak y PostgreSQL reales: 38 de 38 OK el 12/11/2026 (ver seccion 7).
+Todos los endpoints tienen tests automaticos. Las requests de la seccion 4 que siguen vigentes (32; las tachadas son rutas quitadas con el recorte) se corrieron contra Keycloak y PostgreSQL reales: 32 de 32 OK el 2026-11-16 (ver seccion 7).
 
 ## 1. Como levantarlo
 1. Docker Desktop abierto. Desde la raiz: `docker compose down -v` y `docker compose up -d`.
@@ -59,7 +59,7 @@ Variables a guardar de cada respuesta (campo `id`): `obraId`, `tramoId`, `faseA`
 | 13 | POST /api/obras/tramos/{{tramoId}}/fases | planificador | FASE_C (otra siguiente de `faseA`) | 409 |
 | 14 | ~~GET /api/obras/fases/{{faseB}}~~ | ~~auditor~~ | ~~(vacio)~~ | ~~200, estado `PENDIENTE`, avance 0~~ |
 | 15 | GET /api/obras/fases/{{faseB}}/materiales | auditor | (vacio) | 403 |
-| 16 | GET /api/obras/fases/{{faseB}}/materiales | capataz | (vacio) | 200 (RN-03: piedra triturada 500.00 m3, con la superficie editada de 2000) |
+| 16 | GET /api/obras/fases/{{faseB}}/materiales | capataz | (vacio) | 200 (RN-03: piedra triturada 250.00 m3 = 1000 m2 x 0,25) |
 | 17 | ~~POST /api/obras/fases/{{faseB}}/iniciar~~ | ~~capataz~~ | ~~(vacio)~~ | ~~409 (RN-01: la fase anterior no esta completada)~~ |
 | 18 | POST /api/obras/internos/fases/{{faseB}}/avances | sistema | AVANCE 30 | 409 (RN-01) |
 | 19 | POST /api/obras/internos/fases/{{faseA}}/avances | planificador | AVANCE 50 | 403 |
@@ -78,16 +78,14 @@ Variables a guardar de cada respuesta (campo `id`): `obraId`, `tramoId`, `faseA`
 | 32 | GET /api/obras/{{obraId}} | capataz | (vacio) | 200 con tramos y fases, estado `EN_EJECUCION`, avance 70 |
 | 33 | GET /api/obras | auditor | (vacio) | 200, lista con estado y avance |
 | 34 | GET /api/obras/{{obraId}}/tramos | planificador | (vacio) | 200, lista de tramos |
-| 35 | GET /api/obras/internos/fases/{{faseB}}/contexto-ejecucion | operario | (vacio) | 403 |
+| 35 | GET /api/obras/internos/fases/{{faseB}}/contexto-ejecucion | capataz | (vacio) | 403 |
 | 36 | GET /api/obras/internos/fases/{{faseB}}/contexto-ejecucion | planificador | (vacio) | 403 (solo SISTEMA) |
 | 37 | GET /api/obras/internos/fases/{{faseB}}/contexto-ejecucion | sistema | (vacio) | 200, `faseAnteriorCompletada: true` |
 | 38 | GET /v3/api-docs | sin token | (vacio) | 200 |
 
 Cuerpos (JSON):
 - OBRA: `{"nombre":"Demo Av. Libertad","descripcion":"Prueba de punta a punta"}`
-- OBRA_EDITADA: `{"nombre":"Demo Av. Libertad (editada)","descripcion":"Descripcion corregida"}`
 - TRAMO: `{"nombre":"Tramo norte","superficieM2":1000,"latitud":-34.6,"longitud":-58.4}`
-- TRAMO_EDITADO: `{"nombre":"Tramo norte","superficieM2":2000,"latitud":-34.6,"longitud":-58.4}`
 - FASE_A: `{"tipo":"RELEVAMIENTO","fechaInicioPlanificada":"2026-12-01","fechaFinPlanificada":"2026-12-05"}`
 - FASE_B: `{"tipo":"BASE","fechaInicioPlanificada":"2026-12-05","fechaFinPlanificada":"2026-12-10","faseAnteriorId":{{faseA}}}`
 - FASE_C: `{"tipo":"SUBBASE","fechaInicioPlanificada":"2026-12-11","fechaFinPlanificada":"2026-12-15","faseAnteriorId":{{faseA}}}`
@@ -101,8 +99,8 @@ Para cada endpoint, los tres casos 401, 403 y 2xx estan en `docs/matriz-permisos
 contexto-ejecucion (para ms-operaciones):
 ```json
 {"faseId":4,"tipoTrabajo":"BASE","estadoFase":"PENDIENTE","faseAnteriorCompletada":true,
- "tramoId":2,"tramoNombre":"Tramo norte","superficieM2":2000.00,"latitud":-34.6,"longitud":-58.4,
- "materiales":[{"material":"Piedra triturada","cantidad":500.00,"unidad":"m3"}]}
+ "tramoId":2,"tramoNombre":"Tramo norte","superficieM2":1000.00,"latitud":-34.6,"longitud":-58.4,
+ "materiales":[{"material":"Piedra triturada","cantidad":250.00,"unidad":"m3"}]}
 ```
 `latitud` y `longitud` van por separado. OSRM espera `longitud,latitud`. Sin fase anterior, `faseAnteriorCompletada` es `true`.
 
@@ -127,5 +125,5 @@ Obra en la lista: `{"id","nombre","descripcion","estado","avance"}`. En el detal
 
 ## 7. Verificacion
 - `mvnw test "-Dtest=!MsObrasApplicationTests"` corre 142 tests sin base de datos. `MsObrasApplicationTests` arranca la aplicacion completa contra PostgreSQL (aplica la migracion V4) y necesita la base levantada y `OBRAS_DB_PASSWORD`.
-- Corrida real: `ms-obras/scripts/e2e-ms-obras.ps1` ejecuta las 38 requests de la seccion 4 contra Keycloak y PostgreSQL reales, directo al puerto 8082 (sin pasar por el gateway). Resultado del 12/11/2026: 38 de 38 OK. Con `docker compose up -d` y ms-obras corriendo, desde la raiz: `Get-Content -Raw .\ms-obras\scripts\e2e-ms-obras.ps1 | Invoke-Expression`.
+- Corrida real: `ms-obras/scripts/e2e-ms-obras.ps1` ejecuta las 32 requests vigentes de la seccion 4 contra Keycloak y PostgreSQL reales, directo al puerto 8082 (sin pasar por el gateway). Resultado del 2026-11-16, en un stack temporal desde cero: 32 de 32 OK. (El 12/11 eran 38 de 38, antes del recorte.)
 - Casos con test automatico y sin corrida real: fin anterior al inicio (422 `FASE-FECHAS`), fase anterior de otro tramo (422 `FASE-TRAMO`), fase anterior inexistente (404), reprogramar antes de que termine la anterior (422 `RN-02`), reprogramar una fase COMPLETADA (409) y superficie menor o igual a 0 (400).

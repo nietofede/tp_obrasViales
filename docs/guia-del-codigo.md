@@ -18,7 +18,7 @@ Una empresa vial pavimenta rutas por **obras**. Cada obra se divide en **tramos*
 Antes de mandar una cuadrilla a la ruta hay que contestar tres preguntas:
 
 1. **¿Se puede trabajar en esa fase?** La fase anterior tiene que estar terminada (no se puede asfaltar sin la base).
-2. **¿Hay con qué?** Hace falta una cuadrilla libre ese día, con la gente y las máquinas que pide ese tipo de trabajo, con operarios certificados, que llegue al tramo a tiempo y, si el trabajo lleva mezcla asfáltica, una planta lo bastante cerca para que la mezcla no se enfríe en el camino.
+2. **¿Hay con qué?** Hace falta una cuadrilla libre ese día, con la gente y las máquinas que pide ese tipo de trabajo, que llegue al tramo a tiempo y, si el trabajo lleva mezcla asfáltica, una planta lo bastante cerca para que la mezcla no se enfríe en el camino.
 3. **¿Lo permite el clima?** Con el suelo húmedo, lluvia probable o frío, el material no fragua o no compacta bien.
 
 Si se decide mal, se pierde un día de cuadrilla, de máquinas y de mezcla. El sistema **GOVP** automatiza esa decisión: cada mañana (o cuando el planificador lo pide) evalúa las órdenes del día y cada una termina en uno de estos resultados:
@@ -41,7 +41,7 @@ Keycloak (8080): emite los tokens            PostgreSQL (5432): una base por ser
 - **Keycloak** es el servidor de identidad: el usuario se loguea ahí y recibe un **JWT** (un token firmado que dice quién es y qué roles tiene). Los roles son ADMIN, PLANIFICADOR, CAPATAZ y AUDITOR, más la cuenta de servicio SISTEMA (la usan los servicios entre sí y el job diario).
 - **api-gateway** es la única puerta de entrada: valida el token, aplica una primera regla de roles por ruta y método, pone un `X-Correlation-Id` nuevo y reenvía el pedido al servicio que corresponde.
 - **ms-obras** es dueño de obras, tramos, fases y materiales (RN-01, RN-02 y RN-03).
-- **ms-recursos** es dueño de cuadrillas, operarios, máquinas, plantas y reservas; decide si hay recursos (RN-04 a RN-08) y consulta OSRM para los tiempos de viaje.
+- **ms-recursos** es dueño de cuadrillas, operarios, máquinas, plantas y reservas; decide si hay recursos (RN-05 a RN-08) y consulta OSRM para los tiempos de viaje.
 - **ms-operaciones** es dueño de las órdenes de trabajo. Orquesta el proceso diario: pregunta a Obras, pide recursos a Recursos, consulta el clima en Open-Meteo y decide (RN-09 a RN-12).
 - **obras-commons** es una librería (un JAR, no un servicio) que usan los tres servicios: seguridad, formato de errores, correlation-id y el cliente HTTP que se autentica como SISTEMA.
 - **PostgreSQL** tiene una base por servicio (`ms_obras`, `ms_recursos`, `ms_operaciones`), cada una con su propio usuario: ningún servicio lee las tablas de otro, todo pasa por la API.
@@ -66,7 +66,7 @@ Lo dispara `POST /api/operaciones/habilitaciones-diarias` (PLANIFICADOR o SISTEM
 
 1. **Obras (RN-01):** pide el contexto de la fase (`GET /api/obras/internos/fases/{id}/contexto-ejecucion`): tipo de trabajo, coordenadas del tramo, materiales y si la fase anterior está completa. Si no lo está, la orden no avanza (409).
 2. **Umbrales (RN-09):** busca los umbrales del tipo de trabajo. Si no hay, 422.
-3. **Recursos (RN-04 a RN-08):** pide «proponer y reservar» (`POST /api/recursos/internos/reservas`). Recursos devuelve una reserva PROVISORIA, que vence en 30 minutos, con la hora de salida del camión, o un 422 con la regla que falló. La orden pasa a RECURSOS_ASIGNADOS.
+3. **Recursos (RN-05 a RN-08):** pide «proponer y reservar» (`POST /api/recursos/internos/reservas`). Recursos devuelve una reserva PROVISORIA, que vence en 30 minutos, con la hora de salida del camión, o un 422 con la regla que falló. La orden pasa a RECURSOS_ASIGNADOS.
 4. **Clima (RN-09, RN-10):** la orden pasa a EVALUACION_CLIMATICA. `OpenMeteoService` pide los datos horarios de la fecha de la orden y toma el peor valor de 08:00 a 13:00. Se guarda una `EvaluacionClimatica`.
 5. **Decisión:**
    - Cumple los umbrales: confirma la reserva en Recursos y la orden queda HABILITADA.
@@ -105,10 +105,10 @@ Todos exigen un JWT salvo que se diga lo contrario. Sin token: 401. Con un rol q
 | Método y ruta | Roles | Qué hace | Respuestas |
 |---|---|---|---|
 | `GET /api/recursos/maquinas` | ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR | Lista las máquinas cargadas, con tipo, estado, horas de uso y cuadrilla. | 200 |
-| `GET /api/recursos/operarios` | ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR | Lista los operarios con su cuadrilla, rol operativo y certificaciones (tipo de máquina y vencimiento). | 200 |
+| `GET /api/recursos/operarios` | ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR | Lista los operarios con su cuadrilla, rol operativo y estado. | 200 |
 | `GET /api/recursos/cuadrillas` | ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR | Lista las cuadrillas con su última ubicación, la fecha del check-in y los ids de sus operarios y máquinas. | 200 |
 | `POST /api/recursos/cuadrillas/{id}/ubicaciones` | CAPATAZ (solo el de esa cuadrilla) | Check-in: actualiza la ubicación de la cuadrilla, que es la que RN-07 usa para calcular el viaje al tramo. | 200; 400; 403; 404 |
-| `POST /api/recursos/internos/reservas` | SISTEMA | «Proponer y reservar»: busca una cuadrilla elegible (RN-05, RN-06, RN-04, RN-07) y una planta si hay mezcla (RN-08), y crea una reserva PROVISORIA con TTL de 30 min. Es idempotente por orden. | 201; 400; 422 con `codigoRegla` |
+| `POST /api/recursos/internos/reservas` | SISTEMA | «Proponer y reservar»: busca una cuadrilla elegible (RN-05, RN-06, RN-07) y una planta si hay mezcla (RN-08), y crea una reserva PROVISORIA con TTL de 30 min. Es idempotente por orden. | 201; 400; 422 con `codigoRegla` |
 | `PATCH /api/recursos/internos/reservas/{id}/confirmacion` | SISTEMA | Confirma una reserva PROVISORIA. Si el TTL venció, la pasa a EXPIRADA. Repetirla no cambia nada. | 200; 404; 409 |
 | `PATCH /api/recursos/internos/reservas/{id}/liberacion` | SISTEMA | Libera una reserva PROVISORIA o CONFIRMADA. Repetirla no cambia nada. | 200; 404 |
 
@@ -340,9 +340,7 @@ No depende de commons, así que repite algunas piezas pequeñas (formato de erro
   - `cuadrilla` y `keycloakUsername`, el usuario de Keycloak; con él se reconoce al capataz en el check-in;
   - `nombre`;
   - `rolOperativo`: el puesto dentro de la cuadrilla, por ejemplo MAQUINISTA, CAPATAZ o PEON. No es un rol de Keycloak;
-  - `estado` (ACTIVO);
-  - sus `certificaciones`.
-- `Certificacion`: `operario`, `tipoMaquina` (por ejemplo RODILLO_COMPACTADOR) y `vencimiento`.
+  - `estado` (ACTIVO).
 - `Maquina`: `cuadrilla`, `codigo`, `tipo`, `estado` (DISPONIBLE) y `horasUso`.
 - `PlantaMezcla`: `nombre`, coordenadas y si está `activa`.
 - `ComposicionMinimaTrabajo`: tiene una fila por tipo de trabajo:
@@ -363,7 +361,6 @@ No depende de commons, así que repite algunas piezas pequeñas (formato de erro
   - `findByCuadrillaIdAndEstado`: los operarios activos, para RN-06;
   - `findByCuadrillaId`: para armar la respuesta.
 - `MaquinaRepository`: `findByCuadrillaIdAndEstado` (las disponibles, para RN-06) y `findByCuadrillaId`.
-- `CertificacionRepository.existsByOperarioIdAndTipoMaquinaAndVencimientoGreaterThanEqual(...)`: ¿tiene ese operario una certificación para ese tipo de máquina que vence en la fecha de la orden o después? Es el corazón de RN-04.
 - `PlantaMezclaRepository.findByActivaTrue()`: las plantas activas.
 - `CuadrillaRepository`, `ComposicionMinimaRepository` (la clave es el tipo de trabajo) y `ConfiguracionDesplazamientoRepository`: solo lo básico de `JpaRepository`.
 - `ReservaRepository`:
@@ -372,7 +369,7 @@ No depende de commons, así que repite algunas piezas pequeñas (formato de erro
   - `expirarReservasVencidas(ahora)`: un `UPDATE` masivo que pasa a EXPIRADA las PROVISORIAS vencidas.
 
 **DTO (`dto/`)**
-- `CatalogoDtos`: agrupa los records `MaquinaResponse`, `CertificacionResponse`, `OperarioResponse` (con sus certificaciones) y `CuadrillaResponse` (con los ids de operarios y máquinas), cada uno con `desde(...)`. También `UbicacionRequest`, con coordenadas validadas.
+- `CatalogoDtos`: agrupa los records `MaquinaResponse`, `OperarioResponse` y `CuadrillaResponse` (con los ids de operarios y máquinas), cada uno con `desde(...)`. También `UbicacionRequest`, con coordenadas validadas.
 - `ReservaResponse`: el contrato de salida de una reserva, con todo lo que Operaciones necesita (id, estado, cuadrilla, planta, tiempos, `horaSalidaCamion`, `fuenteRuta`).
 - `ReservaController.SolicitudReservaRequest`: el cuerpo del POST de reservas, definido dentro del controlador. Valida `ordenTrabajoId`, `tipoTrabajo`, `fecha` y las coordenadas en rango. Las coordenadas son `Double` y no `double`, para que un campo faltante dé 400 en lugar de 0.0 sin aviso.
 
@@ -401,14 +398,13 @@ No depende de commons, así que repite algunas piezas pequeñas (formato de erro
 - `proponerYReservar(ordenTrabajoId, tipoTrabajo, fecha, lat, lon)`:
   1. **Idempotencia:** si la orden ya tiene una reserva que bloquea recursos (`bloqueaRecursos`), la devuelve sin crear otra. Así Operaciones puede reintentar sin duplicar.
   2. Lee la configuración de desplazamiento y la composición mínima del tipo de trabajo (422 `RN-06` si el tipo no está configurado).
-  3. Recorre las cuadrillas y evalúa cada una con `evaluarCuadrilla`; se queda con la primera elegible. Para las rechazadas guarda el motivo y la regla «más avanzada» según `ORDEN_REGLAS` (RN-05, RN-06, RN-04, RN-07), es decir, la de la cuadrilla que estuvo más cerca de servir.
+  3. Recorre las cuadrillas y evalúa cada una con `evaluarCuadrilla`; se queda con la primera elegible. Para las rechazadas guarda el motivo y la regla «más avanzada» según `ORDEN_REGLAS` (RN-05, RN-06, RN-07), es decir, la de la cuadrilla que estuvo más cerca de servir.
   4. Si ninguna sirve, lanza 422 con esa regla y el motivo de cada cuadrilla.
   5. **RN-08:** si el trabajo lleva mezcla, busca la primera planta activa cuyo viaje al tramo entre en la ventana de transporte. La hora de llegada de la cuadrilla es 08:00 más su viaje. La hora de salida del camión es la llegada menos (viaje de la mezcla + margen). Si ninguna planta llega a tiempo, 422 `RN-08`.
   6. Guarda la reserva PROVISORIA con vencimiento en 30 minutos. Reutiliza la fila si la orden tenía una reserva vencida o liberada, porque `orden_trabajo_id` es único.
 - `evaluarCuadrilla(...)`: revisa las reglas en orden y devuelve la primera que no se cumple:
   - **RN-05:** que no tenga otra reserva vigente ese día (`existeReservaSolapada`).
   - **RN-06:** que tenga suficientes operarios activos y, si el trabajo pide máquina, suficientes máquinas de ese tipo disponibles.
-  - **RN-04:** que al menos un operario tenga certificación vigente, en la fecha de la orden, para esa máquina.
   - **RN-07:** que el viaje al tramo (`proveedorRutas.calcularRuta`) no supere el máximo y que la ida y vuelta entre en la jornada.
   - Si pasa todo, devuelve la cuadrilla como elegida, con su ruta.
 - `confirmarReserva(id)`:
@@ -454,8 +450,8 @@ No depende de commons, así que repite algunas piezas pequeñas (formato de erro
   - configuración de desplazamiento y composición mínima de los 5 tipos;
   - una planta en Córdoba;
   - dos cuadrillas: Alfa, en Córdoba, con 3 operarios y 2 máquinas, y Beta Lejana, sin operarios;
-  - las certificaciones: las del maquinista vencen el 2027-12-31; la PAVIMENTADORA del capataz ya está vencida.
 - `V3__quitar_mantenimientos.sql`: borra la tabla `mantenimientos` (recorte de alcance).
+- `V4__quitar_rn04_y_restos_del_recorte.sql`: borra la tabla `certificaciones` (RN-04 quitada el 2026-11-16), deja sin usuario de Keycloak a los operarios `operario` y `operario2` (ese usuario ya no existe) y cambia el valor por defecto de `rol_operativo` a PEON. La V1 la crea y la V2 la siembra; como ya están aplicadas no se editan, y la tabla se borra en una versión nueva.
 
 ### 5.5 ms-operaciones
 
@@ -649,7 +645,7 @@ Hay un test por regla de negocio, con casos normales, de límite y de rechazo. L
 | `api-gateway`: `SeguridadGatewayTests`, `ReglasPorRolGatewayTests`, `ErroresSeguridadGatewayTests`, `CorrelationIdEnLogsTests` | 401 sin token, health abierto, reglas de rol por ruta y método, 401/403 en formato estándar, id propio del gateway y su aparición en el log. |
 | `ms-obras`: `ObraControllerTest`, `ObraControllerConsultasTest`, `TramoControllerTest`, `FaseControllerTest`, `FaseControllerLecturaTest`, `FaseInternaControllerTest`, `OperacionControllerTest` | Seguridad y respuestas HTTP de cada endpoint de Obras. |
 | `ms-obras`: `ObraServiceTest`, `ObraServiceConsultasTest`, `FaseServiceTest`, `FaseServiceAvanceTest`, `MaterialServiceTest`, `OperacionServiceTest` | Estado y avance de la obra; RN-02 (alta con fecha previa, cascada, ciclos); RN-01 en el primer avance; avance que no retrocede; riesgo; RN-03 (cálculo y superficie inválida); contexto para Operaciones. |
-| `ms-recursos`: `ReservaServiceReglasTest` | RN-04 a RN-08, incluidos los límites (viaje igual al máximo, ventana justa) y la regla informada cuando ninguna cuadrilla sirve. |
+| `ms-recursos`: `ReservaServiceReglasTest` | RN-05 a RN-08, incluidos los límites (viaje igual al máximo, ventana justa) y la regla informada cuando ninguna cuadrilla sirve. |
 | `ms-recursos`: `ReservaServiceEstadosTest`, `ExpiracionReservasTest` | Máquina de estados de la reserva, idempotencia, TTL vencido → EXPIRADA, job de expiración. |
 | `ms-recursos`: `ReservaControllerSeguridadTest`, `ReservaControllerContratoTest`, `ReservaControllerEstadosTest`, `CatalogoControllerSeguridadTest` | Internos solo SISTEMA; campos de la respuesta (hora de salida del camión); 404/409; matriz de permisos de consultas y check-in. |
 | `ms-recursos`: `CatalogoServiceTest`, `CuadrillaServiceTest`, `OsrmProveedorRutasIntegrationTest`, `VencimientoCacheRutasTest` | Consultas; check-in solo del capataz de la cuadrilla; OSRM y su respaldo ESTIMADA; vencimiento de la caché. |
@@ -679,5 +675,5 @@ Obras y Recursos no se llaman entre sí ni llaman a Operaciones: Operaciones es 
 
 Al escribir esta guía aparecieron restos del recorte que el código principal no llamaba. Se borraron el 2026-11-14, sin que cambiara ningún test:
 - `ms-obras`: la clase vacía `CronogramaService` y su test sin casos, `ObraService.buscarTramo`, `FaseRepository.findByTramoId` y `findByTramoIdOrderByFechaInicioPlanificadaAsc`, y `TramoRepository.findByObraId`.
-- `ms-recursos`: `CertificacionRepository.findByOperarioId` y `ReservaRepository.findByCuadrillaIdAndFechaReserva`.
+- `ms-recursos`: `CertificacionRepository.findByOperarioId` (después, el 2026-11-16, se borró toda la entidad al quitar RN-04) y `ReservaRepository.findByCuadrillaIdAndFechaReserva`.
 - `ms-operaciones`: `OrdenTrabajoRepository.findByFaseId`, `UmbralClimaticoService.obtenerUmbralPorTipo` y `EstadoOrden.puedeTransicionarHacia` (una tabla de transiciones que no consultaba nadie: RN-11 se controla en los servicios, ver 5.5).

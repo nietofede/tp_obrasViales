@@ -1,6 +1,6 @@
 # Trazabilidad de ms-recursos: requisito, implementación y evidencia
 
-Sirve para ALC-01 y NEG-02 de la rúbrica v05 («matriz de trazabilidad enunciado/compromiso → implementación → evidencia» y «regla → test → request»). Alcance: lo que el equipo comprometió para MS-Recursos en el cuestionario (secciones 04 y 07) y las reglas RN-04 a RN-08.
+Sirve para ALC-01 y NEG-02 de la rúbrica v05 («matriz de trazabilidad enunciado/compromiso → implementación → evidencia» y «regla → test → request»). Alcance: lo que el equipo comprometió para MS-Recursos en el cuestionario (secciones 04 y 07) y las reglas RN-05 a RN-08 (RN-04 se quitó el 2026-11-16).
 
 Estado: ✔ cumplido y con evidencia · ≈ cumplido con una diferencia anotada · ✘ pendiente.
 
@@ -8,12 +8,12 @@ Todas las rutas llevan el prefijo `/api/recursos` (el gateway no recorta el pref
 
 ## 1. Endpoints comprometidos (sección 07) tras el recorte de alcance
 
-De los 20 endpoints comprometidos quedan 7 (recorte del 2026-11-14, `docs/DECISIONES.md`). Máquinas, operarios, certificaciones, plantas, cuadrillas, composición mínima y configuración de desplazamiento vienen precargados por Flyway (`V2__datos_demo.sql`) y no se editan por la API.
+De los 20 endpoints comprometidos quedan 7 (recorte del 2026-11-14, `docs/DECISIONES.md`). Máquinas, operarios, plantas, cuadrillas, composición mínima y configuración de desplazamiento vienen precargados por Flyway (`V2__datos_demo.sql`) y no se editan por la API.
 
 | # | Comprometido | Implementado | Roles | Evidencia | Estado |
 |---|---|---|---|---|---|
 | 1 | GET /maquinas | GET /api/recursos/maquinas | ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR | CatalogoServiceTest, CatalogoControllerSeguridadTest | ≈ el ADMIN se suma a los tres roles del cuestionario; sin filtro de disponibilidad por fecha |
-| 2 | GET /operarios, con certificaciones | GET /api/recursos/operarios | ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR | CatalogoServiceTest, CatalogoControllerSeguridadTest | ≈ trae las certificaciones pero no la disponibilidad del día |
+| 2 | GET /operarios | GET /api/recursos/operarios | ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR | CatalogoServiceTest, CatalogoControllerSeguridadTest | ≈ sin la disponibilidad del día; sin certificaciones desde que se quitó RN-04 |
 | 3 | GET /cuadrillas, con ubicación vigente | GET /api/recursos/cuadrillas | ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR | CuadrillaServiceTest, CatalogoControllerSeguridadTest | ✔ |
 | 4 | POST /cuadrillas/{id}/ubicaciones | POST /api/recursos/cuadrillas/{id}/ubicaciones | CAPATAZ | CuadrillaServiceTest, CatalogoControllerSeguridadTest | ≈ solo el capataz de esa cuadrilla (403 para otro) |
 | 5 | POST /internos/reservas | POST /api/recursos/internos/reservas | SISTEMA | ReservaServiceReglasTest, ReservaControllerContratoTest, ReservaControllerSeguridadTest | ✔ |
@@ -26,7 +26,7 @@ Quitados con el recorte: `POST` y `PUT /maquinas`, `POST /operarios`, `POST /ope
 
 | Regla | Qué se comprueba | Test (caso normal, límite y rechazo) | Request |
 |---|---|---|---|
-| RN-04 operario solo con certificación vigente | Cuadrilla sin certificación vigente ese día para la máquina requerida es rechazada al reservar | ReservaServiceReglasTest: `rn04_sinCertificacionVigente_esRechazada`, `rn04_conCertificacionVigente_esElegible` | POST /internos/reservas con fecha 2028-03-01 (las certificaciones del seed vencen el 2027-12-31): 422 `RN-04` |
+| ~~RN-04~~ operario solo con certificación vigente | Quitada el 2026-11-16 (`DECISIONES.md`): tabla borrada con `V4__quitar_rn04_y_restos_del_recorte.sql` | — | — | — |
 | RN-05 sin solapamiento de operario o máquina | Una cuadrilla con reserva vigente ese día no se propone; pasa a la siguiente libre; una provisoria vencida no bloquea | ReservaServiceReglasTest: `rn05_cuadrillaConReservaVigente_esRechazada`, `rn05_conVariasCuadrillas_pasaALaSiguienteLibre`; ReservaServiceEstadosTest: `proponer_provisoriaVencida_reevaluaYReutilizaLaFila` | POST /internos/reservas dos veces el mismo día (422 `RN-05` la segunda, con otra orden) |
 | RN-06 composición mínima de cuadrilla por tipo | Pocos operarios o faltan máquinas del tipo requerido; tipo de trabajo sin composición | ReservaServiceReglasTest: `rn06_pocosOperarios_esRechazada`, `rn06_faltanMaquinasDelTipoRequerido_esRechazada`, `tipoDeTrabajoNoConfigurado_esRechazado` | POST /internos/reservas con un tipo sin composición (422 `RN-06`); en el rechazo de RN-05 la cuadrilla Beta Lejana figura con RN-06 (0 operarios) |
 | RN-07 viaje cuadrilla → tramo dentro del máximo y la jornada | Viaje mayor al máximo, igual al máximo, y ida y vuelta que no entra en la jornada | ReservaServiceReglasTest: `rn07_viajeQueSuperaElMaximo_esRechazado`, `rn07_viajeIgualAlMaximo_esElegible`, `rn07_idaYVueltaQueNoEntraEnLaJornada_esRechazada`, `rn07_idaYVueltaJustoDentroDeLaJornada_esElegible`; OsrmProveedorRutasIntegrationTest (OSRM y fallback ESTIMADA) | POST /internos/reservas con un tramo lejano (422 `RN-07`) |

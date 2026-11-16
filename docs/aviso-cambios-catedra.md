@@ -32,3 +32,12 @@ Quedamos atentos a su respuesta antes de hacer cualquier cambio. Si les parece q
 ## Respuesta del profesor (2026-11-16)
 
 > Hola! Por lo que contas el dominio ya era muy grande, achiquenlo con los criterios que evaluen y vemos en la exposición si queda mal o chico. A simple vista lo que me planteas suena razonable.
+
+## Segundo aviso: quitar RN-04 (borrador, 2026-11-16, sin enviar)
+
+Hola, profe. Siguiendo lo que nos dijo de achicar con los criterios que se evalúan, queremos sacar también la RN-04 (el operario solo puede manejar una máquina si tiene la certificación vigente). Es la regla más aislada del motor de recursos: no interviene en el proceso central y quitarla nos deja más tiempo para el resto. Las demás reglas quedan igual y conservan su número, así que pasaríamos de doce a once.
+
+Quedamos atentos por si prefiere que la mantengamos.
+
+Saludos,
+Grupo 155 - 3K3

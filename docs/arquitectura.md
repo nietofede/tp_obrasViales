@@ -117,7 +117,6 @@ erDiagram
 erDiagram
     cuadrillas ||--o{ operarios : integra
     cuadrillas ||--o{ maquinas : tiene
-    operarios ||--o{ certificaciones : posee
     cuadrillas ||--o{ reservas : "es reservada en"
     plantas_mezcla ||--o{ reservas : "abastece"
 
@@ -135,12 +134,6 @@ erDiagram
         varchar nombre
         varchar rol_operativo
         varchar estado
-    }
-    certificaciones {
-        bigserial id PK
-        bigint operario_id FK
-        varchar tipo_maquina
-        date vencimiento
     }
     maquinas {
         bigserial id PK
@@ -264,7 +257,7 @@ sequenceDiagram
         Note over O: RN-01: si la fase previa no está completa, 409 y la orden no cambia
         Note over O: RN-09: busca el umbral del tipo de trabajo
         O->>R: POST /internos/reservas (token SISTEMA)
-        alt Recursos rechaza (RN-04 a RN-08) o está caído
+        alt Recursos rechaza (RN-05 a RN-08) o está caído
             R-->>O: 422 o 503
             Note over O: la orden queda como estaba y el error se informa
         else reserva PROVISORIA (TTL 30 min)
