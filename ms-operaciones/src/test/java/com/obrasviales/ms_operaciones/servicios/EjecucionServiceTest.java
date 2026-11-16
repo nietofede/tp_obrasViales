@@ -4,9 +4,6 @@ import com.obrasviales.commons.exception.ConflictoEstadoException;
 import com.obrasviales.ms_operaciones.clientes.ObrasClient;
 import com.obrasviales.ms_operaciones.clientes.RecursosClient;
 import com.obrasviales.ms_operaciones.dtos.AvanceOrdenResponse;
-import com.obrasviales.ms_operaciones.dtos.CierreOrdenRequest;
-import com.obrasviales.ms_operaciones.dtos.CierreOrdenRequest.MaterialConsumido;
-import com.obrasviales.ms_operaciones.dtos.CierreOrdenResponse;
 import com.obrasviales.ms_operaciones.dtos.FaseDTO;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
 import com.obrasviales.ms_operaciones.dtos.ResolucionClimaticaRequest;
@@ -16,8 +13,6 @@ import com.obrasviales.ms_operaciones.excepciones.TransicionInvalida;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
 import com.obrasviales.ms_operaciones.modelo.MotivoSuspension;
 import com.obrasviales.ms_operaciones.modelo.OrdenTrabajo;
-import com.obrasviales.ms_operaciones.modelo.CierreOrden;
-import com.obrasviales.ms_operaciones.repositorios.CierreOrdenRepository;
 import com.obrasviales.ms_operaciones.repositorios.OrdenTrabajoRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -52,7 +47,6 @@ class EjecucionServiceTest {
     @Mock private SuspensionService suspensionService;
     @Mock private ObrasClient obrasClient;
     @Mock private RecursosClient recursosClient;
-    @Mock private CierreOrdenRepository cierreOrdenRepository;
 
     @InjectMocks private EjecucionService service;
 
@@ -122,6 +116,31 @@ class EjecucionServiceTest {
 
         assertEquals(new BigDecimal("40"), r.avanceFase());
         assertEquals("EN_CURSO", r.estadoFase());
+        assertEquals(EstadoOrden.EN_EJECUCION, r.estadoOrden());
+        verify(ordenRepository, never()).save(any());
+    }
+
+    // cierre simplificado: cuando Obras deja la fase COMPLETADA (avance 100 %), la orden queda COMPLETADA
+    @Test
+    void elAvanceAl100CompletaLaOrden() {
+        OrdenTrabajo orden = ordenEn(EstadoOrden.EN_EJECUCION);
+        when(obrasClient.registrarAvance(FASE_ID, 100)).thenReturn(
+                new FaseDTO(FASE_ID, 1L, "BASE", "COMPLETADA", null, null, null, new BigDecimal("100")));
+
+        AvanceOrdenResponse r = service.registrarAvance(ORDEN_ID, 100);
+
+        assertEquals("COMPLETADA", r.estadoFase());
+        assertEquals(EstadoOrden.COMPLETADA, r.estadoOrden());
+        assertEquals(EstadoOrden.COMPLETADA, orden.getEstado());
+        verify(ordenRepository).save(orden);
+    }
+
+    @Test
+    void unaOrdenCompletadaNoAceptaMasAvances() {
+        ordenEn(EstadoOrden.COMPLETADA);
+
+        assertThrows(TransicionInvalida.class, () -> service.registrarAvance(ORDEN_ID, 100));
+        verify(obrasClient, never()).registrarAvance(anyLong(), anyInt());
     }
 
     @Test
@@ -204,43 +223,4 @@ class EjecucionServiceTest {
                 () -> service.resolverClima(ORDEN_ID, new ResolucionClimaticaRequest(Decision.HABILITAR, null)));
     }
 
-    @Test
-    void cerrarGuardaElConsumoYDejaLaOrdenCompletada() {
-        ordenEn(EstadoOrden.EN_EJECUCION);
-        when(ordenRepository.save(any(OrdenTrabajo.class))).thenAnswer(inv -> inv.getArgument(0));
-        CierreOrdenRequest request = new CierreOrdenRequest(new BigDecimal("7.50"),
-                List.of(new MaterialConsumido("Grava", new BigDecimal("1480.5"), "m3")));
-
-        CierreOrdenResponse r = service.cerrar(ORDEN_ID, request);
-
-        assertEquals(EstadoOrden.COMPLETADA, r.estado());
-        assertEquals(new BigDecimal("7.50"), r.horasMaquina());
-        assertEquals(1, r.materiales().size());
-
-        ArgumentCaptor<CierreOrden> cierre = ArgumentCaptor.forClass(CierreOrden.class);
-        verify(cierreOrdenRepository).save(cierre.capture());
-        assertEquals(ORDEN_ID, cierre.getValue().getOrdenTrabajoId());
-        assertEquals("Grava", cierre.getValue().getConsumos().get(0).getMaterial());
-    }
-
-    @Test
-    void sePuedeCerrarSinConsumoDeMateriales() {
-        ordenEn(EstadoOrden.EN_EJECUCION);
-        when(ordenRepository.save(any(OrdenTrabajo.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        CierreOrdenResponse r = service.cerrar(ORDEN_ID, new CierreOrdenRequest(new BigDecimal("3"), List.of()));
-
-        assertEquals(EstadoOrden.COMPLETADA, r.estado());
-        assertEquals(0, r.materiales().size());
-    }
-
-    @Test
-    void soloSeCierraUnaOrdenEnEjecucion() {
-        ordenEn(EstadoOrden.HABILITADA);
-
-        assertThrows(TransicionInvalida.class,
-                () -> service.cerrar(ORDEN_ID, new CierreOrdenRequest(new BigDecimal("3"), List.of())));
-
-        verify(cierreOrdenRepository, never()).save(any());
-    }
 }

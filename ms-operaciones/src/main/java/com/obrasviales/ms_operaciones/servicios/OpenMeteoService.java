@@ -14,62 +14,45 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
 public class OpenMeteoService implements InterfazClimaService {
 
-    private static final Duration TTL_POR_DEFECTO = Duration.ofMinutes(15);
     private static final int VENTANA_POR_DEFECTO = 6;
     private static final int HORA_INICIO_POR_DEFECTO = 8;
 
     private final RestClient restClient;
     private final String url;
-    private final Duration ttl;
-    private final Clock reloj;
     // ventana de ejecucion: desde la hora de inicio de la jornada, tantas horas como diga la configuracion
     private final int ventanaHoras;
     private final int horaInicio;
 
-    // ultimo pronostico valido por coordenada: el job consulta varias ordenes del mismo tramo seguidas
-    private final Map<String, PronosticoGuardado> cache = new ConcurrentHashMap<>();
-
     // La URL sale de app.open-meteo.url, tiene timeout
     @Autowired
     public OpenMeteoService(@Value("${app.open-meteo.url}") String url,
-                            @Value("${app.open-meteo.cache-ttl:PT15M}") Duration ttl,
                             @Value("${app.open-meteo.ventana-ejecucion-horas:6}") int ventanaHoras,
                             @Value("${app.open-meteo.hora-inicio-jornada:8}") int horaInicio) {
-        this(construirRestClient(), url, ttl, Clock.systemDefaultZone(), ventanaHoras, horaInicio);
+        this(construirRestClient(), url, ventanaHoras, horaInicio);
     }
 
     // Para los tests (RestClient simulado).
     OpenMeteoService(RestClient restClient, String url) {
-        this(restClient, url, TTL_POR_DEFECTO, Clock.systemDefaultZone());
+        this(restClient, url, VENTANA_POR_DEFECTO, HORA_INICIO_POR_DEFECTO);
     }
 
-    OpenMeteoService(RestClient restClient, String url, Duration ttl, Clock reloj) {
-        this(restClient, url, ttl, reloj, VENTANA_POR_DEFECTO, HORA_INICIO_POR_DEFECTO);
-    }
-
-    OpenMeteoService(RestClient restClient, String url, Duration ttl, Clock reloj, int ventanaHoras, int horaInicio) {
+    OpenMeteoService(RestClient restClient, String url, int ventanaHoras, int horaInicio) {
         if (ventanaHoras < 1 || horaInicio < 0 || horaInicio + ventanaHoras > 24) {
             throw new IllegalArgumentException("La ventana de ejecución tiene que caer dentro del día: inicio "
                     + horaInicio + " h y " + ventanaHoras + " h de duración.");
         }
         this.restClient = restClient;
         this.url = url;
-        this.ttl = ttl;
-        this.reloj = reloj;
         this.ventanaHoras = ventanaHoras;
         this.horaInicio = horaInicio;
     }
@@ -87,30 +70,8 @@ public class OpenMeteoService implements InterfazClimaService {
     @Override
     @Retry(name = "openMeteoRetry")
     @CircuitBreaker(name = "openMeteoCircuitBreaker", fallbackMethod = "obtenerCondicionesFallback")
+    // Sin cache: si Open-Meteo no responde, despues de los reintentos la orden queda pendiente del capataz (RN-10).
     public DatosClimaDTO obtenerCondicionesClimaticas(Double latitud, Double longitud, LocalDate fecha) {
-        String clave = claveDe(latitud, longitud, fecha);
-        Instant ahora = reloj.instant();
-        PronosticoGuardado guardado = cache.get(clave);
-        if (guardado != null && ahora.isBefore(guardado.obtenido().plus(ttl))) {
-            log.info("Pronóstico de Open-Meteo en caché para lat: {}, long: {}, fecha: {}", latitud, longitud, fecha);
-            return guardado.datos();
-        }
-
-        DatosClimaDTO datos = consultarOpenMeteo(latitud, longitud, fecha);
-        // solo se guarda una respuesta completa: si falta un dato se lanza error antes y no se inventa nada (RN-10)
-        cache.put(clave, new PronosticoGuardado(datos, ahora));
-        return datos;
-    }
-
-    // ~100 m de precision: dos ordenes del mismo tramo y la misma fecha comparten el pronostico
-    private static String claveDe(Double latitud, Double longitud, LocalDate fecha) {
-        return String.format(Locale.ROOT, "%.3f,%.3f,%s", latitud, longitud, fecha);
-    }
-
-    private record PronosticoGuardado(DatosClimaDTO datos, Instant obtenido) {
-    }
-
-    private DatosClimaDTO consultarOpenMeteo(Double latitud, Double longitud, LocalDate fecha) {
         log.info("Consultando Open-Meteo para lat: {}, long: {}, fecha: {}", latitud, longitud, fecha);
 
         // Coordenada (obras-commons) rechaza una latitud o longitud fuera de rango antes de llamar a la API

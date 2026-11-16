@@ -8,12 +8,10 @@ import com.obrasviales.ms_operaciones.dtos.FaseDTO;
 import com.obrasviales.ms_operaciones.excepciones.ServicioNoDisponibleException;
 import com.obrasviales.ms_operaciones.modelo.ConfiguracionSuspensiones;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
-import com.obrasviales.ms_operaciones.modelo.FaseEnRiesgo;
 import com.obrasviales.ms_operaciones.modelo.MotivoSuspension;
 import com.obrasviales.ms_operaciones.modelo.OrdenTrabajo;
 import com.obrasviales.ms_operaciones.modelo.Suspension;
 import com.obrasviales.ms_operaciones.repositorios.ConfiguracionSuspensionesRepository;
-import com.obrasviales.ms_operaciones.repositorios.FaseEnRiesgoRepository;
 import com.obrasviales.ms_operaciones.repositorios.OrdenTrabajoRepository;
 import com.obrasviales.ms_operaciones.repositorios.SuspensionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,7 +45,6 @@ class SuspensionServiceTest {
 
     @Mock private SuspensionRepository suspensionRepository;
     @Mock private ConfiguracionSuspensionesRepository configuracionRepository;
-    @Mock private FaseEnRiesgoRepository faseEnRiesgoRepository;
     @Mock private OrdenTrabajoRepository ordenRepository;
     @Mock private RecursosClient recursosClient;
     @Mock private ObrasClient obrasClient;
@@ -141,7 +138,6 @@ class SuspensionServiceTest {
     void alLlegarAlLimiteMarcaLaFaseEnRiesgoYNoCreaOrdenNueva() {
         limite(3);
         when(suspensionRepository.countByFaseIdAndVigenteTrue(FASE_ID)).thenReturn(3L);
-        when(faseEnRiesgoRepository.existsByFaseIdAndResueltaFalse(FASE_ID)).thenReturn(false);
 
         service.suspender(orden, MotivoSuspension.CLIMA, "lluvia");
 
@@ -150,26 +146,10 @@ class SuspensionServiceTest {
         verify(obrasClient, never()).reprogramarFase(anyLong(), any());
         verify(ordenRepository, never()).save(any());
         assertEquals(EstadoOrden.SUSPENDIDA, orden.getEstado());
-
-        ArgumentCaptor<FaseEnRiesgo> enRiesgo = ArgumentCaptor.forClass(FaseEnRiesgo.class);
-        verify(faseEnRiesgoRepository).save(enRiesgo.capture());
-        assertEquals(FASE_ID, enRiesgo.getValue().getFaseId());
-        assertEquals(ORDEN_ID, enRiesgo.getValue().getOrdenTrabajoId());
     }
 
     @Test
-    void siLaFaseYaEstabaEnRiesgoPendienteNoSeDuplica() {
-        limite(3);
-        when(suspensionRepository.countByFaseIdAndVigenteTrue(FASE_ID)).thenReturn(4L);
-        when(faseEnRiesgoRepository.existsByFaseIdAndResueltaFalse(FASE_ID)).thenReturn(true);
-
-        service.suspender(orden, MotivoSuspension.CLIMA, "lluvia");
-
-        verify(faseEnRiesgoRepository, never()).save(any());
-    }
-
-    @Test
-    void elLimiteEsConfigurable() {
+    void elLimiteSeLeeDeLaConfiguracionSembrada() {
         limite(1);
         when(suspensionRepository.countByFaseIdAndVigenteTrue(FASE_ID)).thenReturn(1L);
 
@@ -207,13 +187,27 @@ class SuspensionServiceTest {
         verify(ordenRepository, never()).save(any());
     }
 
+    // RN-12 simplificada: la decision del PLANIFICADOR es crear la orden nueva de la fase; las suspendidas quedan
+    // REPROGRAMADA y el conteo de suspensiones de la fase vuelve a cero
     @Test
-    void actualizaElLimiteConfigurado() {
-        ConfiguracionSuspensiones config = new ConfiguracionSuspensiones();
-        config.setLimiteSuspensiones(3);
-        when(configuracionRepository.findById(ConfiguracionSuspensiones.ID_UNICO)).thenReturn(Optional.of(config));
-        when(configuracionRepository.save(config)).thenReturn(config);
+    void alCrearLaOrdenNuevaDeLaFaseLasSuspendidasQuedanReprogramadasYElConteoVuelveACero() {
+        orden.setEstado(EstadoOrden.SUSPENDIDA);
+        when(ordenRepository.findByFaseIdAndEstado(FASE_ID, EstadoOrden.SUSPENDIDA)).thenReturn(List.of(orden));
 
-        assertEquals(5, service.actualizarLimite(5));
+        service.cerrarSuspensionesDeLaFase(FASE_ID);
+
+        assertEquals(EstadoOrden.REPROGRAMADA, orden.getEstado());
+        verify(ordenRepository).save(orden);
+        verify(suspensionRepository).marcarNoVigentes(FASE_ID);
+    }
+
+    @Test
+    void siLaFaseNoTeniaSuspendidasSoloReiniciaElConteo() {
+        when(ordenRepository.findByFaseIdAndEstado(FASE_ID, EstadoOrden.SUSPENDIDA)).thenReturn(List.of());
+
+        service.cerrarSuspensionesDeLaFase(FASE_ID);
+
+        verify(ordenRepository, never()).save(any());
+        verify(suspensionRepository).marcarNoVigentes(FASE_ID);
     }
 }

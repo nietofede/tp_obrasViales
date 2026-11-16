@@ -3,13 +3,11 @@ package com.obrasviales.ms_operaciones.controller;
 import com.obrasviales.commons.exception.GlobalExceptionHandler;
 import com.obrasviales.commons.security.BaseResourceServerConfig;
 import com.obrasviales.ms_operaciones.servicios.EjecucionService;
-import com.obrasviales.ms_operaciones.servicios.FaseEnRiesgoService;
 import com.obrasviales.ms_operaciones.servicios.HabilitacionDiariaService;
 import com.obrasviales.ms_operaciones.servicios.OTServiceInterfaz;
 import com.obrasviales.ms_operaciones.servicios.SuspensionService;
 import com.obrasviales.ms_operaciones.servicios.UmbralClimaticoService;
 import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,8 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // los tres casos obligatorios por endpoint (docs/matriz-permisos.md, seccion 4): sin token 401, rol insuficiente 403
 // y rol correcto 2xx. los servicios estan simulados: se prueba la seguridad y que un cuerpo valido se acepta.
 @WebMvcTest({OTController.class, EjecucionController.class, HabilitacionDiariaController.class,
-        SuspensionController.class, FaseEnRiesgoController.class, ConfiguracionController.class,
-        UmbralClimaticoController.class})
+        SuspensionController.class, UmbralClimaticoController.class})
 @Import({BaseResourceServerConfig.class, GlobalExceptionHandler.class})
 class SeguridadEndpointsTest {
 
@@ -48,7 +45,6 @@ class SeguridadEndpointsTest {
     @MockitoBean private EjecucionService ejecucionService;
     @MockitoBean private HabilitacionDiariaService habilitacionDiariaService;
     @MockitoBean private SuspensionService suspensionService;
-    @MockitoBean private FaseEnRiesgoService faseEnRiesgoService;
     @MockitoBean private UmbralClimaticoService umbralClimaticoService;
     @MockitoBean private JwtDecoder jwtDecoder;
 
@@ -63,23 +59,17 @@ class SeguridadEndpointsTest {
     static Stream<Caso> casos() {
         return Stream.of(
                 new Caso("POST", ORDENES, "{\"faseId\":1,\"tramoId\":1,\"fechaProgramada\":\"2099-01-01\"}", "ADMIN", "PLANIFICADOR", 201),
-                new Caso("GET", ORDENES + "/1", null, "OPERARIO", "AUDITOR", 200),
-                new Caso("GET", ORDENES, null, "OPERARIO", "AUDITOR", 200),
+                new Caso("GET", ORDENES + "/1", null, "ADMIN", "AUDITOR", 200),
+                new Caso("GET", ORDENES, null, "ADMIN", "AUDITOR", 200),
                 new Caso("POST", ORDENES + "/1/habilitacion", null, "CAPATAZ", "PLANIFICADOR", 200),
-                new Caso("GET", ORDENES + "/1/evaluaciones-climaticas", null, "OPERARIO", "CAPATAZ", 200),
-                new Caso("PATCH", ORDENES + "/1/cancelacion", null, "CAPATAZ", "PLANIFICADOR", 200),
-                new Caso("PATCH", ORDENES + "/1/reprogramacion", "{\"fecha\":\"2099-01-01\"}", "CAPATAZ", "PLANIFICADOR", 200),
+                new Caso("GET", ORDENES + "/1/evaluaciones-climaticas", null, "ADMIN", "CAPATAZ", 200),
                 new Caso("PATCH", ORDENES + "/1/resolucion-climatica", "{\"decision\":\"HABILITAR\"}", "PLANIFICADOR", "CAPATAZ", 200),
                 new Caso("PATCH", ORDENES + "/1/inicio", null, "PLANIFICADOR", "CAPATAZ", 200),
                 new Caso("PATCH", ORDENES + "/1/rechazo", "{\"motivo\":\"Falta de personal\"}", "PLANIFICADOR", "CAPATAZ", 200),
                 new Caso("POST", ORDENES + "/1/avances", "{\"porcentaje\":40}", "PLANIFICADOR", "CAPATAZ", 201),
-                new Caso("PATCH", ORDENES + "/1/cierre", "{\"horasMaquina\":7.5,\"materiales\":[]}", "PLANIFICADOR", "CAPATAZ", 200),
                 new Caso("POST", "/api/operaciones/habilitaciones-diarias", "{\"fecha\":\"2026-11-13\"}", "CAPATAZ", "PLANIFICADOR", 200),
                 new Caso("GET", "/api/operaciones/suspensiones", null, "CAPATAZ", "AUDITOR", 200),
-                new Caso("GET", "/api/operaciones/fases-en-riesgo", null, "CAPATAZ", "AUDITOR", 200),
-                new Caso("POST", "/api/operaciones/fases-en-riesgo/1/decisiones", "{\"decision\":\"CANCELAR\"}", "AUDITOR", "PLANIFICADOR", 200),
-                new Caso("PUT", "/api/operaciones/configuracion/limite-suspensiones", "{\"limite\":3}", "PLANIFICADOR", "ADMIN", 200),
-                new Caso("GET", "/api/operaciones/umbrales-climaticos", null, "OPERARIO", "AUDITOR", 200),
+                new Caso("GET", "/api/operaciones/umbrales-climaticos", null, "SISTEMA", "AUDITOR", 200),
                 new Caso("PUT", "/api/operaciones/umbrales-climaticos/BASE", UMBRAL_JSON, "PLANIFICADOR", "ADMIN", 200));
     }
 
@@ -97,15 +87,27 @@ class SeguridadEndpointsTest {
     }
 
     // el cambio de estado libre se quito: dejaba pasar una orden a EN_EJECUCION sin reserva ni clima.
-    // cada transicion tiene su endpoint (habilitacion, inicio, rechazo, cierre, cancelacion, reprogramacion).
-    // la ruta ya no existe: 404 en el formato estandar de commons.
-    @Test
-    void elCambioDeEstadoLibreYaNoExiste() throws Exception {
-        for (String rolUsuario : new String[] {"PLANIFICADOR", "CAPATAZ"}) {
-            mockMvc.perform(MockMvcRequestBuilders.patch(ORDENES + "/1/estado?nuevoEstado=EN_EJECUCION")
-                            .with(jwt().authorities(rol(rolUsuario))))
-                    .andExpect(status().isNotFound());
-        }
+    // cada transicion tiene su endpoint (habilitacion de una orden o del dia, inicio, rechazo, avances).
+    // y el recorte de alcance quito la cancelacion, la reprogramacion manual, el cierre,
+    // las fases en riesgo y el limite configurable: esas rutas ya no existen y dan 404 en el formato de commons.
+    static Stream<String[]> rutasQuitadas() {
+        return Stream.of(
+                new String[] {"PATCH", ORDENES + "/1/estado?nuevoEstado=EN_EJECUCION", "PLANIFICADOR"},
+                new String[] {"PATCH", ORDENES + "/1/cancelacion", "PLANIFICADOR"},
+                new String[] {"PATCH", ORDENES + "/1/reprogramacion", "PLANIFICADOR"},
+                new String[] {"PATCH", ORDENES + "/1/cierre", "CAPATAZ"},
+                new String[] {"GET", "/api/operaciones/fases-en-riesgo", "PLANIFICADOR"},
+                new String[] {"POST", "/api/operaciones/fases-en-riesgo/1/decisiones", "PLANIFICADOR"},
+                new String[] {"PUT", "/api/operaciones/configuracion/limite-suspensiones", "ADMIN"});
+    }
+
+    @ParameterizedTest(name = "{0} {1}")
+    @MethodSource("rutasQuitadas")
+    void lasRutasQuitadasYaNoExisten(String metodo, String ruta, String rolUsuario) throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.request(HttpMethod.valueOf(metodo), ruta)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}")
+                        .with(jwt().authorities(rol(rolUsuario))))
+                .andExpect(status().isNotFound());
     }
 
     @ParameterizedTest(name = "{0}")

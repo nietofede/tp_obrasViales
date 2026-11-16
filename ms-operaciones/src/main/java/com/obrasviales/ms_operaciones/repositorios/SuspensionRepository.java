@@ -19,7 +19,7 @@ public interface SuspensionRepository extends JpaRepository<Suspension, Long> {
 
     List<Suspension> findByOrdenTrabajoIdOrderByFechaDesc(Long ordenTrabajoId);
 
-    // Tras la decision del PLANIFICADOR el conteo de la fase vuelve a empezar (el historial se conserva).
+    // Cuando el PLANIFICADOR crea la orden nueva de una fase en riesgo, el conteo vuelve a empezar (el historial se conserva).
     @Modifying
     @Query("update Suspension s set s.vigente = false where s.faseId = :faseId and s.vigente = true")
     int marcarNoVigentes(@Param("faseId") Long faseId);

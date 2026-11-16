@@ -3,7 +3,6 @@ import com.obrasviales.ms_operaciones.dtos.EvaluacionClimaticaResponseDTO;
 import com.obrasviales.commons.security.Roles; // <--- Importamos los roles del commons de tu amigo
 import com.obrasviales.ms_operaciones.dtos.CrearOrdenRequest;
 import com.obrasviales.ms_operaciones.dtos.OrdenTrabajoDTO;
-import com.obrasviales.ms_operaciones.dtos.ReprogramacionOrdenRequest;
 import com.obrasviales.ms_operaciones.modelo.EstadoOrden;
 import com.obrasviales.ms_operaciones.servicios.OTServiceInterfaz;
 
@@ -58,9 +57,11 @@ public class OTController {
         return ResponseEntity.ok(lista);
     }
 
+    // Habilitacion de una orden puntual: el mismo proceso que la habilitacion diaria, para una sola orden.
+    // Sirve para la demo y la coleccion (se controla que orden se evalua) y para reintentar una orden a mano.
     @PostMapping("/{id}/habilitacion")
     @PreAuthorize("hasAnyRole('" + Roles.PLANIFICADOR + "', '" + Roles.SISTEMA + "')")
-    @Operation(summary = "Evalúa la habilitación de una orden: consulta la fase a Obras (RN-01) y decide por clima (HABILITADA, SUSPENDIDA o PENDIENTE_CONFIRMACION_CLIMATICA)")
+    @Operation(summary = "Evalúa la habilitación de una orden: consulta la fase a Obras (RN-01), reserva recursos y decide por clima (HABILITADA, SUSPENDIDA o PENDIENTE_CONFIRMACION_CLIMATICA)")
     public ResponseEntity<OrdenTrabajoDTO> habilitar(@PathVariable Long id) {
         return ResponseEntity.ok(otService.habilitarOrden(id));
     }
@@ -76,18 +77,4 @@ public class OTController {
         return ResponseEntity.ok(historial);
     }
 
-    @PatchMapping("/{id}/cancelacion")
-    @PreAuthorize("hasRole('" + Roles.PLANIFICADOR + "')")
-    @Operation(summary = "Cancelar una orden y liberar sus reservas (PLANIFICADOR)")
-    public ResponseEntity<OrdenTrabajoDTO> cancelar(@PathVariable Long id) {
-        return ResponseEntity.ok(otService.cancelarOrden(id));
-    }
-
-    @PatchMapping("/{id}/reprogramacion")
-    @PreAuthorize("hasRole('" + Roles.PLANIFICADOR + "')")
-    @Operation(summary = "Mover de fecha una orden PROGRAMADA sin recursos, para reintentar su reserva (PLANIFICADOR)")
-    public ResponseEntity<OrdenTrabajoDTO> reprogramar(@PathVariable Long id,
-                                                       @Valid @RequestBody ReprogramacionOrdenRequest request) {
-        return ResponseEntity.ok(otService.reprogramarOrden(id, request.fecha()));
-    }
 }
