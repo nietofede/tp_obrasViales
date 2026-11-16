@@ -2,7 +2,7 @@
 
 Trabajo práctico integrador 2026 de Backend de Aplicaciones (UTN FRC, comisión 3k3, equipo 6767).
 
-GOVP ayuda a planificar y controlar obras de pavimentación. Se carga una obra con sus tramos y fases (relevamiento, base, sub-base, carpeta asfáltica o losa de hormigón) y el sistema se encarga de lo más delicado: decidir, día por día, si una orden de trabajo se puede ejecutar. Para eso cruza tres cosas: que la fase anterior esté terminada, que haya una cuadrilla (con operarios certificados, máquinas disponibles y tiempo de viaje razonable) y que el clima acompañe. Si el clima no acompaña, la orden se suspende, se liberan las reservas y la fase se reprograma. Si una fase se suspende demasiadas veces, queda marcada en riesgo para que decida una persona.
+GOVP ayuda a planificar y controlar obras de pavimentación. Se carga una obra con sus tramos y fases (relevamiento, base, sub-base, carpeta asfáltica o losa de hormigón) y el sistema se encarga de lo más delicado: decidir, día por día, si una orden de trabajo se puede ejecutar. Para eso cruza tres cosas: que la fase anterior esté terminada, que haya una cuadrilla (con los operarios y las máquinas que pide el trabajo y un tiempo de viaje razonable) y que el clima acompañe. Si el clima no acompaña, la orden se suspende, se liberan las reservas y la fase se reprograma. Si una fase se suspende demasiadas veces, queda marcada en riesgo para que decida una persona.
 
 Son tres servicios Spring Boot detrás de un API Gateway, con Keycloak para la seguridad y PostgreSQL para los datos.
 
@@ -12,7 +12,7 @@ Son tres servicios Spring Boot detrás de un API Gateway, con Keycloak para la s
 |---|---|---|
 | `api-gateway` | 8081 | Única puerta de entrada. Valida el JWT y enruta a los servicios. |
 | `ms-obras` | 8082 | Obras, tramos, fases, materiales y cronograma (RN-01 a RN-03). |
-| `ms-recursos` | 8083 | Máquinas, operarios, cuadrillas y plantas. Propone y reserva recursos para una orden (RN-04 a RN-08). Usa OSRM para los tiempos de viaje. |
+| `ms-recursos` | 8083 | Máquinas, operarios, cuadrillas y plantas. Propone y reserva recursos para una orden (RN-05 a RN-08). Usa OSRM para los tiempos de viaje. |
 | `ms-operaciones` | 8084 | Órdenes de trabajo y su máquina de estados, evaluación climática con Open-Meteo y la saga de suspensión (RN-09 a RN-12). |
 | `obras-commons` | — | Librería Maven que comparten los tres servicios: seguridad, errores estándar, filtro de correlation-id y cliente con token de servicio. No lleva entidades ni lógica de negocio. |
 | Keycloak | 8080 | Usuarios, roles y tokens. |
@@ -122,6 +122,7 @@ Conviene usar `clean` al cambiar de rama: si no, Maven puede arrastrar archivos 
 
 - [`docs/guia-de-estudio.md`](docs/guia-de-estudio.md): por dónde empezar. Explica el sistema completo (arquitectura, proceso central, reglas, integraciones, seguridad, datos y decisiones) con referencias a los archivos y preguntas para practicar la defensa.
 - [`docs/guia-del-codigo.md`](docs/guia-del-codigo.md): qué resuelve el sistema, los 32 endpoints y la explicación de cada archivo y cada método, con cómo se relacionan entre sí.
+- [`docs/guia-de-defensa.md`](docs/guia-de-defensa.md): para preparar la defensa. Explica cómo funciona cada mecanismo con el código real (beans y `@Bean`, auto-configuración, seguridad JWT y `@PreAuthorize`, errores RFC 7807, JPA y `@Transactional`, Flyway, clientes entre servicios, Resilience4j, caché, tareas programadas, correlation-id), cada regla de negocio, la saga y las preguntas probables.
 - [`docs/c2-contenedores.md`](docs/c2-contenedores.md): diagrama de contenedores de lo que levanta el compose, con quién se habla con quién y qué queda expuesto.
 - [`docs/DECISIONES.md`](docs/DECISIONES.md): la bitácora de decisiones, con las alternativas que evaluamos y sus consecuencias.
 - [`docs/matriz-permisos.md`](docs/matriz-permisos.md): qué rol puede hacer qué.
