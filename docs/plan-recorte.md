@@ -104,3 +104,17 @@ La cátedra respondió al mail que el recorte "suena razonable" y que se achique
 - **C5** — hecho. `docs/guia-de-defensa.md` (739 líneas), enlazada desde el README: el sistema en una página, arquitectura y trusted zone, los mecanismos de Spring con el código del repo (contenedor e inyección, estereotipos, los cinco `@Bean` uno por uno, auto-configuración de commons, configuración externa y perfiles), capa web y validación, errores RFC 7807 (por qué 401 y 403 se escriben a mano), seguridad (JWT, resource server, conversor de roles, cadena de filtros, `@PreAuthorize`, reglas del gateway), persistencia (entidades, `@Version`, Spring Data, `@Transactional` y autoinvocación, Flyway), clientes entre servicios, Open-Meteo, Resilience4j, OSRM con caché y rate limiter, tareas programadas, correlation-id, las 11 reglas, estados, reservas con TTL, saga, fallas, Docker, tests y preguntas de defensa. Control con script: todo método y clase del proyecto que nombra existe en el código (lo que no aparece son nombres de configuración, atributos de anotaciones o clases de Spring).
 - **C6** — hecho. Cinco commits en `feat/quitar-rn04` (Recursos, script e2e de Obras, colección y panel, documentación, guía de defensa) más este registro, agregados con rutas puntuales y sin archivos de prueba; merge `--no-ff` a `main` local (el push lo hace el equipo). Quien tenga un volumen viejo de Postgres puede seguir sin borrarlo: la V4 de Recursos se aplica sola sobre la base existente.
 
+## Fase D: documentación unificada (2026-11-16, rama `docs/unificar-documentacion`)
+
+Los siete documentos de lectura se reemplazaron por `vision-general.md`, `referencia-del-codigo.md` y `guia-del-proyecto.md`. Las menciones a los documentos anteriores en este plan son historia; dónde quedó cada uno:
+
+| Documento anterior | Dónde quedó su contenido |
+|---|---|
+| `arquitectura.md` (C1, ER, secuencia) | `guia-del-proyecto.md`, sección 2 (copiado sin cambios) |
+| `aviso-cambios-catedra.md` | `guia-del-proyecto.md`, sección 13 |
+| `CONSIDERACIONES.md` | `guia-del-proyecto.md`, secciones 1 (arranque) y 10 (trampas), reescritas: varios ítems estaban desactualizados |
+| `guion-demo.md` | `guia-del-proyecto.md`, sección 11 (y sus preguntas en la 12) |
+| `guia-de-estudio.md` | `vision-general.md` (lo general) y `guia-del-proyecto.md` (decisiones, seguridad, datos) |
+| `guia-de-defensa.md` | `referencia-del-codigo.md`, secciones 1 a 9 (mecanismos) y `guia-del-proyecto.md`, secciones 3, 4, 7, 8 y 12 |
+| `guia-del-codigo.md` | `referencia-del-codigo.md`, secciones 11 a 16 |
+
