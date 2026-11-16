@@ -25,7 +25,7 @@ class ExpiracionReservasTest {
 
     private ReservaService serviceConSoloReservas() {
         // Estos dos métodos solo usan el repositorio de reservas; el resto de las dependencias no se tocan.
-        return new ReservaService(reservaRepository, null, null, null, null, null, null, null, null);
+        return new ReservaService(reservaRepository, null, null, null, null, null, null, null);
     }
 
     @Test
