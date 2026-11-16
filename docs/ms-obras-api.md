@@ -18,30 +18,26 @@ Todas las requests van con el header `Authorization: Bearer <access_token>`, sal
 | Personas | `POST http://localhost:8080/realms/obras-viales/protocol/openid-connect/token` | `grant_type=password`, `client_id=obras-public-client`, `username=<rol en minuscula>`, `password=<rol>123` |
 | SISTEMA | misma URL | `grant_type=client_credentials`, `client_id=servicio-sistema`, `client_secret=` valor de `SERVICIO_SISTEMA_SECRET` del `.env` |
 
-Usuarios de demo: `admin`, `planificador`, `capataz`, `operario`, `auditor`. El token esta en el campo `access_token` de la respuesta.
+Usuarios de demo: `admin`, `planificador`, `capataz`, `auditor`. El token esta en el campo `access_token` de la respuesta.
 
-## 3. Endpoints de ms-obras (15 comprometidos y 3 extras)
+## 3. Endpoints de ms-obras (11 comprometidos y 1 extra tras el recorte de alcance)
+
+Recorte del 2026-11-14 (`docs/DECISIONES.md`): se quitaron `PUT /obras/{id}`, `GET` y `PUT /tramos/{id}`, `GET /fases/{id}` y los extras `POST /fases/{id}/iniciar` y `GET /tramos/{id}/fases`. En la sección 4 esas filas quedan tachadas; RN-01 se prueba con la fila 18 (primer avance por el endpoint interno).
 
 | Endpoint | Roles | Cuestionario |
 | --- | --- | --- |
 | POST /api/obras | PLANIFICADOR | POST /obras |
 | GET /api/obras | PLANIFICADOR, CAPATAZ, AUDITOR | GET /obras |
 | GET /api/obras/{obraId} | PLANIFICADOR, CAPATAZ, AUDITOR | GET /obras/{id} |
-| PUT /api/obras/{obraId} | PLANIFICADOR | PUT /obras/{id} |
 | POST /api/obras/{obraId}/tramos | PLANIFICADOR | POST /obras/{obraId}/tramos |
-| GET /api/obras/tramos/{tramoId} | PLANIFICADOR, CAPATAZ, AUDITOR | GET /tramos/{id} |
-| PUT /api/obras/tramos/{tramoId} | PLANIFICADOR | PUT /tramos/{id} |
 | POST /api/obras/tramos/{tramoId}/fases | PLANIFICADOR | POST /tramos/{tramoId}/fases |
-| GET /api/obras/fases/{id} | PLANIFICADOR, CAPATAZ, AUDITOR | GET /fases/{id} |
 | GET /api/obras/fases/{id}/materiales | PLANIFICADOR, CAPATAZ | GET /fases/{id}/materiales |
 | GET /api/obras/{obraId}/cronograma | PLANIFICADOR, CAPATAZ, AUDITOR | GET /obras/{obraId}/cronograma |
 | PATCH /api/obras/fases/{id}/programacion | PLANIFICADOR, SISTEMA | PATCH /fases/{id}/programacion |
 | GET /api/obras/internos/fases/{id}/contexto-ejecucion | SISTEMA | GET /internos/fases/{id}/contexto-ejecucion |
 | POST /api/obras/internos/fases/{id}/avances | SISTEMA | POST /internos/fases/{id}/avances |
 | PATCH /api/obras/internos/fases/{id}/riesgo | SISTEMA | PATCH /internos/fases/{id}/riesgo |
-| POST /api/obras/fases/{id}/iniciar | CAPATAZ, SISTEMA | extra |
 | GET /api/obras/{obraId}/tramos | PLANIFICADOR, CAPATAZ, AUDITOR | extra |
-| GET /api/obras/tramos/{tramoId}/fases | PLANIFICADOR, CAPATAZ, AUDITOR | extra |
 
 ## 4. Flujo de requests (en este orden)
 Variables a guardar de cada respuesta (campo `id`): `obraId`, `tramoId`, `faseA`, `faseB`.
@@ -51,20 +47,20 @@ Variables a guardar de cada respuesta (campo `id`): `obraId`, `tramoId`, `faseA`
 | 1 | POST /api/obras | sin token | OBRA | 401 |
 | 2 | POST /api/obras | capataz | OBRA | 403 |
 | 3 | POST /api/obras | planificador | OBRA | 201. Guardar `obraId` |
-| 4 | PUT /api/obras/{{obraId}} | capataz | OBRA_EDITADA | 403 |
-| 5 | PUT /api/obras/{{obraId}} | planificador | OBRA_EDITADA | 200, con el nombre editado |
+| 4 | ~~PUT /api/obras/{{obraId}}~~ | ~~capataz~~ | ~~OBRA_EDITADA~~ | ~~403~~ |
+| 5 | ~~PUT /api/obras/{{obraId}}~~ | ~~planificador~~ | ~~OBRA_EDITADA~~ | ~~200, con el nombre editado~~ |
 | 6 | POST /api/obras/{{obraId}}/tramos | planificador | TRAMO | 201. Guardar `tramoId` |
 | 7 | POST /api/obras/{{obraId}}/tramos | planificador | TRAMO con latitud 91 | 400 con `errores.latitud` |
 | 8 | POST /api/obras/99999/tramos | planificador | TRAMO | 404 |
-| 9 | PUT /api/obras/tramos/{{tramoId}} | planificador | TRAMO_EDITADO | 200, superficie 2000 |
-| 10 | GET /api/obras/tramos/{{tramoId}} | auditor | (vacio) | 200, superficie 2000 |
+| 9 | ~~PUT /api/obras/tramos/{{tramoId}}~~ | ~~planificador~~ | ~~TRAMO_EDITADO~~ | ~~200, superficie 2000~~ |
+| 10 | ~~GET /api/obras/tramos/{{tramoId}}~~ | ~~auditor~~ | ~~(vacio)~~ | ~~200, superficie 2000~~ |
 | 11 | POST /api/obras/tramos/{{tramoId}}/fases | planificador | FASE_A | 201. Guardar `faseA` |
 | 12 | POST /api/obras/tramos/{{tramoId}}/fases | planificador | FASE_B (con `faseAnteriorId` = `faseA`) | 201. Guardar `faseB` |
 | 13 | POST /api/obras/tramos/{{tramoId}}/fases | planificador | FASE_C (otra siguiente de `faseA`) | 409 |
-| 14 | GET /api/obras/fases/{{faseB}} | auditor | (vacio) | 200, estado `PENDIENTE`, avance 0 |
+| 14 | ~~GET /api/obras/fases/{{faseB}}~~ | ~~auditor~~ | ~~(vacio)~~ | ~~200, estado `PENDIENTE`, avance 0~~ |
 | 15 | GET /api/obras/fases/{{faseB}}/materiales | auditor | (vacio) | 403 |
 | 16 | GET /api/obras/fases/{{faseB}}/materiales | capataz | (vacio) | 200 (RN-03: piedra triturada 500.00 m3, con la superficie editada de 2000) |
-| 17 | POST /api/obras/fases/{{faseB}}/iniciar | capataz | (vacio) | 409 (RN-01: la fase anterior no esta completada) |
+| 17 | ~~POST /api/obras/fases/{{faseB}}/iniciar~~ | ~~capataz~~ | ~~(vacio)~~ | ~~409 (RN-01: la fase anterior no esta completada)~~ |
 | 18 | POST /api/obras/internos/fases/{{faseB}}/avances | sistema | AVANCE 30 | 409 (RN-01) |
 | 19 | POST /api/obras/internos/fases/{{faseA}}/avances | planificador | AVANCE 50 | 403 |
 | 20 | POST /api/obras/internos/fases/{{faseA}}/avances | sistema | AVANCE 0 | 400 con `errores.porcentaje` |

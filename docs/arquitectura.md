@@ -10,7 +10,6 @@ Es el diagrama de Contexto del modelo C4 de la sección 05 del cuestionario. El 
 flowchart TB
     planificador["Planificador<br/>Crea obras, tramos y fases; arma el cronograma;<br/>emite órdenes; decide sobre fases en riesgo"]
     capataz["Capataz<br/>Confirma o rechaza órdenes; registra inicio, fin y avance;<br/>hace check-in de cuadrilla; resuelve casos con clima incierto"]
-    operario["Operario<br/>Consulta sus asignaciones del día (solo lectura)"]
     auditor["Auditor<br/>Consulta historial de suspensiones y reportes (solo lectura)"]
     admin["Admin<br/>Gestiona catálogos, umbrales climáticos y usuarios"]
 
@@ -22,7 +21,6 @@ flowchart TB
 
     planificador -->|"Planifica obras y emite órdenes<br/>HTTPS/JSON + JWT"| obras
     capataz -->|"Confirma órdenes, registra avance y check-in<br/>HTTPS/JSON + JWT"| obras
-    operario -->|"Consulta asignaciones del día<br/>HTTPS/JSON + JWT"| obras
     auditor -->|"Consulta historial y reportes<br/>HTTPS/JSON + JWT"| obras
     admin -->|"Configura catálogos, umbrales y usuarios<br/>HTTPS/JSON + JWT"| obras
 
@@ -42,7 +40,6 @@ title Diagrama de Contexto (C4 - Nivel 1) - Gestión Integral de Obras Viales co
 
 Person(planificador, "Planificador", "Crea obras, tramos y fases; arma el cronograma; emite órdenes; decide sobre fases en riesgo.")
 Person(capataz, "Capataz", "Confirma o rechaza órdenes; registra inicio, fin y avance; hace check-in de cuadrilla; resuelve casos con clima incierto.")
-Person(operario, "Operario", "Consulta sus asignaciones del día (solo lectura).")
 Person(auditor, "Auditor", "Consulta historial de suspensiones y reportes (solo lectura).")
 Person(admin, "Admin", "Gestiona catálogos, umbrales climáticos y usuarios.")
 
@@ -54,7 +51,6 @@ System_Ext(osrm, "OSRM (servidor público demo)", "API pública de rutas por cal
 
 Rel(planificador, obras, "Planifica obras y emite órdenes", "HTTPS/JSON + JWT")
 Rel(capataz, obras, "Confirma órdenes, registra avance y check-in", "HTTPS/JSON + JWT")
-Rel(operario, obras, "Consulta asignaciones del día", "HTTPS/JSON + JWT")
 Rel(auditor, obras, "Consulta historial y reportes", "HTTPS/JSON + JWT")
 Rel(admin, obras, "Configura catálogos, umbrales y usuarios", "HTTPS/JSON + JWT")
 
@@ -64,7 +60,7 @@ Rel(obras, osrm, "Calcula tiempos cuadrilla→tramo y planta→tramo", "HTTPS/JS
 @enduml
 ```
 
-Cuatro de los cinco roles (Planificador, Capataz, Auditor y Admin) ya operan en la implementación; el Operario solo tendrá un endpoint propio (`GET /operarios/me/asignaciones`) cuando se mergee la Rama 1. Los reportes del Auditor y la gestión de usuarios por API están fuera de alcance: los usuarios se administran en Keycloak.
+Operan cuatro roles (Planificador, Capataz, Auditor y Admin); el Operario del cuestionario se quitó con el recorte de alcance del 2026-11-14 porque su única función era consultar sus asignaciones. Los reportes del Auditor y la gestión de usuarios por API están fuera de alcance: los usuarios se administran en Keycloak.
 
 ## 2. Modelo de datos (ER)
 
@@ -122,7 +118,6 @@ erDiagram
     cuadrillas ||--o{ operarios : integra
     cuadrillas ||--o{ maquinas : tiene
     operarios ||--o{ certificaciones : posee
-    maquinas ||--o{ mantenimientos : tiene
     cuadrillas ||--o{ reservas : "es reservada en"
     plantas_mezcla ||--o{ reservas : "abastece"
 
@@ -154,13 +149,6 @@ erDiagram
         varchar tipo
         varchar estado
         int horas_uso
-    }
-    mantenimientos {
-        bigserial id PK
-        bigint maquina_id FK
-        date fecha_inicio
-        date fecha_fin
-        varchar motivo
     }
     plantas_mezcla {
         bigserial id PK
@@ -207,9 +195,6 @@ erDiagram
 erDiagram
     ordenes_trabajo ||--o{ evaluaciones_climaticas : evalua
     ordenes_trabajo ||--o{ suspensiones : registra
-    ordenes_trabajo ||--o{ fases_en_riesgo : origina
-    ordenes_trabajo ||--o| cierres_orden : cierra
-    cierres_orden ||--o{ cierre_consumos : detalla
 
     ordenes_trabajo {
         bigserial id PK
@@ -241,27 +226,6 @@ erDiagram
         varchar detalle
         boolean vigente
         timestamp fecha
-    }
-    fases_en_riesgo {
-        bigserial id PK
-        bigint fase_id
-        bigint orden_trabajo_id FK
-        boolean resuelta
-        varchar decision
-        timestamp creado
-        timestamp resuelta_en
-    }
-    cierres_orden {
-        bigserial id PK
-        bigint orden_trabajo_id FK
-        numeric horas_maquina
-        timestamp cerrado
-    }
-    cierre_consumos {
-        bigint cierre_id FK
-        varchar material
-        numeric cantidad
-        varchar unidad
     }
     umbrales_climaticos {
         bigserial id PK

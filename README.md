@@ -68,7 +68,6 @@ Los usuarios de demo ya vienen cargados en Keycloak. Todos tienen como contrase�
 | `admin` | ADMIN |
 | `planificador` | PLANIFICADOR |
 | `capataz` | CAPATAZ |
-| `operario` | OPERARIO |
 | `auditor` | AUDITOR |
 
 Además hay una cuenta de servicio, `servicio-sistema` (rol SISTEMA), que usan los servicios entre sí y el job diario. Se autentica con client credentials y el secreto es `SERVICIO_SISTEMA_SECRET` del `.env`.
@@ -82,7 +81,7 @@ curl.exe -s -o NUL -w "sin token: %{http_code}`n" http://localhost:8081/api/obra
 curl.exe -s -w "`ncon token: %{http_code}`n" -H "Authorization: Bearer $token" http://localhost:8081/api/obras
 ```
 
-Sin token tiene que devolver 401. Con el token del planificador tiene que devolver 200 y la obra de demo ("Ruta Provincial 34"). Si en cambio se prueba con el token de `operario`, devuelve 403: el usuario está autenticado pero su rol no alcanza. Esos tres casos (sin token, rol insuficiente y rol correcto) son los que probamos siempre.
+Sin token tiene que devolver 401. Con el token del planificador tiene que devolver 200 y la obra de demo ("Ruta Provincial 34"). Si en cambio se prueba con el token de `admin`, devuelve 403: el usuario está autenticado pero su rol no alcanza. Esos tres casos (sin token, rol insuficiente y rol correcto) son los que probamos siempre.
 
 Las rutas del gateway son `/api/obras/**`, `/api/recursos/**` y `/api/operaciones/**`. Las que empiezan con `/api/<servicio>/internos/` son para llamadas entre servicios y exigen el rol SISTEMA.
 
@@ -122,6 +121,7 @@ Conviene usar `clean` al cambiar de rama: si no, Maven puede arrastrar archivos 
 ## Dónde está la documentación
 
 - [`docs/guia-de-estudio.md`](docs/guia-de-estudio.md): por dónde empezar. Explica el sistema completo (arquitectura, proceso central, reglas, integraciones, seguridad, datos y decisiones) con referencias a los archivos y preguntas para practicar la defensa.
+- [`docs/guia-del-codigo.md`](docs/guia-del-codigo.md): qué resuelve el sistema, los 32 endpoints y la explicación de cada archivo y cada método, con cómo se relacionan entre sí.
 - [`docs/c2-contenedores.md`](docs/c2-contenedores.md): diagrama de contenedores de lo que levanta el compose, con quién se habla con quién y qué queda expuesto.
 - [`docs/DECISIONES.md`](docs/DECISIONES.md): la bitácora de decisiones, con las alternativas que evaluamos y sus consecuencias.
 - [`docs/matriz-permisos.md`](docs/matriz-permisos.md): qué rol puede hacer qué.

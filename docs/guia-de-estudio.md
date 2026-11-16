@@ -77,7 +77,7 @@ Todos siguen **controller → service → repository**:
 
 ## 3. El proceso central paso a paso
 
-Se dispara de dos formas: el PLANIFICADOR llama a `POST /api/operaciones/habilitaciones-diarias` (o a `POST /ordenes/{id}/habilitacion` para una sola), o el **job diario** (`JobHabilitacionDiaria`, con `@Scheduled`, cron configurable en `app.jobs.habilitacion.cron`, por defecto a las 6 h) usando la cuenta SISTEMA. Los dos terminan en `HabilitacionDiariaService`, que toma las órdenes del día en estado `PROGRAMADA` o `RECURSOS_ASIGNADOS` y llama a `OrdenTrabajoServiceImpl.habilitarOrden` para cada una.
+Se dispara de dos formas: el PLANIFICADOR llama a `POST /api/operaciones/habilitaciones-diarias` con una fecha (o a `POST /ordenes/{id}/habilitacion` para una sola), o el **job diario** (`JobHabilitacionDiaria`, con `@Scheduled`, cron configurable en `app.jobs.habilitacion.cron`, por defecto a las 6 h) usando la cuenta SISTEMA. Los dos terminan en `HabilitacionDiariaService`, que toma las órdenes del día en estado `PROGRAMADA` o `RECURSOS_ASIGNADOS` y llama a `OrdenTrabajoServiceImpl.habilitarOrden` para cada una.
 
 El diagrama de secuencia completo está en [`arquitectura.md`, sección 3](arquitectura.md).
 
@@ -96,9 +96,9 @@ El diagrama de secuencia completo está en [`arquitectura.md`, sección 3](arqui
 1. Recursos **libera** la reserva (`PATCH /internos/reservas/{id}/liberacion`). Si Recursos no responde, se registra y la reserva vence sola por TTL.
 2. Se registra la suspensión en el historial.
 3. Si la fase todavía no llegó al límite de suspensiones: Obras **reprograma la fase** y corre en cascada las dependientes (RN-02), y Operaciones crea la **orden nueva** para la fecha nueva; la vieja queda `REPROGRAMADA`. La fecha nueva es la mayor entre "el día siguiente" y el fin de la fase anterior.
-4. Si llegó al límite (3 por defecto, `PUT /configuracion/limite-suspensiones`): la fase se marca **en riesgo** en Obras y el PLANIFICADOR decide si se reprograma o se cancela (RN-12, `POST /fases-en-riesgo/{faseId}/decisiones`).
+4. Si llegó al límite (fijo en 3, sembrado en `configuracion_suspensiones`): la fase se marca **en riesgo** en Obras, la orden queda `SUSPENDIDA` y el sistema deja de reprogramarla solo (RN-12). El PLANIFICADOR decide: reprograma la fase (`PATCH /api/obras/fases/{id}/programacion`, que la vuelve a `PENDIENTE`) y crea la orden nueva (`POST /ordenes`); al crearla, las órdenes suspendidas de esa fase pasan a `REPROGRAMADA` y el conteo de suspensiones vuelve a cero (`SuspensionService.cerrarSuspensionesDeLaFase`).
 
-**Paso 6. Ejecución.** El CAPATAZ inicia la orden (`PATCH /inicio`, pasa a `EN_EJECUCION`), registra avances (`POST /avances`, que llegan a Obras) y la cierra (`PATCH /cierre`) con el consumo real de materiales y las horas de máquina. Al llegar al 100 %, la fase queda completa en Obras y la orden `COMPLETADA`. También puede **rechazarla** (`PATCH /rechazo`), lo que dispara la misma saga.
+**Paso 6. Ejecución.** El CAPATAZ inicia la orden (`PATCH /inicio`, pasa a `EN_EJECUCION`), y registra avances (`POST /avances`, que llegan a Obras). Al llegar al 100 %, Obras deja la fase `COMPLETADA` y Operaciones pasa la orden a `COMPLETADA` en el mismo pedido (no hay un cierre aparte: el registro del consumo real se quitó con el recorte de alcance). También puede **rechazarla** (`PATCH /rechazo`), lo que dispara la misma saga.
 
 ### 3.1 La máquina de estados de la orden (RN-11)
 
@@ -122,7 +122,7 @@ Las transiciones válidas están en el enum `EstadoOrden` (`ms-operaciones/.../m
 | RN-03 | Materiales = superficie × rendimiento del tipo de trabajo | Obras (`MaterialService`, `GET /fases/{id}/materiales`) | 422 con superficie ≤ 0 |
 | RN-04 | Un operario solo opera máquinas con certificación vigente | Recursos (`ReservaService` al reservar, `CuadrillaService` al armar la cuadrilla) | 422 `RN-04` |
 | RN-05 | Ni la cuadrilla ni sus recursos con dos reservas el mismo día | Recursos (`ReservaRepository.existeReservaSolapada`) | 422 `RN-05`; se prueba otra cuadrilla |
-| RN-06 | La cuadrilla cumple la composición mínima del tipo de trabajo (operarios y máquinas, sin las que están en mantenimiento ese día) | Recursos (`ReservaService`, tabla `composicion_minima_trabajo`) | 422 `RN-06` |
+| RN-06 | La cuadrilla cumple la composición mínima del tipo de trabajo (operarios y máquinas del tipo requerido) | Recursos (`ReservaService`, tabla `composicion_minima_trabajo`) | 422 `RN-06` |
 | RN-07 | El viaje cuadrilla → tramo no supera el máximo (90 min) y la ida y vuelta entra en la jornada | Recursos (OSRM, `configuracion_desplazamiento`) | 422 `RN-07` |
 | RN-08 | La mezcla llega dentro de su ventana de transporte (60 min); se calcula la hora de salida del camión = inicio − viaje − margen | Recursos (OSRM a la planta) | 422 `RN-08` |
 | RN-09 | Se habilita solo si humedad del suelo y lluvia no superan el máximo y la temperatura alcanza el mínimo del tipo de trabajo | Operaciones (`habilitarOrden`, `umbrales_climaticos`) | `SUSPENDIDA` y saga |
@@ -146,7 +146,6 @@ Cada regla tiene tests automáticos (casos normales, límite y rechazo) y reques
   - **Timeouts**: 3 s para conectar y 5 s para leer.
   - **Reintentos** (`@Retry`): 3 intentos con 1 s entre ellos.
   - **Circuit breaker** (`@CircuitBreaker`): si fallan muchas llamadas seguidas, deja de llamar un rato y va directo al fallback, para no colgar al servicio.
-  - **Caché del último pronóstico**: 15 minutos por coordenada y fecha (`app.open-meteo.cache-ttl`).
   - **Sin dato confiable**: el fallback lanza un error y la orden queda en `PENDIENTE_CONFIRMACION_CLIMATICA`. Nunca se asume un valor (RN-10).
 
 ### 5.2 OSRM (rutas por calle) — la usa solo Recursos
@@ -172,14 +171,13 @@ Cada regla tiene tests automáticos (casos normales, límite y rechazo) y reques
 
 ### 6.1 Quién es quién
 
-Keycloak (realm `obras-viales`, importado solo al arrancar desde `docker/keycloak/`) tiene cinco usuarios de demo, uno por rol, con contraseña `<rol>123`, y una cuenta de servicio:
+Keycloak (realm `obras-viales`, importado solo al arrancar desde `docker/keycloak/`) tiene cuatro usuarios de demo, uno por rol (el OPERARIO se quitó con el recorte de alcance), con contraseña `<rol>123`, y una cuenta de servicio:
 
 | Rol | Qué hace |
 |---|---|
-| ADMIN | Catálogos de recursos, umbrales climáticos, configuración |
-| PLANIFICADOR | Obras, tramos y fases; arma cuadrillas; emite órdenes; decide fases en riesgo |
-| CAPATAZ | Check-in de su cuadrilla; inicia, rechaza, registra avance y cierra órdenes; resuelve el clima incierto |
-| OPERARIO | Solo lectura de sus propias asignaciones |
+| ADMIN | Umbrales climáticos; consulta de recursos |
+| PLANIFICADOR | Obras, tramos y fases; emite órdenes y habilita el día; decide sobre las fases en riesgo (reprograma y crea la orden nueva) |
+| CAPATAZ | Check-in de su cuadrilla; inicia, rechaza y registra avance de órdenes (al 100 % se completan); resuelve el clima incierto |
 | AUDITOR | Solo lectura de historial, órdenes y evaluaciones |
 | SISTEMA | Cuenta de servicio (client credentials): el job diario y las llamadas entre servicios |
 
@@ -219,7 +217,7 @@ Es un **JAR Maven** (módulo `obras-commons/`) que usan los tres servicios. Se r
 
 **Qué tiene (lo técnico y transversal):**
 - `KeycloakConversorRoles` y `BaseResourceServerConfig`: configuración de seguridad común (JWT, sin sesiones, Swagger y `/actuator/**` abiertos, el resto autenticado).
-- `Roles`: las constantes de los seis roles.
+- `Roles`: las constantes de los cinco roles (cuatro de personas y SISTEMA).
 - `GlobalExceptionHandler`: convierte cualquier error en el **formato estándar** RFC 7807 (`application/problem+json`) con `type`, `title`, `status`, `detail`, `instance`, `timestamp` y `correlationId`. Traduce `RecursoNoEncontradoException` a 404, `ConflictoEstadoException` a 409, `ReglaNegocioException` a 422 (con `codigoRegla`), los errores de validación a 400 (con el detalle por campo), ruta inexistente a 404, método no permitido a 405, y cualquier otra cosa a 500 sin mostrar el detalle interno (lo deja en el log).
 - `ProblemDetailAuthenticationEntryPoint` y `ProblemDetailAccessDeniedHandler`: el 401 y el 403 en el mismo formato.
 - `CorrelationIdFilter`: pone el id de correlación en el MDC (el contexto de logs) y en la respuesta.
@@ -276,8 +274,8 @@ Respondelas en voz alta sin mirar. Las respuestas cortas están en [`guion-demo.
 4. **¿Qué es idempotente y dónde se usa?** Una operación que repetida da el mismo resultado: proponer una reserva para la misma orden, confirmar y liberar. Permite reintentar sin miedo.
 5. **¿Por qué la humedad del suelo se compara con 0,40 y no con 40?** Porque Open-Meteo la da como fracción volumétrica (m³/m³).
 6. **¿Qué ve el cliente si OSRM está caído?** La reserva se crea igual con la estimación en línea recta y `fuenteRuta: ESTIMADA`.
-7. **¿Qué pasa si se suspende la misma fase tres veces?** La fase queda en riesgo y el PLANIFICADOR decide.
-8. **¿Por qué un OPERARIO recibe 403 al listar órdenes, si está logueado?** Porque autenticado no es autorizado: el endpoint exige PLANIFICADOR, CAPATAZ o AUDITOR.
+7. **¿Qué pasa si se suspende la misma fase tres veces?** La fase queda en riesgo en Obras, la orden queda suspendida y el sistema deja de reprogramarla solo. El PLANIFICADOR reprograma la fase y crea la orden nueva; ahí el conteo vuelve a cero.
+8. **¿Por qué un ADMIN recibe 403 al listar órdenes, si está logueado?** Porque autenticado no es autorizado: el endpoint exige PLANIFICADOR, CAPATAZ o AUDITOR.
 9. **¿Cómo se demuestra un error de integración controlado?** Apagando un servicio (`docker compose stop ms-recursos`) o apuntando Open-Meteo a un host inválido, y mostrando que la orden queda en un estado coherente.
 10. **¿Por qué no se edita una migración vieja?** Flyway guarda su checksum; si cambia, el servicio no arranca.
 11. **¿Qué compartieron en commons y qué no, y por qué?** Sección 8.
