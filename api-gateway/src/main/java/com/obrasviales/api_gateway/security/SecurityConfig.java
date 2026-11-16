@@ -29,7 +29,6 @@ public class SecurityConfig {
     private static final String AUDITOR = "AUDITOR";
     private static final String ADMIN = "ADMIN";
     private static final String SISTEMA = "SISTEMA";
-    private static final String OPERARIO = "OPERARIO";
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -45,21 +44,18 @@ public class SecurityConfig {
 
                 // ms-obras
                 .requestMatchers(HttpMethod.GET, "/api/obras/**").hasAnyRole(PLANIFICADOR, CAPATAZ, AUDITOR)
-                .requestMatchers(HttpMethod.POST, "/api/obras/**").hasAnyRole(PLANIFICADOR, CAPATAZ, SISTEMA)
-                .requestMatchers(HttpMethod.PUT, "/api/obras/**").hasRole(PLANIFICADOR)
+                .requestMatchers(HttpMethod.POST, "/api/obras/**").hasRole(PLANIFICADOR)
                 .requestMatchers(HttpMethod.PATCH, "/api/obras/**").hasAnyRole(PLANIFICADOR, SISTEMA)
 
                 // ms-operaciones
                 .requestMatchers(HttpMethod.GET, "/api/operaciones/**").hasAnyRole(PLANIFICADOR, CAPATAZ, AUDITOR, ADMIN)
                 .requestMatchers(HttpMethod.POST, "/api/operaciones/**").hasAnyRole(PLANIFICADOR, CAPATAZ, SISTEMA)
                 .requestMatchers(HttpMethod.PUT, "/api/operaciones/**").hasRole(ADMIN)
-                .requestMatchers(HttpMethod.PATCH, "/api/operaciones/**").hasAnyRole(PLANIFICADOR, CAPATAZ)
+                .requestMatchers(HttpMethod.PATCH, "/api/operaciones/**").hasRole(CAPATAZ)
 
-                // ms-recursos (el OPERARIO lee sus asignaciones y SISTEMA consulta reservas)
-                .requestMatchers(HttpMethod.GET, "/api/recursos/**")
-                        .hasAnyRole(ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR, OPERARIO, SISTEMA)
-                .requestMatchers(HttpMethod.POST, "/api/recursos/**").hasAnyRole(ADMIN, PLANIFICADOR, CAPATAZ)
-                .requestMatchers(HttpMethod.PUT, "/api/recursos/**").hasAnyRole(ADMIN, PLANIFICADOR)
+                // ms-recursos: consultas de maquinas, operarios y cuadrillas, y el check-in del capataz
+                .requestMatchers(HttpMethod.GET, "/api/recursos/**").hasAnyRole(ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR)
+                .requestMatchers(HttpMethod.POST, "/api/recursos/**").hasRole(CAPATAZ)
 
                 // cualquier otra combinacion de ruta y metodo no la expone ningun servicio
                 .requestMatchers("/api/**").denyAll()
