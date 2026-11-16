@@ -36,14 +36,6 @@ public class ObraService {
         return obraRepository.save(obra);
     }
 
-    @Transactional
-    public Obra actualizarObra(Long obraId, String nombre, String descripcion) {
-        Obra obra = buscarObra(obraId);
-        obra.setNombre(nombre);
-        obra.setDescripcion(descripcion);
-        return obraRepository.save(obra);
-    }
-
     @Transactional(readOnly = true)
     public List<ObraResumenResponse> listarObras() {
         return obraRepository.findAll(Sort.by("id")).stream()
@@ -97,23 +89,6 @@ public class ObraService {
     }
 
     @Transactional(readOnly = true)
-    public Tramo obtenerTramo(Long tramoId) {
-        return buscarTramo(tramoId);
-    }
-
-    // Los materiales se calculan al consultar, asi que al cambiar la superficie se recalculan solos
-    @Transactional
-    public Tramo actualizarTramo(Long tramoId, String nombre, BigDecimal superficieM2,
-                                 Double latitud, Double longitud) {
-        Tramo tramo = buscarTramo(tramoId);
-        tramo.setNombre(nombre);
-        tramo.setSuperficieM2(superficieM2);
-        tramo.setLatitud(latitud);
-        tramo.setLongitud(longitud);
-        return tramoRepository.save(tramo);
-    }
-
-    @Transactional(readOnly = true)
     public List<FaseResponse> cronogramaDeObra(Long obraId) {
         if (!obraRepository.existsById(obraId)) {
             throw new RecursoNoEncontradoException("No existe la obra con id " + obraId);
@@ -126,11 +101,6 @@ public class ObraService {
     private Obra buscarObra(Long obraId) {
         return obraRepository.findById(obraId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No existe la obra con id " + obraId));
-    }
-
-    private Tramo buscarTramo(Long tramoId) {
-        return tramoRepository.findById(tramoId)
-                .orElseThrow(() -> new RecursoNoEncontradoException("No existe el tramo con id " + tramoId));
     }
 
     // Promedio del avance de sus fases

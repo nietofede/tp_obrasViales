@@ -68,46 +68,6 @@ class FaseServiceTest {
 
     // ---------- RN-01 ----------
 
-    // RN-01 caso normal: la fase anterior está completada, entonces inicia
-    @Test
-    void iniciaFaseCuandoLaAnteriorEstaCompletada() {
-        Fase anterior = crearFase(1L, EstadoFase.COMPLETADA, null);
-        Fase fase = crearFase(2L, EstadoFase.PENDIENTE, anterior);
-        when(faseRepository.findById(2L)).thenReturn(Optional.of(fase));
-        when(faseRepository.save(any(Fase.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        Fase resultado = faseService.iniciarFase(2L);
-
-        assertThat(resultado.getEstado()).isEqualTo(EstadoFase.EN_CURSO);
-    }
-
-    // RN-01 caso límite: la primera fase del tramo no tiene anterior, entonces inicia
-    @Test
-    void iniciaPrimeraFaseSinAnterior() {
-        Fase primera = crearFase(1L, EstadoFase.PENDIENTE, null);
-        when(faseRepository.findById(1L)).thenReturn(Optional.of(primera));
-        when(faseRepository.save(any(Fase.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        Fase resultado = faseService.iniciarFase(1L);
-
-        assertThat(resultado.getEstado()).isEqualTo(EstadoFase.EN_CURSO);
-    }
-
-    // RN-01 rechazo: la anterior no está completada, entonces rechaza y no guarda nada
-    @Test
-    void rechazaIniciarFaseSiLaAnteriorNoEstaCompletada() {
-        Fase anterior = crearFase(1L, EstadoFase.EN_CURSO, null);
-        Fase fase = crearFase(2L, EstadoFase.PENDIENTE, anterior);
-        when(faseRepository.findById(2L)).thenReturn(Optional.of(fase));
-
-        assertThatThrownBy(() -> faseService.iniciarFase(2L))
-                .isInstanceOf(ConflictoEstadoException.class)
-                .hasMessageContaining("anterior no está completada");
-
-        verify(faseRepository, never()).save(any(Fase.class));
-        assertThat(fase.getEstado()).isEqualTo(EstadoFase.PENDIENTE);
-    }
-
     // ---------- RN-02 ----------
 
     // RN-02 caso normal: al mover la base 3 días, se corren subbase y carpeta en cascada

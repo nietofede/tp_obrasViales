@@ -68,8 +68,8 @@ class ObraControllerConsultasTest {
     }
 
     @Test
-    void listarConOperarioDevuelve403() throws Exception {
-        mockMvc.perform(get("/api/obras").with(jwt().authorities(rol("OPERARIO"))))
+    void listarConAdminDevuelve403() throws Exception {
+        mockMvc.perform(get("/api/obras").with(jwt().authorities(rol("ADMIN"))))
                 .andExpect(status().isForbidden());
     }
 
@@ -96,8 +96,8 @@ class ObraControllerConsultasTest {
     }
 
     @Test
-    void obtenerConOperarioDevuelve403() throws Exception {
-        mockMvc.perform(get("/api/obras/5").with(jwt().authorities(rol("OPERARIO"))))
+    void obtenerConAdminDevuelve403() throws Exception {
+        mockMvc.perform(get("/api/obras/5").with(jwt().authorities(rol("ADMIN"))))
                 .andExpect(status().isForbidden());
     }
 
@@ -131,62 +131,6 @@ class ObraControllerConsultasTest {
 
     // ---------- PUT /api/obras/{obraId} ----------
 
-    @Test
-    void actualizarSinTokenDevuelve401() throws Exception {
-        mockMvc.perform(put("/api/obras/7")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(OBRA_EDITADA))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void actualizarConCapatazDevuelve403() throws Exception {
-        mockMvc.perform(put("/api/obras/7")
-                        .with(jwt().authorities(rol("CAPATAZ")))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(OBRA_EDITADA))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void actualizarConPlanificadorDevuelve200ConLaObraEditada() throws Exception {
-        Obra obra = new Obra();
-        obra.setId(7L);
-        obra.setNombre("Nuevo nombre");
-        obra.setDescripcion("Nueva descripcion");
-        when(obraService.actualizarObra(7L, "Nuevo nombre", "Nueva descripcion")).thenReturn(obra);
-
-        mockMvc.perform(put("/api/obras/7")
-                        .with(jwt().authorities(rol("PLANIFICADOR")))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(OBRA_EDITADA))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(7))
-                .andExpect(jsonPath("$.nombre").value("Nuevo nombre"));
-    }
-
-    @Test
-    void actualizarConNombreVacioDevuelve400() throws Exception {
-        mockMvc.perform(put("/api/obras/7")
-                        .with(jwt().authorities(rol("PLANIFICADOR")))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nombre\":\"\",\"descripcion\":\"x\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errores.nombre").exists());
-    }
-
-    @Test
-    void actualizarObraInexistenteDevuelve404() throws Exception {
-        when(obraService.actualizarObra(eq(99L), any(), any()))
-                .thenThrow(new RecursoNoEncontradoException("No existe la obra con id 99"));
-
-        mockMvc.perform(put("/api/obras/99")
-                        .with(jwt().authorities(rol("PLANIFICADOR")))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(OBRA_EDITADA))
-                .andExpect(status().isNotFound());
-    }
-
     // ---------- GET /api/obras/{obraId}/tramos ----------
 
     @Test
@@ -196,8 +140,8 @@ class ObraControllerConsultasTest {
     }
 
     @Test
-    void tramosConOperarioDevuelve403() throws Exception {
-        mockMvc.perform(get("/api/obras/5/tramos").with(jwt().authorities(rol("OPERARIO"))))
+    void tramosConAdminDevuelve403() throws Exception {
+        mockMvc.perform(get("/api/obras/5/tramos").with(jwt().authorities(rol("ADMIN"))))
                 .andExpect(status().isForbidden());
     }
 
@@ -231,8 +175,8 @@ class ObraControllerConsultasTest {
     }
 
     @Test
-    void cronogramaConOperarioDevuelve403() throws Exception {
-        mockMvc.perform(get("/api/obras/5/cronograma").with(jwt().authorities(rol("OPERARIO"))))
+    void cronogramaConAdminDevuelve403() throws Exception {
+        mockMvc.perform(get("/api/obras/5/cronograma").with(jwt().authorities(rol("ADMIN"))))
                 .andExpect(status().isForbidden());
     }
 

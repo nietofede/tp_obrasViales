@@ -61,11 +61,11 @@ class OperacionControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    // SEG-01: con un rol que no corresponde (OPERARIO), responde 403
+    // SEG-01: con un rol que no corresponde (PLANIFICADOR), responde 403
     @Test
     void datosOperacionConRolInsuficienteDevuelve403() throws Exception {
         mockMvc.perform(get("/api/obras/internos/fases/1/contexto-ejecucion")
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_OPERARIO"))))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_PLANIFICADOR"))))
                 .andExpect(status().isForbidden());
     }
 

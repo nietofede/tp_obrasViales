@@ -67,31 +67,11 @@ public class FaseService {
         return faseRepository.save(fase);
     }
 
-    @Transactional(readOnly = true)
-    public Fase obtenerFase(Long faseId) {
-        return buscar(faseId);
-    }
-
     // RN-03: materiales segun la superficie del tramo de la fase
     @Transactional(readOnly = true)
     public List<MaterialCalculado> materialesDeFase(Long faseId) {
         Fase fase = buscar(faseId);
         return materialService.calcularMateriales(fase.getTipo(), fase.getTramo().getSuperficieM2());
-    }
-
-    @Transactional
-    public Fase iniciarFase(Long faseId) {
-        Fase fase = buscar(faseId);
-
-        if (fase.getEstado() != EstadoFase.PENDIENTE) {
-            throw new ConflictoEstadoException(
-                    "Solo se puede iniciar una fase PENDIENTE. Estado actual: " + fase.getEstado());
-        }
-
-        exigirAnteriorCompletada(fase);
-
-        fase.setEstado(EstadoFase.EN_CURSO);
-        return faseRepository.save(fase);
     }
 
     // Avance real: el primer avance inicia la fase (aplica RN-01) y al llegar a 100 queda COMPLETADA
