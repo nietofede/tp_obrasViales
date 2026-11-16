@@ -454,7 +454,7 @@
               ]
             },
             {
-              "name": "Listar operarios con certificaciones",
+              "name": "Listar operarios",
               "request": {
                 "method": "GET",
                 "header": [
@@ -2051,52 +2051,6 @@
                     "type": "text/javascript",
                     "exec": [
                       "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                    ]
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "name": "RN-04 certificación vigente",
-          "description": "",
-          "item": [
-            {
-              "name": "Reserva de BASE en 2028 (certificación vencida ese día) -> 422",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{tokenSistema}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/recursos/internos/reservas",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"ordenTrabajoId\": 9401,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"2028-03-01\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "description": "Esperado: 422 con codigoRegla RN-04. La certificación de RODILLO_COMPACTADOR del único maquinista de la cuadrilla Alfa vence el 2027-12-31: RN-04 se evalúa contra la fecha de la orden. La cuadrilla Beta Lejana se rechaza por RN-06 (sin operarios)."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });",
-                      "pm.test(\"codigoRegla RN-04\", () => pm.expect(pm.response.json().codigoRegla).to.eql(\"RN-04\"));",
-                      "pm.test(\"El detalle menciona la certificación\", () => pm.expect(pm.response.json().detail).to.include(\"certificación vigente\"));"
                     ]
                   }
                 }

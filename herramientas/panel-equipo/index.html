@@ -159,10 +159,10 @@ const ENDPOINTS = [
   ["Obras", "GET", "/api/obras/internos/fases/2/contexto-ejecucion", "S", "Interno: contexto de la fase para Operaciones"],
 
   ["Recursos", "GET", "/api/recursos/maquinas", "APCU", "Máquinas precargadas con su cuadrilla"],
-  ["Recursos", "GET", "/api/recursos/operarios", "APCU", "Operarios con sus certificaciones (RN-04)"],
+  ["Recursos", "GET", "/api/recursos/operarios", "APCU", "Operarios con su cuadrilla"],
   ["Recursos", "GET", "/api/recursos/cuadrillas", "APCU", "Cuadrillas con su ubicación"],
   ["Recursos", "POST", "/api/recursos/cuadrillas/1/ubicaciones", "C", "Check-in del capataz de su cuadrilla", { latitud: -31.39, longitud: -64.21 }],
-  ["Recursos", "POST", "/api/recursos/internos/reservas", "S", "Interno: proponer y reservar (RN-04 a RN-08)", { ordenTrabajoId: 999, tipoTrabajo: "BASE", fecha: LEJOS, tramoLat: -31.4, tramoLon: -64.2 }],
+  ["Recursos", "POST", "/api/recursos/internos/reservas", "S", "Interno: proponer y reservar (RN-05 a RN-08)", { ordenTrabajoId: 999, tipoTrabajo: "BASE", fecha: LEJOS, tramoLat: -31.4, tramoLon: -64.2 }],
 
   ["Operaciones", "POST", "/api/operaciones/ordenes", "P", "Programar una orden (en una fase en riesgo, es la decisión del PLANIFICADOR: RN-12)", { faseId: 2, tramoId: 1, fechaProgramada: d(4) }],
   ["Operaciones", "GET", "/api/operaciones/ordenes", "PCU", "Listar órdenes (filtros fecha, estado, obraId)"],
