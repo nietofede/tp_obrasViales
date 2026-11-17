@@ -2055,6 +2055,44 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "Crear tramo con superficie 0 -> 400",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/{{obraId}}/tramos",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Tramo sin superficie\",\n  \"superficieM2\": 0,\n  \"latitud\": -31.25,\n  \"longitud\": -64.45\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Error de RN-03: sin superficie positiva no se pueden calcular materiales. La validación del DTO (@Positive en CrearTramoRequest) lo frena antes de llegar al service, por eso es 400 y no 422. El service (MaterialService) tiene el mismo control como segunda barrera, con codigoRegla RN-03. Usa la obra creada en 01-Setup-Datos."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });"
+                    ]
+                  }
+                }
+              ]
             }
           ]
         },
@@ -2350,6 +2388,55 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "Planta fuera de la ventana de la mezcla (Oncativo) -> 422",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 9202,\n  \"tipoTrabajo\": \"CARPETA_ASFALTICA\",\n  \"fecha\": \"{{fechaRn08b}}\",\n  \"tramoLat\": -31.913,\n  \"tramoLon\": -63.682\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Error de RN-08. Tramo en Oncativo: la cuadrilla Alfa llega en unos 84 min (dentro del máximo de 90, RN-07 cumple), pero la planta de Córdoba Norte está a unos 82 min y la mezcla tiene que llegar en 60. Esperado: 422 con codigoRegla RN-08. Tiempos de OSRM con el factor 1,3 (medidos el 17/11); si OSRM no responde, la estimación en línea recta puede dar otro resultado."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 9 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaRn08b\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });",
+                      "pm.test(\"codigoRegla RN-08\", () => pm.expect(pm.response.json().codigoRegla).to.eql(\"RN-08\"));"
+                    ]
+                  }
+                }
+              ]
             }
           ]
         },
@@ -2445,6 +2532,160 @@
                   }
                 },
                 "description": "Esperado: 200. Restaura los valores del seed para BASE (humedad 0.4, lluvia 20, temperatura mínima 5)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Crear una orden para la fase RELEVAMIENTO de 01-Setup",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"faseId\": \"{{faseId1}}\",\n  \"tramoId\": \"{{tramoId}}\",\n  \"fechaProgramada\": \"{{fechaRn09}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Prepara el caso de error de RN-09: una orden PROGRAMADA para la fase RELEVAMIENTO creada en 01-Setup-Datos (no tiene fase anterior, así que RN-01 no la frena), dentro de 3 días."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 3 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaRn09\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                      "pm.collectionVariables.set(\"ordenRn09Id\", pm.response.json().id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "ADMIN baja umbrales de RELEVAMIENTO",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/RELEVAMIENTO",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"humedadSueloMaxima\": 0,\n  \"probPrecipitacionMaxima\": 0,\n  \"temperaturaMinima\": 100\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Umbrales imposibles de cumplir para RELEVAMIENTO (temperatura mínima 100)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Habilitar con clima fuera de los umbrales -> SUSPENDIDA y REPROGRAMADA",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/{{ordenRn09Id}}/habilitacion",
+                "description": "Error de RN-09: el pronóstico real no cumple los umbrales, así que la orden se suspende y arranca la saga: Recursos libera la reserva, Obras corre la fase y se crea una orden nueva. La orden queda REPROGRAMADA, sin reserva y con 1 suspensión. Si Open-Meteo no responde, queda PENDIENTE_CONFIRMACION_CLIMATICA (RN-10) y este test falla."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "const o = pm.response.json();",
+                      "pm.test(\"estado REPROGRAMADA\", () => pm.expect(o.estado).to.eql(\"REPROGRAMADA\"));",
+                      "pm.test(\"reserva liberada\", () => pm.expect(o.reservaId).to.eql(null));",
+                      "pm.test(\"1 suspensión\", () => pm.expect(o.contadorSuspensiones).to.eql(1));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "ADMIN restaura umbrales de RELEVAMIENTO",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/RELEVAMIENTO",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"humedadSueloMaxima\": 0.6,\n  \"probPrecipitacionMaxima\": 40,\n  \"temperaturaMinima\": 0\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Vuelve a los valores del seed (humedad 0,6; lluvia 40; temperatura 0)."
               },
               "event": [
                 {
@@ -2577,6 +2818,224 @@
                 ],
                 "url": "{{baseUrl}}/api/operaciones/suspensiones",
                 "description": "Esperado: 200. El límite es fijo en 3: a la tercera suspensión vigente de una fase, Operaciones la marca en riesgo en Obras (estado EN_RIESGO) y deja de reprogramarla sola; el PLANIFICADOR reprograma la fase y crea la orden nueva, y ahí el conteo vuelve a cero."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "ADMIN baja umbrales de RELEVAMIENTO (para RN-12)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/RELEVAMIENTO",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"humedadSueloMaxima\": 0,\n  \"probPrecipitacionMaxima\": 0,\n  \"temperaturaMinima\": 100\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Sigue el caso de RN-09: la fase RELEVAMIENTO ya tiene 1 suspensión. Se fuerzan dos más."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Buscar la orden nueva de la fase (2.ª)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes?estado=PROGRAMADA",
+                "description": "La saga anterior creó una orden PROGRAMADA para la fase; se guarda su id."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "const faseId = Number(pm.collectionVariables.get(\"faseId1\"));",
+                      "const nuevas = pm.response.json().filter(o => o.faseId === faseId);",
+                      "pm.test(\"hay una orden PROGRAMADA nueva para la fase\", () => pm.expect(nuevas.length).to.be.above(0));",
+                      "pm.collectionVariables.set(\"ordenRn12Id\", Math.max(...nuevas.map(o => o.id)));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Segunda suspensión -> REPROGRAMADA",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/{{ordenRn12Id}}/habilitacion",
+                "description": "Esperado: REPROGRAMADA con 2 suspensiones vigentes en la fase."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "const o = pm.response.json();",
+                      "pm.test(\"estado REPROGRAMADA\", () => pm.expect(o.estado).to.eql(\"REPROGRAMADA\"));",
+                      "pm.test(\"2 suspensiones\", () => pm.expect(o.contadorSuspensiones).to.eql(2));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Buscar la orden nueva de la fase (3.ª)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes?estado=PROGRAMADA",
+                "description": "Se guarda el id de la orden que creó la segunda saga."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "const faseId = Number(pm.collectionVariables.get(\"faseId1\"));",
+                      "const nuevas = pm.response.json().filter(o => o.faseId === faseId);",
+                      "pm.test(\"hay una orden PROGRAMADA nueva para la fase\", () => pm.expect(nuevas.length).to.be.above(0));",
+                      "pm.collectionVariables.set(\"ordenRn12Id\", Math.max(...nuevas.map(o => o.id)));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Tercera suspensión -> SUSPENDIDA y fase en riesgo",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/{{ordenRn12Id}}/habilitacion",
+                "description": "Error de RN-12: con la tercera suspensión vigente la fase llega al límite. La orden queda SUSPENDIDA (no se crea orden nueva) y Operaciones marca la fase EN_RIESGO en Obras; ahora decide el PLANIFICADOR."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "const o = pm.response.json();",
+                      "pm.test(\"estado SUSPENDIDA\", () => pm.expect(o.estado).to.eql(\"SUSPENDIDA\"));",
+                      "pm.test(\"3 suspensiones\", () => pm.expect(o.contadorSuspensiones).to.eql(3));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Cronograma: la fase quedó EN_RIESGO",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/{{obraId}}/cronograma",
+                "description": "Esperado: la fase RELEVAMIENTO de 01-Setup figura EN_RIESGO en ms-obras."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "const faseId = Number(pm.collectionVariables.get(\"faseId1\"));",
+                      "const fase = pm.response.json().find(f => f.id === faseId);",
+                      "pm.test(\"fase EN_RIESGO\", () => pm.expect(fase.estado).to.eql(\"EN_RIESGO\"));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "ADMIN restaura umbrales de RELEVAMIENTO (fin de RN-12)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/RELEVAMIENTO",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"humedadSueloMaxima\": 0.6,\n  \"probPrecipitacionMaxima\": 40,\n  \"temperaturaMinima\": 0\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Vuelve a los valores del seed (humedad 0,6; lluvia 40; temperatura 0)."
               },
               "event": [
                 {
@@ -2975,6 +3434,22 @@
     },
     {
       "key": "tokenSistema",
+      "value": ""
+    },
+    {
+      "key": "fechaRn08b",
+      "value": ""
+    },
+    {
+      "key": "fechaRn09",
+      "value": ""
+    },
+    {
+      "key": "ordenRn09Id",
+      "value": ""
+    },
+    {
+      "key": "ordenRn12Id",
       "value": ""
     }
   ]
