@@ -46,13 +46,13 @@ La cuenta SISTEMA: el mismo `-Uri` con `-Body @{grant_type='client_credentials';
 
 ### 1.3 La colección de requests
 
-`coleccion/obras-viales.postman_collection.json` (82 requests) con el entorno `coleccion/local.postman_environment.json`. Se corre en orden: `00-Auth`, `01-Setup-Datos`, `02-Seguridad`, `03-Flujo-Principal`, `04-Reglas-Negocio` y `05-Fallas-y-Resiliencia`. Desde la terminal:
+`coleccion/obras-viales.postman_collection.json` (95 requests) con el entorno `coleccion/local.postman_environment.json`. Se corre en orden: `00-Auth`, `01-Setup-Datos`, `02-Seguridad`, `03-Flujo-Principal`, `04-Reglas-Negocio` y `05-Fallas-y-Resiliencia`. Desde la terminal:
 
 ```powershell
 npx -y newman@6 run coleccion/obras-viales.postman_collection.json -e coleccion/local.postman_environment.json
 ```
 
-El clima es real: si hoy llueve entre las 08:00 y las 13:00, la orden de hoy se suspende y algunos requests del camino feliz fallan. Para correrla entera, antes el ADMIN sube los umbrales de BASE (`PUT /api/operaciones/umbrales-climaticos/BASE` con humedad 1, lluvia 100 y temperatura −50). Comprobado el 2026-11-16 sobre un stack desde cero: 82 requests, 98 aserciones, 0 fallos.
+El clima es real: si hoy llueve entre las 08:00 y las 13:00, la orden de hoy se suspende y algunos requests del camino feliz fallan. Para correrla entera, antes el ADMIN sube los umbrales de BASE (`PUT /api/operaciones/umbrales-climaticos/BASE` con humedad 1, lluvia 100 y temperatura −50). Comprobado el 2026-11-17 sobre un stack desde cero: 95 requests, 122 aserciones, 0 fallos. Cada regla de `04-Reglas-Negocio` tiene al menos un request que la viola.
 
 ### 1.4 Correr un servicio sin Docker
 
@@ -619,7 +619,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-Con los seis contenedores `healthy`, la colección `coleccion/obras-viales.postman_collection.json` recorre todo (82 requests).
+Con los seis contenedores `healthy`, la colección `coleccion/obras-viales.postman_collection.json` recorre todo (95 requests).
 
 ---
 
