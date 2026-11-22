@@ -405,19 +405,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200 OK - Cronograma inicial obtenido\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "pm.test(\"Fase 1 completada al 100%\", function () {",
-                  "    const crono = pm.response.json();",
-                  "    const f1 = crono.fases.find(f => f.id === 1);",
-                  "    pm.expect(f1.porcentajeAvance).to.eql(100);",
-                  "});",
-                  "pm.test(\"Fase 2 pendiente (0%)\", function () {",
-                  "    const crono = pm.response.json();",
-                  "    const f2 = crono.fases.find(f => f.id === 2);",
-                  "    pm.expect(f2.porcentajeAvance).to.eql(0);",
-                  "});"
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const fases = pm.response.json();",
+                  "pm.test(\"Fase 1 completada al 100%\", () => pm.expect(fases.find(f => f.id === 1).avance).to.eql(100));",
+                  "pm.test(\"Fase 2 pendiente (0%)\", () => pm.expect(fases.find(f => f.id === 2).avance).to.eql(0));"
                 ]
               }
             }
@@ -566,7 +557,7 @@
           ]
         },
         {
-          "name": "07 - CAPATAZ inicia la orden 1 (pasa a EN_CURSO)",
+          "name": "07 - CAPATAZ inicia la orden 1 (pasa a EN_EJECUCION)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -584,12 +575,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200 OK - Orden iniciada\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "pm.test(\"Orden pasa a EN_CURSO\", function () {",
-                  "    pm.expect(pm.response.json().estado).to.eql(\"EN_CURSO\");",
-                  "});"
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Orden pasa a EN_EJECUCION\", () => pm.expect(pm.response.json().estado).to.eql(\"EN_EJECUCION\"));"
                 ]
               }
             }
@@ -627,12 +614,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 201 Created - Avance registrado\", function () {",
-                  "    pm.response.to.have.status(201);",
-                  "});",
-                  "pm.test(\"Avance acumulado es 60%\", function () {",
-                  "    pm.expect(pm.response.json().porcentajeAvance).to.eql(60);",
-                  "});"
+                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"Avance de la fase en 60%\", () => pm.expect(Number(pm.response.json().avanceFase)).to.eql(60));"
                 ]
               }
             }
@@ -670,12 +653,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 201 Created - Avance al 100% registrado\", function () {",
-                  "    pm.response.to.have.status(201);",
-                  "});",
-                  "pm.test(\"Avance acumulado es 100%\", function () {",
-                  "    pm.expect(pm.response.json().porcentajeAvance).to.eql(100);",
-                  "});"
+                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Avance de la fase en 100%\", () => pm.expect(Number(r.avanceFase)).to.eql(100));",
+                  "pm.test(\"Orden COMPLETADA\", () => pm.expect(r.estadoOrden).to.eql(\"COMPLETADA\"));"
                 ]
               }
             }
@@ -730,15 +711,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200 OK - Cronograma final\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "pm.test(\"Fase 2 figura con 100% de avance y COMPLETADA\", function () {",
-                  "    const crono = pm.response.json();",
-                  "    const f2 = crono.fases.find(f => f.id === 2);",
-                  "    pm.expect(f2.porcentajeAvance).to.eql(100);",
-                  "    pm.expect(f2.estado).to.eql(\"COMPLETADA\");",
-                  "});"
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const f2 = pm.response.json().find(f => f.id === 2);",
+                  "pm.test(\"Fase 2 con 100% y COMPLETADA\", () => { pm.expect(f2.avance).to.eql(100); pm.expect(f2.estado).to.eql(\"COMPLETADA\"); });"
                 ]
               }
             }
@@ -791,6 +766,167 @@
       "description": "Pruebas de todas las reglas de negocio (RN-01 a RN-12).\nCada regla cuenta con su carpeta propia donde se comprueba su caso exitoso y su caso de rechazo / violación.",
       "item": [
         {
+          "name": "Preparación - obra, tramo y dos fases nuevas",
+          "item": [
+            {
+              "name": "Crear obra para las reglas",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras",
+                "description": "Las fases 1 y 2 del seed quedan COMPLETADAS con el Flujo Básico, así que RN-01 y RN-02 se prueban sobre una obra nueva.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Obra de prueba de reglas\",\n  \"descripcion\": \"Creada por la colección\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                      "pm.collectionVariables.set(\"obraId\", pm.response.json().id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Crear tramo",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/{{obraId}}/tramos",
+                "description": "Tramo cercano a la cuadrilla Alfa.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Tramo de prueba\",\n  \"superficieM2\": 1200,\n  \"latitud\": -31.25,\n  \"longitud\": -64.45\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                      "pm.collectionVariables.set(\"tramoId\", pm.response.json().id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Crear fase RELEVAMIENTO (sin fase anterior)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/tramos/{{tramoId}}/fases",
+                "description": "Primera fase del tramo: queda en faseId1.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tipo\": \"RELEVAMIENTO\",\n  \"fechaInicioPlanificada\": \"2027-01-10\",\n  \"fechaFinPlanificada\": \"2027-01-20\",\n  \"faseAnteriorId\": null\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                      "pm.collectionVariables.set(\"faseId1\", pm.response.json().id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Crear fase BASE (depende de RELEVAMIENTO)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/tramos/{{tramoId}}/fases",
+                "description": "Segunda fase, encadenada a la primera: queda en faseId2.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tipo\": \"BASE\",\n  \"fechaInicioPlanificada\": \"2027-01-21\",\n  \"fechaFinPlanificada\": \"2027-02-05\",\n  \"faseAnteriorId\": \"{{faseId1}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                      "pm.collectionVariables.set(\"faseId2\", pm.response.json().id);"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
           "name": "RN-01 - Precedencia de Fases",
           "description": "RN-01: Una fase no puede iniciar ni registrar avance si la fase previa del mismo tramo no está completada al 100%.",
           "item": [
@@ -818,7 +954,7 @@
                     }
                   }
                 },
-                "description": "La fase 1 (RELEVAMIENTO) es la fase inicial del tramo y no depende de ninguna previa. El avance debe aceptarse con éxito."
+                "description": "La fase RELEVAMIENTO recién creada no depende de ninguna previa: el primer avance la inicia (EN_CURSO)."
               },
               "event": [
                 {
@@ -826,12 +962,9 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status 201 Created (o 200 OK) - Avance permitido\", function () {",
-                      "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                      "});",
-                      "pm.test(\"Fase 1 registra porcentaje de avance\", function () {",
-                      "    pm.expect(pm.response.json().porcentajeAvance).to.be.at.least(10);",
-                      "});"
+                      "pm.test(\"Avance permitido\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                      "pm.test(\"La fase registra el avance\", () => pm.expect(pm.response.json().avance).to.eql(10));",
+                      "pm.test(\"La fase queda EN_CURSO\", () => pm.expect(pm.response.json().estado).to.eql(\"EN_CURSO\"));"
                     ]
                   }
                 }
@@ -861,7 +994,7 @@
                     }
                   }
                 },
-                "description": "La fase 2 (BASE) depende de la fase 1 (RELEVAMIENTO). Al no estar completada al 100%, Obras rechaza con 409 Conflict (RN-01)."
+                "description": "La fase BASE depende de RELEVAMIENTO, que no está completa: Obras rechaza con 409 (RN-01)."
               },
               "event": [
                 {
@@ -949,13 +1082,11 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status 200 OK - Cronograma obtenido\", function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "pm.test(\"Fases tienen fechas actualizadas\", function () {",
-                      "    const json = pm.response.json();",
-                      "    pm.expect(json.fases).to.be.an(\"array\");",
-                      "});"
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "const fases = pm.response.json();",
+                      "pm.test(\"Devuelve las fases de la obra\", () => pm.expect(fases).to.be.an(\"array\").that.is.not.empty);",
+                      "const f2 = fases.find(f => f.id === Number(pm.collectionVariables.get(\"faseId2\")));",
+                      "pm.test(\"La fase BASE se corrió después de la nueva fecha de RELEVAMIENTO\", () => pm.expect(f2.fechaInicioPlanificada > \"2027-04-01\").to.be.true);"
                     ]
                   }
                 }
@@ -1030,32 +1161,40 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status 200 OK - Materiales calculados\", function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "pm.test(\"Respuesta contiene lista de materiales\", function () {",
-                      "    const list = pm.response.json();",
-                      "    pm.expect(list).to.be.an(\"array\");",
-                      "    pm.expect(list.length).to.be.above(0);",
-                      "    pm.expect(list[0]).to.have.property(\"cantidadTotal\");",
-                      "});"
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "const list = pm.response.json();",
+                      "pm.test(\"Lista de materiales con cantidad\", () => { pm.expect(list).to.be.an(\"array\").that.is.not.empty; pm.expect(list[0]).to.have.property(\"cantidad\"); });",
+                      "pm.test(\"1250 m3 de piedra para 5000 m2 (0,25 por m2)\", () => pm.expect(Number(list[0].cantidad)).to.eql(1250));"
                     ]
                   }
                 }
               ]
             },
             {
-              "name": "Rechazo - Consultar materiales de fase inexistente -> 404",
+              "name": "Rechazo - Crear tramo con superficie 0 -> 400",
               "request": {
-                "method": "GET",
+                "method": "POST",
                 "header": [
                   {
                     "key": "Authorization",
                     "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
                   }
                 ],
-                "url": "{{baseUrl}}/api/obras/fases/99999/materiales",
-                "description": "Intento de consultar materiales de una fase que no existe en el sistema. Esperado: 404 Not Found."
+                "url": "{{baseUrl}}/api/obras/{{obraId}}/tramos",
+                "description": "Sin superficie positiva no se calculan materiales (RN-03). Lo frena @Positive del DTO antes que el control de MaterialService, por eso es 400 y no 422.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Tramo sin superficie\",\n  \"superficieM2\": 0,\n  \"latitud\": -31.25,\n  \"longitud\": -64.45\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
               },
               "event": [
                 {
@@ -1063,9 +1202,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status 404 Not Found\", function () {",
-                      "    pm.response.to.have.status(404);",
-                      "});"
+                      "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });"
                     ]
                   }
                 }
@@ -1502,14 +1639,14 @@
                 "url": "{{baseUrl}}/api/recursos/internos/reservas",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"ordenTrabajoId\": 9205,\n  \"tipoTrabajo\": \"CARPETA_ASFALTICA\",\n  \"fecha\": \"{{fechaRn08Rechazo}}\",\n  \"tramoLat\": -31.85,\n  \"tramoLon\": -64.42\n}",
+                  "raw": "{\n  \"ordenTrabajoId\": 9205,\n  \"tipoTrabajo\": \"CARPETA_ASFALTICA\",\n  \"fecha\": \"{{fechaRn08Rechazo}}\",\n  \"tramoLat\": -31.913,\n  \"tramoLon\": -63.682\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
                 },
-                "description": "Se solicita mezcla para un tramo donde ninguna planta asfáltica llega dentro de los 60 minutos de la ventana térmica. Esperado: 422 con código RN-08."
+                "description": "Tramo en Oncativo: la cuadrilla Alfa llega en unos 84 min (RN-07 cumple, máximo 90) pero la planta está a unos 82 y la mezcla tiene que llegar en 60. Esperado: 422 RN-08 (tiempos de OSRM con factor 1,3)."
               },
               "event": [
                 {
@@ -1527,13 +1664,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status 422 Unprocessable Content - RN-08 violada\", function () {",
-                      "    pm.response.to.have.status(422);",
-                      "});",
-                      "pm.test(\"codigoRegla o detalle menciona RN-08 / ventana de transporte\", function () {",
-                      "    const json = pm.response.json();",
-                      "    pm.expect(json.codigoRegla === \"RN-08\" || json.detail.includes(\"RN-08\")).to.be.true;",
-                      "});"
+                      "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });",
+                      "pm.test(\"codigoRegla RN-08\", () => pm.expect(pm.response.json().codigoRegla).to.eql(\"RN-08\"));"
                     ]
                   }
                 }
@@ -1739,7 +1871,7 @@
               ]
             },
             {
-              "name": "Éxito - CAPATAZ resuelve orden PENDIENTE_CONFIRMACION_CLIMATICA",
+              "name": "Manual - CAPATAZ resuelve una orden PENDIENTE (requiere Open-Meteo caído)",
               "request": {
                 "method": "PATCH",
                 "header": [
@@ -1762,7 +1894,7 @@
                     }
                   }
                 },
-                "description": "Caso de uso: si Open-Meteo falla durante la habilitación diaria, la orden queda en estado PENDIENTE_CONFIRMACION_CLIMATICA. El Capataz toma la decisión manual en campo (HABILITAR o SUSPENDER)."
+                "description": "Con el stack sano ninguna orden queda PENDIENTE_CONFIRMACION_CLIMATICA y responde 422. Para ver el 200: apagar Open-Meteo (APP_OPEN_METEO_URL inválida en ms-operaciones), habilitar una orden y después mandar este request con su id."
               },
               "event": [
                 {
@@ -1770,9 +1902,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Endpoint de resolución climática disponible\", function () {",
-                      "    pm.expect(pm.response.code).to.be.oneOf([200, 422]);",
-                      "});"
+                      "pm.test(\"200 si estaba PENDIENTE, 422 si no\", () => pm.expect(pm.response.code).to.be.oneOf([200, 422]));",
+                      "if (pm.response.code === 200) { pm.test(\"Queda HABILITADA\", () => pm.expect(pm.response.json().estado).to.eql(\"HABILITADA\")); }"
                     ]
                   }
                 }
@@ -1842,17 +1973,17 @@
               ]
             },
             {
-              "name": "Éxito - Transición válida: Iniciar orden HABILITADA -> EN_CURSO",
+              "name": "Éxito - La orden 1 recorrió transiciones válidas hasta COMPLETADA",
               "request": {
-                "method": "PATCH",
+                "method": "GET",
                 "header": [
                   {
                     "key": "Authorization",
-                    "value": "Bearer {{tokenCapataz}}"
+                    "value": "Bearer {{tokenPlanificador}}"
                   }
                 ],
-                "url": "{{baseUrl}}/api/operaciones/ordenes/1/inicio",
-                "description": "El CAPATAZ inicia una orden que se encuentra en estado HABILITADA. La transición a EN_CURSO es legal."
+                "url": "{{baseUrl}}/api/operaciones/ordenes/1",
+                "description": "En el Flujo Básico la orden 1 pasó PROGRAMADA -> RECURSOS_ASIGNADOS -> EVALUACION_CLIMATICA -> HABILITADA -> EN_EJECUCION -> COMPLETADA. Cada paso lo exige EjecucionService.exigirEstado."
               },
               "event": [
                 {
@@ -1860,9 +1991,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Transición válida evaluada\", function () {",
-                      "    pm.expect(pm.response.code).to.be.oneOf([200, 422]);",
-                      "});"
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"Orden 1 COMPLETADA\", () => pm.expect(pm.response.json().estado).to.eql(\"COMPLETADA\"));"
                     ]
                   }
                 }
@@ -2061,12 +2191,9 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status 201 Created - Obra creada\", function () {",
-                      "    pm.response.to.have.status(201);",
-                      "});",
-                      "pm.test(\"Retorna id asignado\", function () {",
-                      "    pm.expect(pm.response.json().id).to.be.a(\"number\");",
-                      "});"
+                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                      "pm.test(\"Retorna id asignado\", () => pm.expect(pm.response.json().id).to.be.a(\"number\"));",
+                      "pm.collectionVariables.set(\"obraId\", pm.response.json().id);"
                     ]
                   }
                 }
@@ -2165,9 +2292,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status 201 Created - Tramo creado\", function () {",
-                      "    pm.response.to.have.status(201);",
-                      "});"
+                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                      "pm.collectionVariables.set(\"tramoId\", pm.response.json().id);"
                     ]
                   }
                 }
@@ -2244,7 +2370,7 @@
                 "url": "{{baseUrl}}/api/obras/tramos/{{tramoId}}/fases",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"tipo\": \"RELEVAMIENTO\",\n  \"fechaInicioPlanificada\": \"2027-01-10\",\n  \"fechaFinPlanificada\": \"2027-01-20\",\n  \"faseDependienteId\": null\n}",
+                  "raw": "{\n  \"tipo\": \"RELEVAMIENTO\",\n  \"fechaInicioPlanificada\": \"2027-01-10\",\n  \"fechaFinPlanificada\": \"2027-01-20\",\n  \"faseAnteriorId\": null\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -2259,9 +2385,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status 201 Created - Fase creada\", function () {",
-                      "    pm.response.to.have.status(201);",
-                      "});"
+                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                      "pm.collectionVariables.set(\"faseId1\", pm.response.json().id);"
                     ]
                   }
                 }
@@ -2412,7 +2537,7 @@
                   }
                 ],
                 "url": "{{baseUrl}}/api/obras/internos/fases/{{faseId2}}/riesgo",
-                "description": "Endpoint interno invocado tras 3 suspensiones para colocar la fase en estado EN_RIESGO (RN-12).\nRol requerido: SISTEMA.\nEsperado: 200 OK."
+                "description": "Endpoint interno que Operaciones llama a la 3.ª suspensión (RN-12). Acá se usa la fase BASE creada en 03 - Reglas, que sigue PENDIENTE. Rol: SISTEMA. Esperado: 200."
               },
               "event": [
                 {
@@ -2683,14 +2808,14 @@
                 "url": "{{baseUrl}}/api/operaciones/ordenes",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"faseId\": 2,\n  \"fecha\": \"{{fechaOrdenNueva}}\"\n}",
+                  "raw": "{\n  \"faseId\": \"{{faseId1}}\",\n  \"tramoId\": \"{{tramoId}}\",\n  \"fechaProgramada\": \"{{fechaOrdenNueva}}\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
                 },
-                "description": "Programa una orden de trabajo para ejecutar una fase en una fecha.\nRol requerido: PLANIFICADOR.\nEsperado: 201 Created en estado PROGRAMADA."
+                "description": "Crea una orden para la fase RELEVAMIENTO creada en este mismo folder, dentro de 3 días (el pronóstico es confiable a pocos días). Guarda su id en ordenId."
               },
               "event": [
                 {
@@ -2698,7 +2823,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 14 * 86400000);",
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 3 * 86400000);",
                       "pm.collectionVariables.set(\"fechaOrdenNueva\", d.toISOString().slice(0, 10));"
                     ]
                   }
@@ -2708,9 +2833,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status 201 Created - Orden programada\", function () {",
-                      "    pm.response.to.have.status(201);",
-                      "});"
+                      "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                      "pm.collectionVariables.set(\"ordenId\", pm.response.json().id);"
                     ]
                   }
                 }
@@ -2780,8 +2904,8 @@
                     "value": "Bearer {{tokenPlanificador}}"
                   }
                 ],
-                "url": "{{baseUrl}}/api/operaciones/ordenes/2/habilitacion",
-                "description": "Dispara la evaluación de habilitación para una orden específica (consulta Obras, Recursos y Clima).\nRoles autorizados: PLANIFICADOR, SISTEMA.\nEsperado: 200 OK."
+                "url": "{{baseUrl}}/api/operaciones/ordenes/{{ordenId}}/habilitacion",
+                "description": "Habilita la orden recién creada: Obras (RN-01), Recursos (reserva) y Open-Meteo. El resultado depende del clima real: HABILITADA, REPROGRAMADA (suspensión y saga) o PENDIENTE_CONFIRMACION_CLIMATICA si Open-Meteo no responde."
               },
               "event": [
                 {
@@ -2789,9 +2913,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status 200 OK - Habilitación ejecutada\", function () {",
-                      "    pm.expect(pm.response.code).to.be.oneOf([200, 422]);",
-                      "});"
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"Estado de una habilitación\", () => pm.expect(pm.response.json().estado).to.be.oneOf([\"HABILITADA\", \"REPROGRAMADA\", \"PENDIENTE_CONFIRMACION_CLIMATICA\"]));"
                     ]
                   }
                 }
