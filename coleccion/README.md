@@ -2,7 +2,8 @@
 
 Archivos:
 
-- `obras-viales.postman_collection.json`: la colección (111 requests).
+- `obras-viales.postman_collection.json`: la colección original integral (111 requests).
+- `govp-modular.postman_collection.json`: nueva colección modular organizada en 4 carpetas (Usuarios, Flujo Básico, Reglas de Negocio con éxito/rechazo, y Endpoints por Servicio).
 - `local.postman_environment.json`: variables de entorno de ejemplo (`baseUrl`, `keycloakUrl`, `sistemaSecret`).
 
 ## Cómo usarla

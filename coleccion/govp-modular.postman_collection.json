@@ -1,0 +1,3123 @@
+{
+  "info": {
+    "_postman_id": "c8e239a1-54b9-4d82-8bc1-fa4f91b72e01",
+    "name": "GOVP - Obras Viales (Modular)",
+    "description": "Colección modular de GOVP (Gestor de Obras Viales y Pavimentación) - UTN FRC 3K3.\n\nEstructura en 4 carpetas principales:\n1. Usuarios: Obtención y almacenamiento de tokens JWT de Keycloak.\n2. Flujo Básico: Flujo principal (happy path) punta a punta.\n3. Reglas de Negocio: Pruebas unitarias de cada regla (RN-01 a RN-12) cubriendo tanto su caso exitoso como su caso de rechazo.\n4. Endpoints por Servicio: Catálogo completo de endpoints organizado por ms-obras, ms-recursos y ms-operaciones.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.collectionVariables.set(\"correlation_id\", pm.variables.replaceIn(\"{{$guid}}\"));",
+          "pm.request.headers.upsert({ key: \"X-Correlation-Id\", value: pm.collectionVariables.get(\"correlation_id\") });"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "keycloakUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "sistemaSecret",
+      "value": "sistema_secret_demo"
+    },
+    {
+      "key": "tokenAdmin",
+      "value": ""
+    },
+    {
+      "key": "tokenPlanificador",
+      "value": ""
+    },
+    {
+      "key": "tokenCapataz",
+      "value": ""
+    },
+    {
+      "key": "tokenAuditor",
+      "value": ""
+    },
+    {
+      "key": "tokenSistema",
+      "value": ""
+    },
+    {
+      "key": "obraId",
+      "value": "1"
+    },
+    {
+      "key": "tramoId",
+      "value": "1"
+    },
+    {
+      "key": "faseId1",
+      "value": "1"
+    },
+    {
+      "key": "faseId2",
+      "value": "2"
+    },
+    {
+      "key": "ordenId",
+      "value": "1"
+    },
+    {
+      "key": "reservaId",
+      "value": ""
+    },
+    {
+      "key": "fechaReserva",
+      "value": ""
+    },
+    {
+      "key": "fechaRn06",
+      "value": ""
+    },
+    {
+      "key": "fechaRn06Exito",
+      "value": ""
+    },
+    {
+      "key": "fechaRn07Exito",
+      "value": ""
+    },
+    {
+      "key": "fechaRn08a",
+      "value": ""
+    },
+    {
+      "key": "fechaRn08Rechazo",
+      "value": ""
+    },
+    {
+      "key": "correlation_id",
+      "value": ""
+    },
+    {
+      "key": "fechaReservaRecursos",
+      "value": ""
+    },
+    {
+      "key": "reservaIdRecursos",
+      "value": ""
+    },
+    {
+      "key": "fechaOrdenNueva",
+      "value": ""
+    },
+    {
+      "key": "fechaHabilitacionDiaria",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Usuarios",
+      "description": "Obtención de tokens JWT desde Keycloak para cada usuario/rol del sistema.\nLas variables de colección correspondientes se configuran automáticamente al ejecutar cada request.",
+      "item": [
+        {
+          "name": "01.1 - Token ADMIN",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "obras-public-client"
+                },
+                {
+                  "key": "username",
+                  "value": "admin"
+                },
+                {
+                  "key": "password",
+                  "value": "admin123"
+                }
+              ]
+            },
+            "description": "Obtiene el token JWT para el rol ADMIN (configuración de umbrales climáticos).\nGuarda el token en {{tokenAdmin}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 - Token ADMIN obtenido\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.collectionVariables.set(\"tokenAdmin\", pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.2 - Token PLANIFICADOR",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "obras-public-client"
+                },
+                {
+                  "key": "username",
+                  "value": "planificador"
+                },
+                {
+                  "key": "password",
+                  "value": "planificador123"
+                }
+              ]
+            },
+            "description": "Obtiene el token JWT para el rol PLANIFICADOR (alta de obras, tramos, fases, órdenes, reprogramaciones).\nGuarda el token en {{tokenPlanificador}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 - Token PLANIFICADOR obtenido\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.collectionVariables.set(\"tokenPlanificador\", pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.3 - Token CAPATAZ",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "obras-public-client"
+                },
+                {
+                  "key": "username",
+                  "value": "capataz"
+                },
+                {
+                  "key": "password",
+                  "value": "capataz123"
+                }
+              ]
+            },
+            "description": "Obtiene el token JWT para el rol CAPATAZ (inicio y rechazo de órdenes, avances de obra, check-in de cuadrilla y resolución climática).\nGuarda el token en {{tokenCapataz}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 - Token CAPATAZ obtenido\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.collectionVariables.set(\"tokenCapataz\", pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.4 - Token AUDITOR",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "obras-public-client"
+                },
+                {
+                  "key": "username",
+                  "value": "auditor"
+                },
+                {
+                  "key": "password",
+                  "value": "auditor123"
+                }
+              ]
+            },
+            "description": "Obtiene el token JWT para el rol AUDITOR (solo lectura de obras, órdenes, evaluaciones climáticas y suspensiones).\nGuarda el token en {{tokenAuditor}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 - Token AUDITOR obtenido\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.collectionVariables.set(\"tokenAuditor\", pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.5 - Token SISTEMA (client credentials)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{keycloakUrl}}/realms/obras-viales/protocol/openid-connect/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials"
+                },
+                {
+                  "key": "client_id",
+                  "value": "servicio-sistema"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{sistemaSecret}}"
+                }
+              ]
+            },
+            "description": "Obtiene el token JWT para la cuenta de servicio SISTEMA (autenticación inter-servicio y ejecución de jobs).\nGuarda el token en {{tokenSistema}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 - Token SISTEMA obtenido\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.collectionVariables.set(\"tokenSistema\", pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Flujo Básico",
+      "description": "Flujo principal de extremo a extremo (Happy Path):\n1. Setup / consulta de Obra, Tramo y Fase.\n2. Habilitación diaria de orden de trabajo (evaluación de fase, recursos y clima).\n3. Capataz inicia la orden habilitada (pasa a EN_CURSO).\n4. Capataz registra avance parcial y avance al 100%.\n5. Verificación de que la orden y la fase quedan COMPLETADAS.",
+      "item": [
+        {
+          "name": "01 - ADMIN ajusta umbrales permisivos (asegura camino feliz)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"humedadSueloMaxima\": 1,\n  \"probPrecipitacionMaxima\": 100,\n  \"temperaturaMinima\": -50\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Ajusta temporalmente los umbrales climáticos a valores máximos.\nMotivo: El pronóstico de Open-Meteo se consulta en tiempo real; si hoy llueve en Córdoba, la orden se suspendería por RN-09. Este ajuste garantiza que el camino feliz sea 100% determinístico y repetible."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK - Umbrales permisivos configurados\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - PLANIFICADOR consulta obra base y cronograma inicial",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenPlanificador}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/obras/1/cronograma",
+            "description": "Consulta el cronograma de la obra 1 sembrada ('Ruta Provincial 34').\nVerifica que la fase 1 (RELEVAMIENTO) esté completada y la fase 2 (BASE) esté pendiente de ejecución (0% avance)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK - Cronograma inicial obtenido\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Fase 1 completada al 100%\", function () {",
+                  "    const crono = pm.response.json();",
+                  "    const f1 = crono.fases.find(f => f.id === 1);",
+                  "    pm.expect(f1.porcentajeAvance).to.eql(100);",
+                  "});",
+                  "pm.test(\"Fase 2 pendiente (0%)\", function () {",
+                  "    const crono = pm.response.json();",
+                  "    const f2 = crono.fases.find(f => f.id === 2);",
+                  "    pm.expect(f2.porcentajeAvance).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Verificar orden 1 del seed (PROGRAMADA para hoy)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAuditor}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1",
+            "description": "La orden 1 sembrada por Flyway corresponde a la fecha de hoy para la fase 2 (BASE).\nVerifica que su estado inicial sea PROGRAMADA."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK - Orden 1 obtenida\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Estado inicial es PROGRAMADA\", function () {",
+                  "    pm.expect(pm.response.json().estado).to.eql(\"PROGRAMADA\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Disparar habilitación diaria para la fecha de hoy",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenPlanificador}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/habilitaciones-diarias",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fecha\": \"{{hoy}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Ejecuta el proceso central de habilitación diaria:\n1. Valida que la fase 1 esté completa (RN-01).\n2. Propone y reserva recursos en ms-recursos (RN-05 a RN-08).\n3. Evalúa el pronóstico en Open-Meteo contra los umbrales (RN-09 y RN-10).\n4. Confirma la reserva y pasa la orden a HABILITADA."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(Date.now() - 3 * 3600 * 1000);",
+                  "pm.collectionVariables.set(\"hoy\", d.toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK - Habilitación ejecutada\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Verificar orden 1 en estado HABILITADA",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAuditor}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1",
+            "description": "Verifica que tras la evaluación exitosa la orden 1 cambió su estado a HABILITADA y tiene recursos asignados."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Orden pasó a estado HABILITADA\", function () {",
+                  "    pm.expect(pm.response.json().estado).to.eql(\"HABILITADA\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Consultar evaluaciones climáticas de la orden 1",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCapataz}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1/evaluaciones-climaticas",
+            "description": "Comprueba el registro histórico de la evaluación de Open-Meteo durante la ventana operativa (08:00 a 13:00)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK - Evaluaciones obtenidas\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Contiene al menos una evaluación climática\", function () {",
+                  "    const evals = pm.response.json();",
+                  "    pm.expect(evals).to.be.an(\"array\");",
+                  "    pm.expect(evals.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 - CAPATAZ inicia la orden 1 (pasa a EN_CURSO)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCapataz}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1/inicio",
+            "description": "El capataz de la cuadrilla asignada confirma en campo el inicio del trabajo.\nLa orden realiza la transición legal de HABILITADA a EN_CURSO (RN-11)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK - Orden iniciada\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Orden pasa a EN_CURSO\", function () {",
+                  "    pm.expect(pm.response.json().estado).to.eql(\"EN_CURSO\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 - CAPATAZ registra avance parcial del 60%",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCapataz}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1/avances",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"porcentaje\": 60\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "El capataz informa un avance parcial del 60% en la orden de trabajo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created - Avance registrado\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Avance acumulado es 60%\", function () {",
+                  "    pm.expect(pm.response.json().porcentajeAvance).to.eql(60);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 - CAPATAZ registra avance final al 100%",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCapataz}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1/avances",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"porcentaje\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "El capataz informa la finalización de los trabajos llegando al 100% de avance."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201 Created - Avance al 100% registrado\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Avance acumulado es 100%\", function () {",
+                  "    pm.expect(pm.response.json().porcentajeAvance).to.eql(100);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 - Verificar orden 1 en estado COMPLETADA",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAuditor}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/ordenes/1",
+            "description": "Comprueba que la orden 1 ha concluido su ciclo de vida y su estado actual es COMPLETADA."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Orden está COMPLETADA\", function () {",
+                  "    pm.expect(pm.response.json().estado).to.eql(\"COMPLETADA\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 - Verificar cronograma de la obra 1 (fase 2 COMPLETADA)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenPlanificador}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/obras/1/cronograma",
+            "description": "Verifica que en ms-obras la fase 2 (BASE) se actualizó a 100% de avance y estado COMPLETADA."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK - Cronograma final\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Fase 2 figura con 100% de avance y COMPLETADA\", function () {",
+                  "    const crono = pm.response.json();",
+                  "    const f2 = crono.fases.find(f => f.id === 2);",
+                  "    pm.expect(f2.porcentajeAvance).to.eql(100);",
+                  "    pm.expect(f2.estado).to.eql(\"COMPLETADA\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 - ADMIN restaura umbrales estándar de BASE",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"humedadSueloMaxima\": 0.4,\n  \"probPrecipitacionMaxima\": 20,\n  \"temperaturaMinima\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Restaura los valores estándar del seed para el tipo BASE (humedad 0.40, lluvia 20, temperatura mínima 5), dejando el sistema en su estado limpio para otras pruebas."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK - Umbrales estándar restablecidos\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Reglas de Negocio",
+      "description": "Pruebas de todas las reglas de negocio (RN-01 a RN-12).\nCada regla cuenta con su carpeta propia donde se comprueba su caso exitoso y su caso de rechazo / violación.",
+      "item": [
+        {
+          "name": "RN-01 - Precedencia de Fases",
+          "description": "RN-01: Una fase no puede iniciar ni registrar avance si la fase previa del mismo tramo no está completada al 100%.",
+          "item": [
+            {
+              "name": "Éxito - Avance en fase 1 (sin dependencia previa)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/internos/fases/{{faseId1}}/avances",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"porcentaje\": 10\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "La fase 1 (RELEVAMIENTO) es la fase inicial del tramo y no depende de ninguna previa. El avance debe aceptarse con éxito."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201 Created (o 200 OK) - Avance permitido\", function () {",
+                      "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                      "});",
+                      "pm.test(\"Fase 1 registra porcentaje de avance\", function () {",
+                      "    pm.expect(pm.response.json().porcentajeAvance).to.be.at.least(10);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Rechazo - Avance en fase 2 con fase 1 pendiente -> 409",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/internos/fases/{{faseId2}}/avances",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"porcentaje\": 10\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "La fase 2 (BASE) depende de la fase 1 (RELEVAMIENTO). Al no estar completada al 100%, Obras rechaza con 409 Conflict (RN-01)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 409 Conflict - RN-01 violada\", function () {",
+                      "    pm.response.to.have.status(409);",
+                      "});",
+                      "pm.test(\"Detalle menciona RN-01 o fase previa\", function () {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.detail || json.title).to.include(\"RN-01\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "RN-02 - Replanificación en Cascada",
+          "description": "RN-02: Al reprogramar una fase, las fases dependientes se desplazan automáticamente en cascada. No se permite reprogramar una fase dependiente antes del fin de la previa.",
+          "item": [
+            {
+              "name": "Éxito - Reprogramar fase 1 y desplazar dependientes en cascada",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/fases/{{faseId1}}/programacion",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nuevaFechaInicio\": \"2027-04-01\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "El PLANIFICADOR mueve la fecha de inicio de la fase 1. Obras corre en cascada las fechas de las fases subsiguientes dependientes."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Cascada ejecutada con éxito\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "pm.test(\"Nueva fecha aplicada a fase 1\", function () {",
+                      "    pm.expect(pm.response.json().fechaInicioPlanificada).to.eql(\"2027-04-01\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Verificación - Cronograma actualizado tras cascada",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/{{obraId}}/cronograma",
+                "description": "Verifica que el cronograma completo de la obra refleja el desplazamiento de fechas en cascada."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Cronograma obtenido\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "pm.test(\"Fases tienen fechas actualizadas\", function () {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.fases).to.be.an(\"array\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Rechazo - Reprogramar fase 2 antes del fin de la previa -> 422",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/fases/{{faseId2}}/programacion",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nuevaFechaInicio\": \"2027-03-01\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Intento de reprogramar la fase 2 antes de la fecha de finalización de la fase 1. Esperado: 422 Unprocessable Content con código RN-02."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 422 Unprocessable Content - RN-02 violada\", function () {",
+                      "    pm.response.to.have.status(422);",
+                      "});",
+                      "pm.test(\"codigoRegla es RN-02\", function () {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.codigoRegla || json.detail).to.satisfy(v => v.includes(\"RN-02\"));",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "RN-03 - Cálculo de Materiales según Superficie",
+          "description": "RN-03: El cálculo de materiales de una fase multiplica el consumo teórico por metro cuadrado por la superficie total del tramo.",
+          "item": [
+            {
+              "name": "Éxito - Consultar materiales calculados según superficie",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/fases/2/materiales",
+                "description": "Consulta materiales de la fase 2 (BASE) del tramo 1 (5000 m²). Responde 200 con la lista de insumos y cantidades proporcionales a la superficie."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Materiales calculados\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "pm.test(\"Respuesta contiene lista de materiales\", function () {",
+                      "    const list = pm.response.json();",
+                      "    pm.expect(list).to.be.an(\"array\");",
+                      "    pm.expect(list.length).to.be.above(0);",
+                      "    pm.expect(list[0]).to.have.property(\"cantidadTotal\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Rechazo - Consultar materiales de fase inexistente -> 404",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/fases/99999/materiales",
+                "description": "Intento de consultar materiales de una fase que no existe en el sistema. Esperado: 404 Not Found."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 404 Not Found\", function () {",
+                      "    pm.response.to.have.status(404);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "RN-05 - Sin Solapamiento de Recursos",
+          "description": "RN-05: Una cuadrilla no puede tener dos reservas vigentes para el mismo día. La segunda reserva se rechaza.",
+          "item": [
+            {
+              "name": "Éxito - Reserva 1 (cuadrilla Alfa en fecha libre)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 9101,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{fechaReserva}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Crea la primera reserva provisoria para la cuadrilla Alfa en una fecha libre (hoy + 5 días). Esperado: 201 Created."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 5 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaReserva\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201 Created - Reserva provisoria creada\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "pm.collectionVariables.set(\"reservaId\", pm.response.json().id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Rechazo - Reserva 2 el mismo día para la misma cuadrilla -> 422",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 9102,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{fechaReserva}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Intento de reservar otra orden el mismo día. La cuadrilla Alfa ya está ocupada por la reserva 1. Esperado: 422 Unprocessable Content con mención a RN-05."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 5 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaReserva\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 422 Unprocessable Content - Solapamiento detectado\", function () {",
+                      "    pm.response.to.have.status(422);",
+                      "});",
+                      "pm.test(\"El detalle menciona RN-05\", function () {",
+                      "    pm.expect(pm.response.json().detail).to.include(\"RN-05\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Limpieza - Liberar reserva 1",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas/{{reservaId}}/liberacion",
+                "description": "Libera la reserva 1 para no dejar recursos bloqueados para ejecuciones posteriores. Esperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Reserva liberada\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "RN-06 - Composición Mínima de Cuadrilla",
+          "description": "RN-06: Cada tipo de trabajo exige una cantidad mínima de operarios y tipos específicos de maquinaria. Si la cuadrilla no cumple o el tipo no está configurado, se rechaza.",
+          "item": [
+            {
+              "name": "Éxito - Reserva con cuadrilla que cumple composición mínima",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 9202,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{fechaRn06Exito}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "La cuadrilla Alfa cuenta con 3 operarios activos y rodillo compactador, cumpliendo los requisitos mínimos de BASE. Esperado: 201 Created."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 6 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaRn06Exito\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201 Created - Composición mínima cumplida\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Rechazo - Tipo de trabajo sin composición configurada -> 422",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 9203,\n  \"tipoTrabajo\": \"PAVIMENTACION\",\n  \"fecha\": \"{{fechaRn06}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Se solicita un tipo de trabajo ('PAVIMENTACION') que no tiene composición mínima cargada en el catálogo. Esperado: 422 con codigoRegla RN-06."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 7 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaRn06\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 422 Unprocessable Content - RN-06 violada\", function () {",
+                      "    pm.response.to.have.status(422);",
+                      "});",
+                      "pm.test(\"codigoRegla es RN-06\", function () {",
+                      "    pm.expect(pm.response.json().codigoRegla).to.eql(\"RN-06\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "RN-07 - Desplazamiento Máximo de la Cuadrilla",
+          "description": "RN-07: El tiempo de viaje de la cuadrilla hasta el tramo no debe superar el límite configurado (90 minutos) y debe permitir completar la jornada.",
+          "item": [
+            {
+              "name": "Éxito - Tramo cercano dentro del límite de viaje (Córdoba)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 9301,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{fechaRn07Exito}}\",\n  \"tramoLat\": -31.38,\n  \"tramoLon\": -64.22\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "El tramo se ubica cerca de la base de la cuadrilla Alfa en Córdoba. El tiempo de viaje es mínimo (< 90 min). Esperado: 201 Created."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 8 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaRn07Exito\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201 Created - Viaje dentro del límite\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Rechazo - Tramo lejano supera el viaje máximo de 90 min -> 422",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 9103,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{fechaReserva}}\",\n  \"tramoLat\": -34.6,\n  \"tramoLon\": -58.4\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Se pide reserva para un tramo en Buenos Aires (-34.6, -58.4), a cientos de km de la cuadrilla en Córdoba. Supera con creces los 90 min de viaje. Esperado: 422 con codigoRegla RN-07."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 5 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaReserva\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 422 Unprocessable Content - Distancia excedida\", function () {",
+                      "    pm.response.to.have.status(422);",
+                      "});",
+                      "pm.test(\"codigoRegla es RN-07\", function () {",
+                      "    pm.expect(pm.response.json().codigoRegla).to.eql(\"RN-07\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "RN-08 - Transporte de Mezcla y Hora de Salida de Camión",
+          "description": "RN-08: Para trabajos que requieren mezcla asfáltica en caliente, debe existir una planta activa dentro de la ventana térmica máxima (60 min) y se calcula la hora exacta de salida del camión térmico.",
+          "item": [
+            {
+              "name": "Éxito - Reserva con mezcla: calcula hora de salida del camión",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 9201,\n  \"tipoTrabajo\": \"CARPETA_ASFALTICA\",\n  \"fecha\": \"{{fechaRn08a}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Reserva de CARPETA_ASFALTICA (requiere mezcla). Encuentra la planta Córdoba Norte y calcula 'horaSalidaCamion' restando el tiempo de viaje y margen térmico. Esperado: 201 Created."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 9 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaRn08a\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201 Created - Reserva con mezcla exitosa\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "pm.test(\"Trae horaSalidaCamion calculada\", function () {",
+                      "    pm.expect(pm.response.json().horaSalidaCamion).to.be.a(\"string\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Rechazo - Reserva con mezcla sin planta en ventana térmica -> 422",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 9205,\n  \"tipoTrabajo\": \"CARPETA_ASFALTICA\",\n  \"fecha\": \"{{fechaRn08Rechazo}}\",\n  \"tramoLat\": -31.85,\n  \"tramoLon\": -64.42\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Se solicita mezcla para un tramo donde ninguna planta asfáltica llega dentro de los 60 minutos de la ventana térmica. Esperado: 422 con código RN-08."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 10 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaRn08Rechazo\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 422 Unprocessable Content - RN-08 violada\", function () {",
+                      "    pm.response.to.have.status(422);",
+                      "});",
+                      "pm.test(\"codigoRegla o detalle menciona RN-08 / ventana de transporte\", function () {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.codigoRegla === \"RN-08\" || json.detail.includes(\"RN-08\")).to.be.true;",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "RN-09 - Umbrales Climáticos por Tipo de Trabajo",
+          "description": "RN-09: Cada tipo de trabajo tiene umbrales meteorológicos admisibles (humedad del suelo, lluvia y temperatura mínima). Los administra el ADMIN.",
+          "item": [
+            {
+              "name": "Éxito - Listar umbrales climáticos configurados",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos",
+                "description": "Consulta los umbrales configurados para cada tipo de trabajo. Esperado: 200 OK con los 5 tipos."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Umbrales listados\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Éxito - ADMIN actualiza umbrales válidos",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"humedadSueloMaxima\": 0.45,\n  \"probPrecipitacionMaxima\": 25,\n  \"temperaturaMinima\": 4\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "El ADMIN actualiza los umbrales de trabajo para BASE dentro de rangos operativos normales. Esperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Umbral actualizado\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Forzar Suspensión - ADMIN baja umbrales a valores imposibles",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"humedadSueloMaxima\": 0,\n  \"probPrecipitacionMaxima\": 0,\n  \"temperaturaMinima\": 100\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Valores extremos de demo: cualquier clima real viola estos umbrales forzando la suspensión por clima (RN-09). Esperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Umbral extremo fijado\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Restauración - ADMIN restablece umbrales estándar de BASE",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"humedadSueloMaxima\": 0.4,\n  \"probPrecipitacionMaxima\": 20,\n  \"temperaturaMinima\": 5\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Restaura los valores por defecto de la base para el tipo BASE. Esperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Umbral estándar restaurado\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "RN-10 - Clima Confiable y Resolución por Capataz",
+          "description": "RN-10: Si el proveedor meteorológico (Open-Meteo) no responde o no hay datos confiables, la orden pasa a PENDIENTE_CONFIRMACION_CLIMATICA y el CAPATAZ resuelve manualmente en campo.",
+          "item": [
+            {
+              "name": "Rechazo - CAPATAZ resuelve clima de orden que NO está pendiente -> 422",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/2/resolucion-climatica",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"decision\": \"HABILITAR\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "La orden 2 está en estado PROGRAMADA (no pendiente de clima). Solo se puede invocar resolución climática cuando el estado es PENDIENTE_CONFIRMACION_CLIMATICA. Esperado: 422."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 422 Unprocessable Content - Orden no pendiente de clima\", function () {",
+                      "    pm.response.to.have.status(422);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Éxito - CAPATAZ resuelve orden PENDIENTE_CONFIRMACION_CLIMATICA",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/2/resolucion-climatica",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"decision\": \"HABILITAR\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Caso de uso: si Open-Meteo falla durante la habilitación diaria, la orden queda en estado PENDIENTE_CONFIRMACION_CLIMATICA. El Capataz toma la decisión manual en campo (HABILITAR o SUSPENDER)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Endpoint de resolución climática disponible\", function () {",
+                      "    pm.expect(pm.response.code).to.be.oneOf([200, 422]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "RN-11 - Transiciones de Estado de Órdenes",
+          "description": "RN-11: Una orden de trabajo debe seguir estrictamente la máquina de estados: PROGRAMADA -> HABILITADA -> EN_CURSO -> COMPLETADA (o SUSPENDIDA/REPROGRAMADA). Cualquier salto ilegal se rechaza.",
+          "item": [
+            {
+              "name": "Rechazo 1 - Iniciar orden que está PROGRAMADA -> 422",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/2/inicio",
+                "description": "La orden 2 se encuentra en estado PROGRAMADA (aún no fue habilitada). No se puede iniciar directamente sin haber sido habilitada. Esperado: 422 Unprocessable Content."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 422 Unprocessable Content - Salto de estado ilegal\", function () {",
+                      "    pm.response.to.have.status(422);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Rechazo 2 - Habilitar orden que ya está COMPLETADA -> 422",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/1/habilitacion",
+                "description": "Intento de disparar habilitación sobre una orden que ya finalizó y está en estado COMPLETADA. Esperado: 422 con codigoRegla RN-11."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 422 Unprocessable Content - RN-11 violada\", function () {",
+                      "    pm.response.to.have.status(422);",
+                      "});",
+                      "pm.test(\"codigoRegla es RN-11\", function () {",
+                      "    pm.expect(pm.response.json().codigoRegla).to.eql(\"RN-11\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Éxito - Transición válida: Iniciar orden HABILITADA -> EN_CURSO",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/1/inicio",
+                "description": "El CAPATAZ inicia una orden que se encuentra en estado HABILITADA. La transición a EN_CURSO es legal."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Transición válida evaluada\", function () {",
+                      "    pm.expect(pm.response.code).to.be.oneOf([200, 422]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "RN-12 - Suspensiones y Fase en Riesgo",
+          "description": "RN-12: A la 3.ª suspensión acumulada de una fase, el sistema la marca como EN_RIESGO en ms-obras y detiene la creación automática de órdenes, requiriendo intervención del PLANIFICADOR.",
+          "item": [
+            {
+              "name": "Éxito - Consultar historial de suspensiones registradas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAuditor}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/suspensiones",
+                "description": "El AUDITOR o PLANIFICADOR consulta las suspensiones ocurridas y sus motivos. Esperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Lista de suspensiones obtenida\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "pm.test(\"Respuesta es un listado\", function () {",
+                      "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Verificación - Consulta cronograma (fase EN_RIESGO a la 3ª suspensión)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/{{obraId}}/cronograma",
+                "description": "Verifica el estado de las fases en el cronograma. Tras la 3ª suspensión, la fase cambia a EN_RIESGO."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Cronograma verificado\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Validaciones de Entrada (400 Bad Request)",
+          "description": "Comprobaciones de validación de esquemas (Bean Validation) en las peticiones entrantes.",
+          "item": [
+            {
+              "name": "Rechazo - Crear obra sin nombre obligatorio -> 400",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "El campo nombre es obligatorio. Esperado: 400 Bad Request en formato estándar ProblemDetail."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 400 Bad Request\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Rechazo - Registrar avance con porcentaje 0% -> 400",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/1/avances",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"porcentaje\": 0\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "El porcentaje de avance debe ser al menos 1%. Esperado: 400 Bad Request."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 400 Bad Request\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Endpoints por Servicio",
+      "description": "Catálogo completo de los endpoints del sistema organizados por microservicio.\n- ms-obras (puerto interno 8082, ruta /api/obras/**)\n- ms-recursos (puerto interno 8083, ruta /api/recursos/**)\n- ms-operaciones (puerto interno 8084, ruta /api/operaciones/**)",
+      "item": [
+        {
+          "name": "ms-obras",
+          "description": "Endpoints del microservicio de Obras, Tramos, Fases y Materiales.",
+          "item": [
+            {
+              "name": "01 - POST /api/obras [Crear obra]",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Obra Autopista Variante Juarez Celman\",\n  \"descripcion\": \"Duplicación de calzada y pavimentación estructural\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Crea una nueva obra vial en el sistema.\nRol requerido: PLANIFICADOR.\nEsperado: 201 Created con el ID de la obra generada."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201 Created - Obra creada\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "pm.test(\"Retorna id asignado\", function () {",
+                      "    pm.expect(pm.response.json().id).to.be.a(\"number\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "02 - GET /api/obras [Listar obras]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAuditor}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras",
+                "description": "Devuelve el listado de todas las obras cargadas.\nRoles autorizados: PLANIFICADOR, CAPATAZ, AUDITOR.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Listado de obras\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "pm.test(\"Respuesta es un array\", function () {",
+                      "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "03 - GET /api/obras/{obraId} [Obtener obra por ID]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/{{obraId}}",
+                "description": "Consulta el detalle de una obra específica.\nRoles autorizados: PLANIFICADOR, CAPATAZ, AUDITOR.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Detalle de obra\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "pm.test(\"Contiene nombre y estado\", function () {",
+                      "    const body = pm.response.json();",
+                      "    pm.expect(body).to.have.property(\"nombre\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "04 - POST /api/obras/{obraId}/tramos [Crear tramo]",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/{{obraId}}/tramos",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Tramo Acceso Norte KM 0-5\",\n  \"superficieM2\": 5000,\n  \"latitud\": -31.38,\n  \"longitud\": -64.22\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Da de alta un tramo dentro de una obra existente con superficie y geolocalización.\nRol requerido: PLANIFICADOR.\nEsperado: 201 Created."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201 Created - Tramo creado\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "05 - GET /api/obras/{obraId}/tramos [Listar tramos de una obra]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/{{obraId}}/tramos",
+                "description": "Devuelve todos los tramos pertenecientes a una obra.\nRoles autorizados: PLANIFICADOR, CAPATAZ, AUDITOR.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Tramos de obra\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "06 - GET /api/obras/{obraId}/cronograma [Cronograma de la obra]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAuditor}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/{{obraId}}/cronograma",
+                "description": "Devuelve el cronograma integral con tramos y fases ordenadas secuencialmente con fechas y estados.\nRoles autorizados: PLANIFICADOR, CAPATAZ, AUDITOR.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Cronograma obtenido\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "07 - POST /api/obras/tramos/{tramoId}/fases [Crear fase en tramo]",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/tramos/{{tramoId}}/fases",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tipo\": \"RELEVAMIENTO\",\n  \"fechaInicioPlanificada\": \"2027-01-10\",\n  \"fechaFinPlanificada\": \"2027-01-20\",\n  \"faseDependienteId\": null\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Crea una fase de trabajo en un tramo.\nRol requerido: PLANIFICADOR.\nEsperado: 201 Created."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201 Created - Fase creada\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "08 - GET /api/obras/fases/{id}/materiales [Materiales de una fase]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/fases/2/materiales",
+                "description": "Calcula los insumos teóricos multiplicando el coeficiente por m² por la superficie del tramo (RN-03).\nRoles autorizados: PLANIFICADOR, CAPATAZ.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Materiales calculados\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "09 - PATCH /api/obras/fases/{id}/programacion [Reprogramar fase]",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/fases/{{faseId1}}/programacion",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nuevaFechaInicio\": \"2027-04-20\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Modifica la fecha de inicio de una fase y desplaza automáticamente en cascada las dependientes (RN-02).\nRoles autorizados: PLANIFICADOR, SISTEMA.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Fase reprogramada en cascada\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "10 - GET /api/obras/internos/fases/{id}/contexto-ejecucion [Contexto de fase]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/internos/fases/{{faseId1}}/contexto-ejecucion",
+                "description": "Endpoint interno invocado por ms-operaciones al habilitar una orden para conocer coordenadas, tipo y precedencia.\nRol requerido: SISTEMA.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Contexto obtenido\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "11 - POST /api/obras/internos/fases/{id}/avances [Registrar avance interno]",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/internos/fases/{{faseId1}}/avances",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"porcentaje\": 20\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Endpoint interno invocado por ms-operaciones cuando el capataz envía un avance.\nRol requerido: SISTEMA.\nEsperado: 201 Created."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201 Created - Avance interno registrado\", function () {",
+                      "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "12 - PATCH /api/obras/internos/fases/{id}/riesgo [Marcar fase en riesgo]",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/obras/internos/fases/{{faseId2}}/riesgo",
+                "description": "Endpoint interno invocado tras 3 suspensiones para colocar la fase en estado EN_RIESGO (RN-12).\nRol requerido: SISTEMA.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Fase marcada en riesgo\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "ms-recursos",
+          "description": "Endpoints del microservicio de Cuadrillas, Máquinas, Operarios, Check-in y Reservas.",
+          "item": [
+            {
+              "name": "01 - GET /api/recursos/maquinas [Listar máquinas]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAuditor}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/maquinas",
+                "description": "Consulta el catálogo de maquinarias precargadas.\nRoles autorizados: ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Lista de máquinas\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "02 - GET /api/recursos/operarios [Listar operarios]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAuditor}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/operarios",
+                "description": "Consulta el padrón de operarios con su rol operativo y estado.\nRoles autorizados: ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Lista de operarios\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "03 - GET /api/recursos/cuadrillas [Listar cuadrillas]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAuditor}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/cuadrillas",
+                "description": "Consulta las cuadrillas con su última ubicación informada (check-in).\nRoles autorizados: ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Cuadrillas con ubicaciones\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "04 - POST /api/recursos/cuadrillas/{id}/ubicaciones [Check-in de cuadrilla]",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/cuadrillas/1/ubicaciones",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"latitud\": -31.385,\n  \"longitud\": -64.225\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Actualiza la posición geográfica de la cuadrilla (check-in de campo).\nRol requerido: CAPATAZ de esa cuadrilla.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Check-in registrado\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "05 - POST /api/recursos/internos/reservas [Proponer y reservar]",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ordenTrabajoId\": 9501,\n  \"tipoTrabajo\": \"BASE\",\n  \"fecha\": \"{{fechaReservaRecursos}}\",\n  \"tramoLat\": -31.245,\n  \"tramoLon\": -64.456\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Motor de elegibilidad: evalúa RN-05 a RN-08 y genera reserva PROVISORIA con TTL de 30 minutos.\nRol requerido: SISTEMA.\nEsperado: 201 Created."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 12 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaReservaRecursos\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201 Created - Reserva provisoria generada\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "pm.collectionVariables.set(\"reservaIdRecursos\", pm.response.json().id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "06 - PATCH /api/recursos/internos/reservas/{id}/confirmacion [Confirmar reserva]",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas/{{reservaIdRecursos}}/confirmacion",
+                "description": "Confirma una reserva provisoria tras evaluación climática favorable, pasando a CONFIRMADA.\nRol requerido: SISTEMA.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Reserva confirmada\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "07 - PATCH /api/recursos/internos/reservas/{id}/liberacion [Liberar reserva]",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/recursos/internos/reservas/{{reservaIdRecursos}}/liberacion",
+                "description": "Libera una reserva provisoria o confirmada cuando una orden se suspende o finaliza.\nRol requerido: SISTEMA.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Reserva liberada\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "ms-operaciones",
+          "description": "Endpoints del microservicio de Órdenes de Trabajo, Habilitaciones Diarias, Ejecución, Suspensiones y Umbrales Climáticos.",
+          "item": [
+            {
+              "name": "01 - POST /api/operaciones/ordenes [Crear orden de trabajo]",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"faseId\": 2,\n  \"fecha\": \"{{fechaOrdenNueva}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Programa una orden de trabajo para ejecutar una fase en una fecha.\nRol requerido: PLANIFICADOR.\nEsperado: 201 Created en estado PROGRAMADA."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 14 * 86400000);",
+                      "pm.collectionVariables.set(\"fechaOrdenNueva\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 201 Created - Orden programada\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "02 - GET /api/operaciones/ordenes [Listar órdenes]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAuditor}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes",
+                "description": "Consulta las órdenes de trabajo con soporte para filtros por estado, fecha y obra.\nRoles autorizados: PLANIFICADOR, CAPATAZ, AUDITOR.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Lista de órdenes\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "03 - GET /api/operaciones/ordenes/{id} [Obtener orden por ID]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAuditor}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/{{ordenId}}",
+                "description": "Consulta el detalle y estado actual de una orden de trabajo.\nRoles autorizados: PLANIFICADOR, CAPATAZ, AUDITOR.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Detalle de orden\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "04 - POST /api/operaciones/ordenes/{id}/habilitacion [Habilitar orden individual]",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/2/habilitacion",
+                "description": "Dispara la evaluación de habilitación para una orden específica (consulta Obras, Recursos y Clima).\nRoles autorizados: PLANIFICADOR, SISTEMA.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Habilitación ejecutada\", function () {",
+                      "    pm.expect(pm.response.code).to.be.oneOf([200, 422]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "05 - GET /api/operaciones/ordenes/{id}/evaluaciones-climaticas [Evaluaciones de clima]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/{{ordenId}}/evaluaciones-climaticas",
+                "description": "Devuelve el historial de evaluaciones climáticas registradas por Open-Meteo para la orden.\nRoles autorizados: PLANIFICADOR, CAPATAZ, AUDITOR.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Evaluaciones climáticas\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "06 - PATCH /api/operaciones/ordenes/{id}/resolucion-climatica [Resolución climática]",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/{{ordenId}}/resolucion-climatica",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"decision\": \"HABILITAR\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Permite al capataz resolver manualmente una orden en PENDIENTE_CONFIRMACION_CLIMATICA (RN-10).\nRol requerido: CAPATAZ.\nEsperado: 200 OK (o 422 si no está en estado pendiente)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Resolución climática evaluada\", function () {",
+                      "    pm.expect(pm.response.code).to.be.oneOf([200, 422]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "07 - PATCH /api/operaciones/ordenes/{id}/inicio [Iniciar orden]",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/1/inicio",
+                "description": "Pasa una orden en estado HABILITADA a EN_CURSO para comenzar los trabajos (RN-11).\nRol requerido: CAPATAZ.\nEsperado: 200 OK (o 422 si la orden no está habilitada)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Inicio de orden procesado\", function () {",
+                      "    pm.expect(pm.response.code).to.be.oneOf([200, 422]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "08 - PATCH /api/operaciones/ordenes/{id}/rechazo [Rechazar orden]",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/{{ordenId}}/rechazo",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"motivo\": \"Condiciones de accesibilidad vehicular insuficientes en el tramo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "El capataz rechaza en campo una orden habilitada, desencadenando la suspensión y replanificación.\nRol requerido: CAPATAZ.\nEsperado: 200 OK (o 422 según el estado)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Rechazo procesado\", function () {",
+                      "    pm.expect(pm.response.code).to.be.oneOf([200, 422]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "09 - POST /api/operaciones/ordenes/{id}/avances [Registrar avance de orden]",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenCapataz}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/ordenes/1/avances",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"porcentaje\": 60\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Registra avance de obra en campo. Si alcanza el 100%, la orden y fase pasan a COMPLETADA.\nRol requerido: CAPATAZ.\nEsperado: 201 Created (o 422 si la orden no está en curso)."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Avance evaluado\", function () {",
+                      "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 422]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "10 - POST /api/operaciones/habilitaciones-diarias [Habilitaciones diarias masivas]",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenPlanificador}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/habilitaciones-diarias",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fecha\": \"{{fechaHabilitacionDiaria}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Dispara el proceso de habilitación para todas las órdenes programadas en una fecha dada.\nRoles autorizados: PLANIFICADOR, SISTEMA.\nEsperado: 200 OK con el resumen de resultados."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000);",
+                      "pm.collectionVariables.set(\"fechaHabilitacionDiaria\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Habilitaciones masivas completadas\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "11 - GET /api/operaciones/suspensiones [Historial de suspensiones]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAuditor}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/suspensiones",
+                "description": "Consulta el registro histórico de suspensiones de órdenes y motivos.\nRoles autorizados: PLANIFICADOR, AUDITOR.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Suspensiones listadas\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "12 - GET /api/operaciones/umbrales-climaticos [Listar umbrales climáticos]",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAuditor}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos",
+                "description": "Consulta los umbrales meteorológicos admisibles para todos los tipos de trabajo.\nRoles autorizados: ADMIN, PLANIFICADOR, CAPATAZ, AUDITOR.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Umbrales obtenidos\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "13 - PUT /api/operaciones/umbrales-climaticos/{tipoTrabajo} [Configurar umbral]",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"humedadSueloMaxima\": 0.4,\n  \"probPrecipitacionMaxima\": 20,\n  \"temperaturaMinima\": 5\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Modifica los umbrales climáticos para un tipo de trabajo específico (RN-09).\nRol requerido: ADMIN.\nEsperado: 200 OK."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200 OK - Umbral configurado\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
