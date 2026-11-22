@@ -22,17 +22,20 @@ public class OsrmProveedorRutas implements ProveedorRutas {
 
     private final RestTemplate restTemplate;
 
-    // Claves del application.yml (app.osrm.*). Sin valor por defecto: si falta la clave, la aplicación no arranca.
+    // Claves del application.yml (app.osrm.*). Sin valor por defecto: si falta la
+    // clave, la aplicación no arranca.
 
     @Value("${app.osrm.url}")
     private String osrmBaseUrl;
 
-    // Multiplica los tiempos de OSRM (el perfil "driving" no considera el tránsito) y el desvío de la estimación en línea recta.
+    // Multiplica los tiempos de OSRM (el perfil "driving" no considera el tránsito)
+    // y el desvío de la estimación en línea recta.
     @Value("${app.osrm.factor-correccion}")
     private double factorCorreccion;
 
     public OsrmProveedorRutas() {
-        // Timeouts: sin ellos, una respuesta colgada de OSRM bloquearsi el hilo indefinidamente.
+        // Timeouts: sin ellos, una respuesta colgada de OSRM bloquearsi el hilo
+        // indefinidamente.
         SimpleClientHttpRequestFactory fabrica = new SimpleClientHttpRequestFactory();
         fabrica.setConnectTimeout(Duration.ofSeconds(2));
         fabrica.setReadTimeout(Duration.ofSeconds(5));
@@ -44,22 +47,25 @@ public class OsrmProveedorRutas implements ProveedorRutas {
         });
     }
 
-    public record OsrmResponse(String code, OsrmRoute[] routes) {}
-    public record OsrmRoute(double duration, double distance) {}
+    public record OsrmResponse(String code, OsrmRoute[] routes) {
+    }
+
+    public record OsrmRoute(double duration, double distance) {
+    }
 
     @Override
     @Cacheable(value = "rutas", key = "{#origenLat, #origenLon, #destinoLat, #destinoLon}")
     @CircuitBreaker(name = "osrmBreaker", fallbackMethod = "fallbackCalcularRuta")
     @RateLimiter(name = "osrmLimiter", fallbackMethod = "fallbackCalcularRuta")
     public ResultadoRuta calcularRuta(double origenLat, double origenLon, double destinoLat, double destinoLon) {
-        // Coordenada (obras-commons) valida los rangos y arma el par en el orden que espera OSRM: longitud,latitud
+        // Coordenada (obras-commons) valida los rangos y arma el par en el orden que
+        // espera OSRM: longitud,latitud
         Coordenada origen = new Coordenada(origenLat, origenLon);
         Coordenada destino = new Coordenada(destinoLat, destinoLon);
         String url = osrmBaseUrl + "/route/v1/driving/{origen};{destino}?overview=false";
 
         OsrmResponse response = restTemplate.getForObject(
-                url, OsrmResponse.class, origen.toOsrmString(), destino.toOsrmString()
-        );
+                url, OsrmResponse.class, origen.toOsrmString(), destino.toOsrmString());
 
         if (response != null && "Ok".equals(response.code())
                 && response.routes() != null && response.routes().length > 0) {
@@ -72,13 +78,15 @@ public class OsrmProveedorRutas implements ProveedorRutas {
         throw new RuntimeException("Respuesta inválida de OSRM");
     }
 
-    // Método de Fallback invocado por CircuitBreaker / RateLimiter ante cualquier excepción
+    // Método de Fallback invocado por CircuitBreaker / RateLimiter ante cualquier
+    // excepción
     public ResultadoRuta fallbackCalcularRuta(double origenLat, double origenLon,
-                                             double destinoLat, double destinoLon,
-                                             Throwable ex) {
+            double destinoLat, double destinoLon,
+            Throwable ex) {
         log.warn("OSRM no disponible o limitado ({}). Se usa la estimación en línea recta.", ex.getMessage());
 
-        double distanciaKm = calcularDistanciaHaversine(origenLat, origenLon, destinoLat, destinoLon) * factorCorreccion;
+        double distanciaKm = calcularDistanciaHaversine(origenLat, origenLon, destinoLat, destinoLon)
+                * factorCorreccion;
         int minutosEstimados = (int) Math.ceil((distanciaKm / 50.0) * 60.0);
 
         return new ResultadoRuta(Math.max(minutosEstimados, 5), distanciaKm, "ESTIMADA");
@@ -89,8 +97,8 @@ public class OsrmProveedorRutas implements ProveedorRutas {
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                   Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     }

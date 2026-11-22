@@ -30,7 +30,7 @@ public class FaseService {
 
     @Transactional
     public Fase crearFase(Long tramoId, TipoFase tipo, LocalDate inicio, LocalDate fin,
-                          Long faseAnteriorId) {
+            Long faseAnteriorId) {
         Tramo tramo = tramoRepository.findById(tramoId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No existe el tramo con id " + tramoId));
 
@@ -74,7 +74,8 @@ public class FaseService {
         return materialService.calcularMateriales(fase.getTipo(), fase.getTramo().getSuperficieM2());
     }
 
-    // Avance real: el primer avance inicia la fase (aplica RN-01) y al llegar a 100 queda COMPLETADA
+    // Avance real: el primer avance inicia la fase (aplica RN-01) y al llegar a 100
+    // queda COMPLETADA
     @Transactional
     public Fase registrarAvance(Long faseId, int porcentaje) {
         Fase fase = buscar(faseId);
@@ -89,7 +90,8 @@ public class FaseService {
         if (porcentaje < fase.getAvancePorcentaje()) {
             throw new ReglaNegocioException(
                     "El avance no puede retroceder: actual " + fase.getAvancePorcentaje()
-                            + " %, recibido " + porcentaje + " %", "AVANCE");
+                            + " %, recibido " + porcentaje + " %",
+                    "AVANCE");
         }
 
         if (fase.getEstado() == EstadoFase.PENDIENTE) {
@@ -104,7 +106,8 @@ public class FaseService {
         return faseRepository.save(fase);
     }
 
-    // La marca Operaciones al llegar a N suspensiones; el PLANIFICADOR la resuelve reprogramando
+    // La marca Operaciones al llegar a N suspensiones; el PLANIFICADOR la resuelve
+    // reprogramando
     @Transactional
     public Fase marcarEnRiesgo(Long faseId) {
         Fase fase = buscar(faseId);
@@ -169,7 +172,7 @@ public class FaseService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("No existe la fase con id " + faseId));
     }
 
-    // RN-01: una fase no inicia si la anterior no esta completada (409, como dice el cuestionario)
+    // RN-01: una fase no inicia si la anterior no esta completada (409)
     private void exigirAnteriorCompletada(Fase fase) {
         Fase anterior = fase.getFaseAnterior();
         if (anterior != null && anterior.getEstado() != EstadoFase.COMPLETADA) {

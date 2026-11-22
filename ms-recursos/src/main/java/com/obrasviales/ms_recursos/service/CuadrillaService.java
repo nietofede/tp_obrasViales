@@ -25,8 +25,8 @@ public class CuadrillaService {
     private final MaquinaRepository maquinaRepository;
 
     public CuadrillaService(CuadrillaRepository cuadrillaRepository,
-                            OperarioRepository operarioRepository,
-                            MaquinaRepository maquinaRepository) {
+            OperarioRepository operarioRepository,
+            MaquinaRepository maquinaRepository) {
         this.cuadrillaRepository = cuadrillaRepository;
         this.operarioRepository = operarioRepository;
         this.maquinaRepository = maquinaRepository;
@@ -37,16 +37,20 @@ public class CuadrillaService {
         return cuadrillaRepository.findAll().stream().map(this::armar).toList();
     }
 
-    // El capataz informa dónde está su cuadrilla. Solo puede hacerlo el CAPATAZ de esa cuadrilla.
+    // El capataz informa dónde está su cuadrilla. Solo puede hacerlo el CAPATAZ de
+    // esa cuadrilla.
     @Transactional
     public CuadrillaResponse registrarUbicacion(Long cuadrillaId, UbicacionRequest req, String usuarioKeycloak) {
         Cuadrilla c = cuadrillaRepository.findById(cuadrillaId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Cuadrilla no encontrada: " + cuadrillaId));
+
         Operario capataz = operarioRepository.findByKeycloakUsername(usuarioKeycloak).orElse(null);
+
         boolean esCapatazDeLaCuadrilla = capataz != null
                 && "CAPATAZ".equals(capataz.getRolOperativo())
                 && capataz.getCuadrilla() != null
                 && capataz.getCuadrilla().getId().equals(c.getId());
+
         if (!esCapatazDeLaCuadrilla) {
             throw new AccessDeniedException("Solo el capataz de la cuadrilla puede registrar su ubicación");
         }

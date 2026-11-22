@@ -29,13 +29,13 @@ public class ReservaService {
     private final ProveedorRutas proveedorRutas;
 
     public ReservaService(ReservaRepository reservaRepository,
-                          CuadrillaRepository cuadrillaRepository,
-                          OperarioRepository operarioRepository,
-                          MaquinaRepository maquinaRepository,
-                          ComposicionMinimaRepository composicionMinimaRepository,
-                          ConfiguracionDesplazamientoRepository configRepository,
-                          PlantaMezclaRepository plantaRepository,
-                          ProveedorRutas proveedorRutas) {
+            CuadrillaRepository cuadrillaRepository,
+            OperarioRepository operarioRepository,
+            MaquinaRepository maquinaRepository,
+            ComposicionMinimaRepository composicionMinimaRepository,
+            ConfiguracionDesplazamientoRepository configRepository,
+            PlantaMezclaRepository plantaRepository,
+            ProveedorRutas proveedorRutas) {
         this.reservaRepository = reservaRepository;
         this.cuadrillaRepository = cuadrillaRepository;
         this.operarioRepository = operarioRepository;
@@ -46,11 +46,14 @@ public class ReservaService {
         this.proveedorRutas = proveedorRutas;
     }
 
-    // Orden en que se revisan las reglas de elegibilidad. Si ninguna cuadrilla sirve, se informa la regla de la
-    // cuadrilla que llegó más lejos en esa secuencia (la que estuvo más cerca de ser elegible).
+    // Orden en que se revisan las reglas de elegibilidad. Si ninguna cuadrilla
+    // sirve, se informa la regla de la
+    // cuadrilla que llegó más lejos en esa secuencia (la que estuvo más cerca de
+    // ser elegible).
     private static final List<String> ORDEN_REGLAS = List.of("RN-05", "RN-06", "RN-07");
 
-    // Resultado de evaluar una cuadrilla: o fue rechazada (regla y detalle) o es elegible (con su ruta al tramo).
+    // Resultado de evaluar una cuadrilla: o fue rechazada (regla y detalle) o es
+    // elegible (con su ruta al tramo).
     private record Evaluacion(String regla, String detalle, ProveedorRutas.ResultadoRuta ruta) {
         static Evaluacion rechazada(String regla, String detalle) {
             return new Evaluacion(regla, detalle, null);
@@ -67,7 +70,7 @@ public class ReservaService {
 
     @Transactional
     public Reserva proponerYReservar(Long ordenTrabajoId, String tipoTrabajoStr, LocalDate fecha,
-                                     double tramoLat, double tramoLon) {
+            double tramoLat, double tramoLon) {
 
         LocalDateTime ahora = LocalDateTime.now();
 
@@ -79,15 +82,15 @@ public class ReservaService {
         ConfiguracionDesplazamiento config = configRepository.findById(1L)
                 .orElseThrow(() -> new IllegalStateException("Configuración de desplazamiento no encontrada"));
         ComposicionMinimaTrabajo requisitos = composicionMinimaRepository.findById(tipoTrabajoStr)
-                .orElseThrow(() -> new ReglaNegocioException("Tipo de trabajo no configurado: " + tipoTrabajoStr, "RN-06"));
-        
+                .orElseThrow(
+                        () -> new ReglaNegocioException("Tipo de trabajo no configurado: " + tipoTrabajoStr, "RN-06"));
+
         Cuadrilla cuadrillaElegida = null;
         ProveedorRutas.ResultadoRuta rutaCuadrilla = null;
         List<String> motivos = new ArrayList<>();
         String reglaMasAvanzada = null;
-        
+
         for (Cuadrilla c : cuadrillaRepository.findAll()) {
-            // RN-05: Verificar que la cuadrilla no tenga otra reserva activa en esa fecha
             Evaluacion evaluacion = evaluarCuadrilla(c, requisitos, config, fecha, ahora, tramoLat, tramoLon);
 
             if (evaluacion.esElegida()) {
@@ -96,10 +99,11 @@ public class ReservaService {
                 break;
             }
             motivos.add(c.getNombre() + ": " + evaluacion.regla() + ", " + evaluacion.detalle());
-            if (reglaMasAvanzada == null || ORDEN_REGLAS.indexOf(evaluacion.regla()) > ORDEN_REGLAS.indexOf(reglaMasAvanzada)) {
+            if (reglaMasAvanzada == null
+                    || ORDEN_REGLAS.indexOf(evaluacion.regla()) > ORDEN_REGLAS.indexOf(reglaMasAvanzada)) {
                 reglaMasAvanzada = evaluacion.regla();
             }
-            
+
         }
 
         if (cuadrillaElegida == null) {
@@ -108,7 +112,8 @@ public class ReservaService {
                     reglaMasAvanzada != null ? reglaMasAvanzada : "RN-06");
         }
 
-        // 4. RN-08: Si el trabajo requiere mezcla, buscar planta dentro de la ventana térmica y calcular salida del camión
+        // 4. RN-08: Si el trabajo requiere mezcla, buscar planta dentro de la ventana
+        // térmica y calcular salida del camión
         PlantaMezcla plantaElegida = null;
         ProveedorRutas.ResultadoRuta rutaMezcla = null;
         LocalTime horaLlegadaCuadrilla = LocalTime.of(8, 0).plusMinutes(rutaCuadrilla.duracionMinutos());
@@ -119,8 +124,7 @@ public class ReservaService {
             List<PlantaMezcla> plantas = plantaRepository.findByActivaTrue();
             for (PlantaMezcla p : plantas) {
                 ProveedorRutas.ResultadoRuta candidata = proveedorRutas.calcularRuta(
-                        p.getLatitud(), p.getLongitud(), tramoLat, tramoLon
-                );
+                        p.getLatitud(), p.getLongitud(), tramoLat, tramoLon);
                 if (candidata.duracionMinutos() <= config.getVentanaTransporteMezclaMin()) {
                     plantaElegida = p;
                     rutaMezcla = candidata;
@@ -131,7 +135,8 @@ public class ReservaService {
                 motivosPlantas.add(p.getNombre() + ": " + candidata.duracionMinutos() + " min de viaje");
             }
             if (plantaElegida == null) {
-                String detalle = motivosPlantas.isEmpty() ? "no hay plantas activas" : String.join("; ", motivosPlantas);
+                String detalle = motivosPlantas.isEmpty() ? "no hay plantas activas"
+                        : String.join("; ", motivosPlantas);
                 throw new ReglaNegocioException("Ninguna planta llega dentro de la ventana de transporte de "
                         + config.getVentanaTransporteMezclaMin() + " min. " + detalle, "RN-08");
             }
@@ -158,10 +163,11 @@ public class ReservaService {
         return reservaRepository.save(reserva);
     }
 
-
-    // Revisa las reglas de una cuadrilla en orden: RN-05, RN-06 y RN-07. Devuelve la primera que incumple.
-    private Evaluacion evaluarCuadrilla(Cuadrilla c, ComposicionMinimaTrabajo requisitos, ConfiguracionDesplazamiento config,
-                                        LocalDate fecha, LocalDateTime ahora, double tramoLat, double tramoLon) {
+    // Revisa las reglas de una cuadrilla en orden: RN-05, RN-06 y RN-07. Devuelve
+    // la primera que incumple.
+    private Evaluacion evaluarCuadrilla(Cuadrilla c, ComposicionMinimaTrabajo requisitos,
+            ConfiguracionDesplazamiento config,
+            LocalDate fecha, LocalDateTime ahora, double tramoLat, double tramoLon) {
         // RN-05: la cuadrilla no puede tener otra reserva vigente ese día
         if (reservaRepository.existeReservaSolapada(c.getId(), fecha, ahora)) {
             return Evaluacion.rechazada("RN-05", "ya tiene una reserva vigente para ese día");
@@ -187,7 +193,8 @@ public class ReservaService {
             }
         }
 
-        // RN-07: el viaje al tramo no supera el máximo y la ida y vuelta entra en la jornada
+        // RN-07: el viaje al tramo no supera el máximo y la ida y vuelta entra en la
+        // jornada
         ProveedorRutas.ResultadoRuta ruta = proveedorRutas.calcularRuta(
                 c.getUltimaLatitud(), c.getUltimaLongitud(), tramoLat, tramoLon);
         if (ruta.duracionMinutos() > config.getViajeMaximoCuadrillaMin()) {
@@ -201,8 +208,8 @@ public class ReservaService {
         return Evaluacion.elegida(ruta);
     }
 
-   
-    // Sin noRollBack la transaccion se revierte al lanzar la excepcion y el estado EXPIRADA nunca queda guardado.
+    // Sin noRollBack la transaccion se revierte al lanzar la excepcion y el estado
+    // EXPIRADA nunca queda guardado.
     @Transactional(noRollbackFor = ConflictoEstadoException.class)
     public Reserva confirmarReserva(Long id) {
         Reserva r = reservaRepository.findById(id)
@@ -211,7 +218,7 @@ public class ReservaService {
         if ("CONFIRMADA".equals(r.getEstado())) {
             return r; // idempotente: Operaciones puede reintentar
         }
-        
+
         if (!"PROVISORIA".equals(r.getEstado())) {
             throw new ConflictoEstadoException("No se puede confirmar una reserva en estado " + r.getEstado());
         }
@@ -221,7 +228,7 @@ public class ReservaService {
             reservaRepository.save(r);
             throw new ConflictoEstadoException("La reserva provisoria ya expiró por TTL");
         }
-        
+
         r.setEstado("CONFIRMADA");
         return reservaRepository.save(r);
     }
@@ -230,6 +237,7 @@ public class ReservaService {
     public Reserva liberarReserva(Long id) {
         Reserva r = reservaRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Reserva no encontrada: " + id));
+
         if ("PROVISORIA".equals(r.getEstado()) || "CONFIRMADA".equals(r.getEstado())) {
             r.setEstado("LIBERADA");
             return reservaRepository.save(r);
@@ -238,14 +246,17 @@ public class ReservaService {
         return r; // LIBERADA o EXPIRADA: ya no bloquea recursos, liberar es idempotente
     }
 
-    // Pasa a EXPIRADA las provisorias cuyo TTL ya venció. Las vencidas ya no bloquean recursos aunque nadie
-    // las toque (ver bloqueaRecursos), pero así el estado guardado también refleja la realidad.
+    // Pasa a EXPIRADA las provisorias cuyo TTL ya venció. Las vencidas ya no
+    // bloquean recursos aunque nadie
+    // las toque (ver bloqueaRecursos), pero así el estado guardado también refleja
+    // la realidad.
     @Transactional
     public int expirarVencidas() {
         return reservaRepository.expirarReservasVencidas(LocalDateTime.now());
     }
 
-    // Una reserva bloquea recursos solo si está CONFIRMADA, o PROVISORIA y todavía no venció su TTL.
+    // Una reserva bloquea recursos solo si está CONFIRMADA, o PROVISORIA y todavía
+    // no venció su TTL.
     private boolean bloqueaRecursos(Reserva r, LocalDateTime ahora) {
         return "CONFIRMADA".equals(r.getEstado())
                 || ("PROVISORIA".equals(r.getEstado()) && r.getFechaVencimientoTtl().isAfter(ahora));

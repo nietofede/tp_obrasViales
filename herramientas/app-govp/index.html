@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GOVP</title>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+<!-- Pantalla de ingreso -->
+<section id="login" class="login" hidden>
+  <form id="form-login" class="login-caja" autocomplete="on">
+    <div class="marca-grande">GOVP</div>
+    <p class="sub">Gestor de Obras Viales y Pavimentación</p>
+    <label for="usuario">Usuario</label>
+    <input id="usuario" name="usuario" autocomplete="username" required>
+    <label for="clave">Contraseña</label>
+    <input id="clave" name="clave" type="password" autocomplete="current-password" required>
+    <button class="boton primario" type="submit" id="ingresar">Ingresar</button>
+    <p class="error" id="error-login" hidden></p>
+    <details class="demo">
+      <summary>Usuarios de demo (solo local)</summary>
+      <div class="demo-lista" id="demo-lista"></div>
+    </details>
+  </form>
+</section>
+
+<!-- Aplicación -->
+<div id="app" class="app" hidden>
+  <header class="barra">
+    <button class="boton icono menu-movil" id="abrir-menu" aria-label="Abrir menú">☰</button>
+    <span class="marca">GOVP</span>
+    <span class="estado-stack" id="estado-stack"></span>
+    <span class="usuario" id="usuario-actual"></span>
+    <button class="boton" id="salir">Salir</button>
+  </header>
+  <nav class="menu" id="menu" aria-label="Secciones"></nav>
+  <main class="contenido" id="contenido" tabindex="-1"></main>
+</div>
+
+<!-- Ventana para formularios -->
+<dialog id="dialogo" class="dialogo">
+  <form method="dialog" id="form-dialogo" novalidate>
+    <h2 id="dialogo-titulo"></h2>
+    <p class="ayuda" id="dialogo-ayuda"></p>
+    <div id="dialogo-campos"></div>
+    <p class="error" id="dialogo-error" hidden></p>
+    <div class="acciones">
+      <button class="boton" value="cancelar" type="button" id="dialogo-cancelar">Cancelar</button>
+      <button class="boton primario" value="aceptar" type="submit" id="dialogo-aceptar">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="avisos" id="avisos" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
