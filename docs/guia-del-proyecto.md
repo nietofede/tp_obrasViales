@@ -46,13 +46,13 @@ La cuenta SISTEMA: el mismo `-Uri` con `-Body @{grant_type='client_credentials';
 
 ### 1.3 La colección de requests
 
-`coleccion/obras-viales.postman_collection.json` (82 requests) con el entorno `coleccion/local.postman_environment.json`. Se corre en orden: `00-Auth`, `01-Setup-Datos`, `02-Seguridad`, `03-Flujo-Principal`, `04-Reglas-Negocio` y `05-Fallas-y-Resiliencia`. Desde la terminal:
+`coleccion/obras-viales.postman_collection.json` (95 requests) con el entorno `coleccion/local.postman_environment.json`. Se corre en orden: `00-Auth`, `01-Setup-Datos`, `02-Seguridad`, `03-Flujo-Principal`, `04-Reglas-Negocio` y `05-Fallas-y-Resiliencia`. Desde la terminal:
 
 ```powershell
 npx -y newman@6 run coleccion/obras-viales.postman_collection.json -e coleccion/local.postman_environment.json
 ```
 
-El clima es real: si hoy llueve entre las 08:00 y las 13:00, la orden de hoy se suspende y algunos requests del camino feliz fallan. Para correrla entera, antes el ADMIN sube los umbrales de BASE (`PUT /api/operaciones/umbrales-climaticos/BASE` con humedad 1, lluvia 100 y temperatura −50). Comprobado el 2026-11-16 sobre un stack desde cero: 82 requests, 98 aserciones, 0 fallos.
+El clima es real: si hoy llueve entre las 08:00 y las 13:00, la orden de hoy se suspende y algunos requests del camino feliz fallan. Para correrla entera, antes el ADMIN sube los umbrales de BASE (`PUT /api/operaciones/umbrales-climaticos/BASE` con humedad 1, lluvia 100 y temperatura −50). Comprobado el 2026-11-17 sobre un stack desde cero: 95 requests, 122 aserciones, 0 fallos. Cada regla de `04-Reglas-Negocio` tiene al menos un request que la viola.
 
 ### 1.4 Correr un servicio sin Docker
 
@@ -108,32 +108,32 @@ Complementa el diagrama de contenedores (C2) de [`c2-contenedores.md`](c2-conten
 
 ### 2.2 Contexto (C1)
 
-Es el diagrama de Contexto del modelo C4 de la sección 05 del cuestionario. El sistema decide cada día si una cuadrilla puede ejecutar una obra, según el estado de la obra, los recursos, las rutas y el clima. Incluye la cuenta de servicio SISTEMA (job diario). Hay cinco actores, todos con rol de Keycloak, y tres sistemas externos.
+Es el diagrama de Contexto del modelo C4. Parte del de la sección 05 del cuestionario y está actualizado al alcance vigente (recorte del 2026-11-16 y RN-04 quitada). El sistema decide cada día si una cuadrilla puede ejecutar una orden, según el estado de la obra, los recursos, las rutas y el clima. Hay cuatro roles de persona, todos en Keycloak; la cuenta de servicio SISTEMA queda dentro del sistema (la usan el job diario y las llamadas entre servicios). Hay tres sistemas externos. Las flechas dicen HTTP porque es lo desplegado: el cuestionario comprometía HTTPS (diferencia anotada en `c2-contenedores.md`).
 
 ```mermaid
 flowchart TB
-    planificador["Planificador<br/>Crea obras, tramos y fases; arma el cronograma;<br/>emite órdenes; decide sobre fases en riesgo"]
-    capataz["Capataz<br/>Confirma o rechaza órdenes; registra inicio, fin y avance;<br/>hace check-in de cuadrilla; resuelve casos con clima incierto"]
-    auditor["Auditor<br/>Consulta historial de suspensiones y reportes (solo lectura)"]
-    admin["Admin<br/>Gestiona catálogos, umbrales climáticos y usuarios"]
+    planificador["Planificador<br/>Crea obras, tramos y fases; crea órdenes y dispara<br/>la habilitación del día; reprograma las fases en riesgo"]
+    capataz["Capataz<br/>Inicia o rechaza órdenes habilitadas; registra el avance;<br/>resuelve el clima incierto; hace check-in de su cuadrilla"]
+    auditor["Auditor<br/>Consulta obras, órdenes, suspensiones<br/>y cronogramas (solo lectura)"]
+    admin["Admin<br/>Configura los umbrales climáticos<br/>de cada tipo de trabajo"]
 
-    obras(["Gestión Integral de Obras Viales<br/>Planifica obras, asigna cuadrillas y máquinas y decide cada día<br/>si una orden puede ejecutarse según clima y rutas reales.<br/>Incluye la cuenta de servicio SISTEMA (job diario)"])
+    obras(["GOVP: Gestión Integral de Obras Viales<br/>Decide cada día si una orden puede ejecutarse según<br/>la obra, los recursos, las rutas y el clima.<br/>Incluye la cuenta de servicio SISTEMA (job diario)"])
 
     keycloak["Keycloak (externo)<br/>OIDC, emisión de JWT, roles y client credentials"]
     meteo["Open-Meteo (externo)<br/>Pronóstico horario: humedad de suelo,<br/>probabilidad de lluvia y temperatura"]
-    osrm["OSRM, servidor público demo (externo)<br/>Rutas por calle: duraciones y recorridos"]
+    osrm["OSRM, servidor público demo (externo)<br/>Tiempos de viaje por calle"]
 
-    planificador -->|"Planifica obras y emite órdenes<br/>HTTPS/JSON + JWT"| obras
-    capataz -->|"Confirma órdenes, registra avance y check-in<br/>HTTPS/JSON + JWT"| obras
-    auditor -->|"Consulta historial y reportes<br/>HTTPS/JSON + JWT"| obras
-    admin -->|"Configura catálogos, umbrales y usuarios<br/>HTTPS/JSON + JWT"| obras
+    planificador -->|"Planifica obras y emite órdenes<br/>HTTP/JSON + JWT"| obras
+    capataz -->|"Ejecuta órdenes, registra avance y check-in<br/>HTTP/JSON + JWT"| obras
+    auditor -->|"Consulta (solo lectura)<br/>HTTP/JSON + JWT"| obras
+    admin -->|"Configura umbrales climáticos<br/>HTTP/JSON + JWT"| obras
 
     obras -->|"Valida JWT y obtiene token de servicio<br/>OIDC / OAuth2"| keycloak
     obras -->|"Consulta pronóstico por coordenadas del tramo<br/>HTTPS/JSON"| meteo
-    obras -->|"Calcula tiempos cuadrilla→tramo y planta→tramo<br/>HTTPS/JSON (/table, /route)"| osrm
+    obras -->|"Calcula tiempos cuadrilla→tramo y planta→tramo<br/>HTTPS/JSON (/route)"| osrm
 ```
 
-Definición textual editable (la del cuestionario, PlantUML con C4-PlantUML):
+Definición textual editable (PlantUML con C4-PlantUML, actualizada igual que el diagrama):
 
 ```plantuml
 @startuml C1_Contexto_Obras_Viales
@@ -142,29 +142,29 @@ Definición textual editable (la del cuestionario, PlantUML con C4-PlantUML):
 LAYOUT_WITH_LEGEND()
 title Diagrama de Contexto (C4 - Nivel 1) - Gestión Integral de Obras Viales con Control Climático de Ejecución
 
-Person(planificador, "Planificador", "Crea obras, tramos y fases; arma el cronograma; emite órdenes; decide sobre fases en riesgo.")
-Person(capataz, "Capataz", "Confirma o rechaza órdenes; registra inicio, fin y avance; hace check-in de cuadrilla; resuelve casos con clima incierto.")
-Person(auditor, "Auditor", "Consulta historial de suspensiones y reportes (solo lectura).")
-Person(admin, "Admin", "Gestiona catálogos, umbrales climáticos y usuarios.")
+Person(planificador, "Planificador", "Crea obras, tramos y fases; crea órdenes y dispara la habilitación del día; reprograma las fases en riesgo.")
+Person(capataz, "Capataz", "Inicia o rechaza órdenes habilitadas; registra el avance; resuelve el clima incierto; hace check-in de su cuadrilla.")
+Person(auditor, "Auditor", "Consulta obras, órdenes, suspensiones y cronogramas (solo lectura).")
+Person(admin, "Admin", "Configura los umbrales climáticos de cada tipo de trabajo.")
 
-System(obras, "Gestión Integral de Obras Viales", "Planifica obras, asigna cuadrillas y máquinas, y decide cada día si una orden puede ejecutarse según clima y rutas reales. Incluye la cuenta de servicio SISTEMA (job diario).")
+System(obras, "GOVP: Gestión Integral de Obras Viales", "Decide cada día si una orden puede ejecutarse según el estado de la obra, los recursos, las rutas y el clima. Incluye la cuenta de servicio SISTEMA (job diario).")
 
 System_Ext(keycloak, "Keycloak", "Proveedor de identidad: OIDC, emisión de JWT, roles y client credentials.")
 System_Ext(meteo, "Open-Meteo", "API pública de pronóstico horario: humedad de suelo, probabilidad de lluvia y temperatura.")
-System_Ext(osrm, "OSRM (servidor público demo)", "API pública de rutas por calle: duraciones y recorridos.")
+System_Ext(osrm, "OSRM (servidor público demo)", "API pública de rutas por calle: tiempos de viaje.")
 
-Rel(planificador, obras, "Planifica obras y emite órdenes", "HTTPS/JSON + JWT")
-Rel(capataz, obras, "Confirma órdenes, registra avance y check-in", "HTTPS/JSON + JWT")
-Rel(auditor, obras, "Consulta historial y reportes", "HTTPS/JSON + JWT")
-Rel(admin, obras, "Configura catálogos, umbrales y usuarios", "HTTPS/JSON + JWT")
+Rel(planificador, obras, "Planifica obras y emite órdenes", "HTTP/JSON + JWT")
+Rel(capataz, obras, "Ejecuta órdenes, registra avance y check-in", "HTTP/JSON + JWT")
+Rel(auditor, obras, "Consulta (solo lectura)", "HTTP/JSON + JWT")
+Rel(admin, obras, "Configura umbrales climáticos", "HTTP/JSON + JWT")
 
 Rel(obras, keycloak, "Valida JWT y obtiene token de servicio", "OIDC / OAuth2")
 Rel(obras, meteo, "Consulta pronóstico por coordenadas del tramo", "HTTPS/JSON")
-Rel(obras, osrm, "Calcula tiempos cuadrilla→tramo y planta→tramo", "HTTPS/JSON (/table, /route)")
+Rel(obras, osrm, "Calcula tiempos cuadrilla→tramo y planta→tramo", "HTTPS/JSON (/route)")
 @enduml
 ```
 
-Operan cuatro roles (Planificador, Capataz, Auditor y Admin); el Operario del cuestionario se quitó con el recorte de alcance del 2026-11-14 porque su única función era consultar sus asignaciones. Los reportes del Auditor y la gestión de usuarios por API están fuera de alcance: los usuarios se administran en Keycloak.
+Operan cuatro roles (Planificador, Capataz, Auditor y Admin); el Operario del cuestionario se quitó con el recorte de alcance del 2026-11-14 porque su única función era consultar sus asignaciones. Los catálogos editables, los reportes del Auditor y la gestión de usuarios por API están fuera de alcance: los recursos vienen precargados y los usuarios se administran en Keycloak. OSRM se consulta solo con `/route` (no `/table`).
 
 ### 2.3 Modelo de datos (ER)
 
@@ -619,7 +619,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-Con los seis contenedores `healthy`, la colección `coleccion/obras-viales.postman_collection.json` recorre todo (82 requests).
+Con los seis contenedores `healthy`, la colección `coleccion/obras-viales.postman_collection.json` recorre todo (95 requests).
 
 ---
 
