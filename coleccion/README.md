@@ -2,7 +2,8 @@
 
 Archivos:
 
-- `obras-viales.postman_collection.json`: la colección (95 requests).
+- `obras-viales.postman_collection.json`: la colección original integral (95 requests), con un caso de error por regla.
+- `govp-modular.postman_collection.json`: nueva colección modular organizada en 4 carpetas (Usuarios, Flujo Básico, Reglas de Negocio con éxito/rechazo, y Endpoints por Servicio): 82 requests. Trae sus propias variables (`baseUrl`, `keycloakUrl`, `sistemaSecret`), así que corre sin entorno. Verificada el 22/11/2026 con Newman sobre un stack desde cero: 82 requests, 114 aserciones, 0 fallos. Se corre entera y en orden: «03 - Reglas» crea su propia obra con dos fases, porque las del seed quedan COMPLETADAS con el Flujo Básico.
 - `local.postman_environment.json`: variables de entorno de ejemplo (`baseUrl`, `keycloakUrl`, `sistemaSecret`).
 
 ## Cómo usarla

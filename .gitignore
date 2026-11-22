@@ -8,6 +8,7 @@
 
 # Carpetas de compilación de Maven/Gradle (cuando agreguen Spring Boot)
 target/
+target_test-classes/
 build/
 
 # pdfs
