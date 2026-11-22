@@ -10,12 +10,12 @@ flowchart LR
     meteo["Open-Meteo<br/>pronóstico del clima<br/>(externo)"]
 
     subgraph docker["Red de Docker obras-network (zona de confianza)"]
-        gateway["API Gateway<br/>Spring Cloud Gateway MVC<br/>puerto 8081"]
-        keycloak["Keycloak 24<br/>usuarios, roles y tokens<br/>puerto 8080"]
-        obras["ms-obras<br/>Spring Boot<br/>8082, solo interno"]
-        recursos["ms-recursos<br/>Spring Boot<br/>8083, solo interno"]
-        operaciones["ms-operaciones<br/>Spring Boot<br/>8084, solo interno"]
-        postgres[("PostgreSQL 16<br/>ms_obras, ms_recursos,<br/>ms_operaciones y keycloak_db")]
+        gateway["API Gateway<br/>Spring Cloud Gateway MVC<br/>única entrada: valida el JWT,<br/>reglas por ruta y rol, correlation-id<br/>puerto 8081"]
+        keycloak["Keycloak 24<br/>usuarios, roles y tokens<br/>(OIDC, JWT, client credentials)<br/>puerto 8080"]
+        obras["ms-obras<br/>Spring Boot<br/>obras, tramos, fases y materiales;<br/>RN-01, RN-02 y RN-03<br/>8082, solo interno"]
+        recursos["ms-recursos<br/>Spring Boot<br/>cuadrillas, plantas y reservas;<br/>proponer y reservar (RN-05 a RN-08)<br/>8083, solo interno"]
+        operaciones["ms-operaciones<br/>Spring Boot<br/>órdenes, clima y suspensiones;<br/>orquesta la saga y el job (RN-09 a RN-12)<br/>8084, solo interno"]
+        postgres[("PostgreSQL 16<br/>una base y un usuario por servicio:<br/>ms_obras, ms_recursos,<br/>ms_operaciones y keycloak_db")]
     end
 
     cliente -->|"1. pide un token (OIDC)"| keycloak
@@ -43,6 +43,17 @@ flowchart LR
 ```
 
 Las líneas punteadas son las comprobaciones de seguridad: el gateway y cada servicio bajan de Keycloak las claves públicas para verificar la firma de los tokens, y Operaciones además le pide un token propio (la cuenta de servicio SISTEMA) para poder llamar a Obras y a Recursos.
+
+## Responsabilidad y tecnología de cada contenedor
+
+| Contenedor | Responsabilidad | Tecnología | Guarda |
+|---|---|---|---|
+| `api-gateway` | Único punto de entrada: valida firma y vigencia del JWT, aplica reglas gruesas por ruta, verbo y rol, genera el `X-Correlation-Id` y enruta por prefijo | Spring Cloud Gateway MVC, Spring Security | Nada |
+| `keycloak` | Identidad: usuarios y roles, emisión de JWT (OIDC) y token de la cuenta SISTEMA (client credentials) | Keycloak 24 | Base `keycloak_db` |
+| `ms-obras` | Qué se construye y cuándo: obras, tramos, fases con su dependencia, cronograma, materiales por superficie y avance real. Reglas RN-01, RN-02 y RN-03 | Spring Boot 4.1.2, JPA, Flyway | Base `ms_obras` |
+| `ms-recursos` | Con qué se construye: cuadrillas, operarios, máquinas, plantas y check-in; motor «proponer y reservar» con reserva provisoria de 30 min. Reglas RN-05 a RN-08, con OSRM y Resilience4j | Spring Boot 4.1.2, JPA, Flyway, Resilience4j | Base `ms_recursos` |
+| `ms-operaciones` | Qué se hace hoy: órdenes y su máquina de estados, evaluación climática con Open-Meteo, suspensiones; orquesta la habilitación, la saga y el job diario. Reglas RN-09 a RN-12 | Spring Boot 4.1.2, JPA, Flyway, Resilience4j | Base `ms_operaciones` |
+| `postgres` | Persistencia: una base con su usuario dueño por servicio, sin acceso cruzado (`REVOKE CONNECT`) | PostgreSQL 16 | Las cuatro bases |
 
 ## Qué se puede alcanzar desde afuera
 
