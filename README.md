@@ -142,7 +142,7 @@ Evidencia y registros:
 
 Está resuelto el despliegue completo con Docker Compose, la seguridad de punta a punta (gateway, servicios y roles), los tres servicios con sus reglas de negocio y el job diario de habilitación con el escenario sembrado de tres órdenes.
 
-Los catálogos y la configuración de Recursos, el vencimiento automático de reservas, los permisos finales y la resiliencia de Operaciones, y la colección de Postman (95 requests, corrida completa sobre el stack) están implementados. La colección, los diagramas y el guion de la demo están en el repositorio (ver abajo). Lo que queda es la verificación final desde cero entre los tres integrantes y el ensayo de la demo.
+Los catálogos y la configuración de Recursos, el vencimiento automático de reservas, los permisos finales y la resiliencia de Operaciones, y las colecciones de Postman (la modular, de 135 requests, es la principal; corrida completa sobre el stack) están implementados. La colección, los diagramas y el guion de la demo están en el repositorio (ver abajo). Lo que queda es la verificación final desde cero entre los tres integrantes y el ensayo de la demo.
 
 Una limitación a tener en cuenta: con Docker, el Swagger de cada servicio no es accesible desde afuera, justamente porque los servicios no se publican. Es una decisión consciente, explicada en `docs/DECISIONES.md`.
 

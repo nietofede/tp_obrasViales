@@ -2,6 +2,8 @@
 
 Tabla única de RN-01 a RN-12. Para el detalle de implementación de cada servicio, ver `trazabilidad-ms-obras.md` y `trazabilidad-ms-operaciones.md`. La carpeta `04-Reglas-Negocio` de la colección Postman (`coleccion/`) tiene, por cada regla, al menos un request que la viola y muestra el error; el caso correcto está en la misma carpeta o en `03-Flujo-Principal`.
 
+La columna de requests nombra las carpetas de la colección original. La de la presentación es la modular (`coleccion/govp-modular.postman_collection.json`), con todo lo mismo: `04-Reglas-Negocio > RN-xx` es `03 - Reglas de Negocio > RN-xx`, `03-Flujo-Principal` es `02 - Flujo Básico` (las órdenes 2 y 3 en `06b`), `02-Seguridad` es `05 - Seguridad` y `05-Fallas-y-Resiliencia` es `06 - Fallas y resiliencia`. En la modular, RN-01 tiene además el rechazo por Operaciones (habilitar una orden cuya fase anterior no terminó: 409).
+
 Estado: ✔ test y request en la colección · ≈ test, request parcial o pendiente · ✘ pendiente.
 
 | Regla | Servicio | Test automático | Request en la colección | Resultado esperado | Estado |
