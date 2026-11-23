@@ -790,7 +790,7 @@ Si el clima real de ese día no cumple los umbrales, la orden se suspende en vez
 
 #### 11.3.5 Escenario 1: suspensión por clima y replanificación (4 min)
 
-Condición: una orden PROGRAMADA y umbrales por encima de lo que el clima real cumple. Está en `03-Flujo-Principal > Escenarios 1 y 3`; todo corre antes de iniciar la orden 1.
+Condición: una orden PROGRAMADA y umbrales por encima de lo que el clima real cumple. Está en la colección modular, `02 - Flujo Básico > 06b - Órdenes 2 y 3 del seed`, y en la original, `03-Flujo-Principal > Escenarios 1 y 3`; todo corre antes de iniciar la orden 1.
 
 1. ADMIN: `ADMIN baja los umbrales de BASE` (humedad 0, lluvia 0, temperatura mínima 100).
 2. SISTEMA: `Habilitación de mañana`. Esperado: la orden 2 queda `REPROGRAMADA`: Recursos libera la reserva, Obras corre la fase 2 y se crea una orden nueva (la 4) con el contador de suspensiones en 0.
@@ -814,7 +814,7 @@ No hay caché del último pronóstico (se quitó con el recorte de alcance): sin
 
 Condición: un tramo cuya distancia supera la jornada o el viaje máximo.
 
-- La orden 3 del seed (fase 3, tramo 2 en Río Cuarto): `Habilitación de pasado mañana` en `03-Flujo-Principal > Escenarios 1 y 3`. Esperado: 200 con la orden 3 todavía `PROGRAMADA` y el motivo de Recursos: la cuadrilla Alfa está a unos 215 minutos y el máximo es 90 (RN-07). Verificado.
+- La orden 3 del seed (fase 3, tramo 2 en Río Cuarto): `Habilitación de pasado mañana` en `02 - Flujo Básico > 06b` (modular) o en `03-Flujo-Principal > Escenarios 1 y 3` (original). Esperado: 200 con la orden 3 todavía `PROGRAMADA` y el motivo de Recursos: la cuadrilla Alfa está a unos 215 minutos y el máximo es 90 (RN-07). Verificado.
 - Además, directo contra Recursos: `04-Reglas-Negocio > RN-07 > Tramo lejano (Buenos Aires)` (422).
 
 Para mostrar OSRM caído: agregar `APP_OSRM_URL: http://osrm-inexistente.invalid` bajo `ms-recursos` > `environment`, `docker compose up -d ms-recursos` y repetir una reserva; devuelve 201 con `fuenteRuta: ESTIMADA`.

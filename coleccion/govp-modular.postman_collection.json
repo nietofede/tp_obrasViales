@@ -344,7 +344,7 @@
     },
     {
       "name": "02 - Flujo Básico",
-      "description": "Flujo principal de extremo a extremo (Happy Path):\n1. Setup / consulta de Obra, Tramo y Fase.\n2. Habilitación diaria de orden de trabajo (evaluación de fase, recursos y clima).\n3. Capataz inicia la orden habilitada (pasa a EN_CURSO).\n4. Capataz registra avance parcial y avance al 100%.\n5. Verificación de que la orden y la fase quedan COMPLETADAS.",
+      "description": "Flujo principal de extremo a extremo (Happy Path):\n1. Setup / consulta de Obra, Tramo y Fase.\n2. Habilitación diaria de orden de trabajo (evaluación de fase, recursos y clima).\n2b. Órdenes 2 y 3 del seed: suspensión por clima con la saga y rechazo por distancia (carpeta 06b).\n3. Capataz inicia la orden habilitada (pasa a EN_CURSO).\n4. Capataz registra avance parcial y avance al 100%.\n5. Verificación de que la orden y la fase quedan COMPLETADAS.",
       "item": [
         {
           "name": "01 - ADMIN ajusta umbrales permisivos (asegura camino feliz)",
@@ -553,6 +553,212 @@
                   "});"
                 ]
               }
+            }
+          ]
+        },
+        {
+          "name": "06b - Órdenes 2 y 3 del seed (suspensión por clima y rechazo por distancia)",
+          "description": "Escenarios 1 y 3 del compromiso, con las otras dos órdenes del seed.\n\nVa ACÁ, antes de que el capataz ejecute la orden 1: las órdenes 1 y 2 son de la misma fase 2, y si la fase ya estuviera COMPLETADA la saga no podría reprogramarla (Obras responde 409).\n\n1. El ADMIN baja los umbrales de BASE para que ningún clima real cumpla.\n2. La habilitación de mañana suspende la orden 2: Recursos libera la reserva, Obras corre la fase y Operaciones crea una orden nueva; la orden 2 queda REPROGRAMADA.\n3. El historial guarda la suspensión con lo medido.\n4. Se restauran los umbrales.\n5. La habilitación de pasado mañana no consigue cuadrilla para la orden 3 (tramo de Río Cuarto, a unos 215 min con un máximo de 90): queda PROGRAMADA con el motivo RN-07.\n\nLas fechas de las órdenes las calcula Flyway al crear la base: correr con la base creada el mismo día.",
+          "item": [
+            {
+              "name": "1 - ADMIN baja los umbrales de BASE (fuerza la suspensión)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"humedadSueloMaxima\": 0,\n  \"probPrecipitacionMaxima\": 0,\n  \"temperaturaMinima\": 100\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Truco de demo: con estos umbrales ningún clima real cumple. Esperado: 200."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "2 - Habilitación de mañana: la orden 2 se suspende por clima y arranca la saga",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/habilitaciones-diarias",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fecha\": \"{{manana}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Esperado: 200 con la orden 2 en REPROGRAMADA: Recursos libera la reserva, Obras reprograma la fase y se crea una orden nueva (la 4) con el contador de suspensiones en 0."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 1 * 86400000);",
+                      "pm.collectionVariables.set(\"manana\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"orden 2 REPROGRAMADA\", () => pm.expect(pm.response.json()[0].estado).to.eql(\"REPROGRAMADA\"));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "3 - AUDITOR ve la suspensión registrada (motivo CLIMA)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAuditor}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/suspensiones",
+                "description": "Esperado: 200 con una suspensión de motivo CLIMA de la orden 2 y el detalle de los valores medidos contra los umbrales."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "4 - ADMIN restaura los umbrales de BASE",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenAdmin}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/umbrales-climaticos/BASE",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"humedadSueloMaxima\": 0.4,\n  \"probPrecipitacionMaxima\": 20,\n  \"temperaturaMinima\": 5\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Esperado: 200. Valores del seed para BASE."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "5 - Habilitación de pasado mañana: la orden 3 se rechaza por distancia (RN-07)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{tokenSistema}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/operaciones/habilitaciones-diarias",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fecha\": \"{{pasado}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Esperado: 200 con la orden 3 todavía PROGRAMADA y el motivo: la cuadrilla Alfa está a unos 215 min del tramo de Río Cuarto y el máximo es 90 (RN-07)."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = new Date(Date.now() - 3 * 3600 * 1000 + 2 * 86400000);",
+                      "pm.collectionVariables.set(\"pasado\", d.toISOString().slice(0, 10));"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"orden 3 sigue PROGRAMADA\", () => pm.expect(pm.response.json()[0].estado).to.eql(\"PROGRAMADA\"));",
+                      "pm.test(\"el motivo cita RN-07\", () => pm.expect(pm.response.json()[0].motivo).to.include(\"RN-07\"));"
+                    ]
+                  }
+                }
+              ]
             }
           ]
         },
