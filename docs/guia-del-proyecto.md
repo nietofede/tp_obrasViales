@@ -46,7 +46,7 @@ La cuenta SISTEMA: el mismo `-Uri` con `-Body @{grant_type='client_credentials';
 
 ### 1.3 La colección de requests
 
-`coleccion/obras-viales.postman_collection.json` (95 requests) con el entorno `coleccion/local.postman_environment.json`. Se corre en orden: `00-Auth`, `01-Setup-Datos`, `02-Seguridad`, `03-Flujo-Principal`, `04-Reglas-Negocio` y `05-Fallas-y-Resiliencia`. Desde la terminal:
+La colección principal es `coleccion/govp-modular.postman_collection.json` (135 requests, sin entorno: `01 - Usuarios` a `06 - Fallas y resiliencia`; verificada el 2026-11-23 con 184 aserciones y 0 fallos). La tabla de equivalencias con la original está en `coleccion/README.md`. La original, `coleccion/obras-viales.postman_collection.json` (95 requests), va con el entorno `coleccion/local.postman_environment.json` y se corre en orden: `00-Auth`, `01-Setup-Datos`, `02-Seguridad`, `03-Flujo-Principal`, `04-Reglas-Negocio` y `05-Fallas-y-Resiliencia`. Desde la terminal:
 
 ```powershell
 npx -y newman@6 run coleccion/obras-viales.postman_collection.json -e coleccion/local.postman_environment.json
@@ -714,7 +714,7 @@ Cada una pasó de verdad en el proyecto: síntoma, causa y qué hacer.
 
 ## 11. Guion de la demo
 
-Para ensayar con reloj. Los tiempos son una estimación de partida: ajustarlos después del primer ensayo. Los requests están en la colección de Postman (`coleccion/`); las carpetas se nombran como allí (`00-Auth` a `05-Fallas-y-Resiliencia`).
+Para ensayar con reloj. Los tiempos son una estimación de partida: ajustarlos después del primer ensayo. Los requests están en la colección de Postman (`coleccion/`); las carpetas se nombran como en la original (`00-Auth` a `05-Fallas-y-Resiliencia`). Con la modular: `00-Auth` = `01 - Usuarios`, `02-Seguridad` = `05 - Seguridad`, `03-Flujo-Principal` = `02 - Flujo Básico` (escenarios 1 y 3 en `06b`), `04-Reglas-Negocio` = `03 - Reglas de Negocio` y `05-Fallas-y-Resiliencia` = `06 - Fallas y resiliencia` (tabla completa en `coleccion/README.md`).
 
 ### 11.1 Antes de la demo (checklist)
 
